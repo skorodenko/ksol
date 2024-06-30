@@ -6,10 +6,15 @@ authors = ["skorodenko <72010957+skorodenko@users.noreply.github.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = ">=3.9,<3.13"
-pyside6 = "^6.7.2"
+python = ">=3.10,<3.13"
+pydantic = "^2.7.4"
+pydantic-settings = "^2.3.4"
+xdg-base-dirs = "^6.0.1"
 qasync = "^0.27.1"
 
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.4.10"
+poethepoet = "^0.26.1"
 
 [build-system]
 requires = ["poetry-core"]
