@@ -5,6 +5,7 @@ from settings import settings
 from PySide6.QtQml import QmlElement
 from PySide6.QtCore import QObject, Signal, Slot, QThread, QRunnable, QThreadPool
 
+import qasync
 
 logger = logging.getLogger("root")
 
@@ -24,10 +25,11 @@ class MPDConnector(QObject):
         logger.debug(f"Starting threadpool ({self.thread_pool.maxThreadCount()})")
         self.mpd_server = MPDServer()
     
-    @Slot()
-    def connect(self):
+    @qasync.asyncSlot()
+    async def connect(self):
         logger.debug("Connecting to mpd server")
         self.thread_pool.start(self.mpd_server)
+        self.connected.emit()
 
     @Slot()
     def disconnect(self):
@@ -36,7 +38,6 @@ class MPDConnector(QObject):
 
 
 class MPDServer(QRunnable, QThread):
-    updated: Signal = Signal()
 
     def __init__(self):
         super().__init__()
@@ -59,5 +60,4 @@ class MPDServer(QRunnable, QThread):
         if self.server_subproc:
             logger.debug("Terminating mpd server")
             self.server_subproc.terminate()
-
 

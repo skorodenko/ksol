@@ -1,15 +1,16 @@
 import os
 import sys
 import yaml
-import pyqml
 import signal
+import asyncio
 import logging.config
 from pathlib import Path
+from PySide6.QtCore import QUrl
+from PySide6.QtGui import QGuiApplication
+from PySide6.QtQml import QQmlApplicationEngine
 
-from PyQt6.QtCore import QUrl
-from PyQt6.QtGui import QGuiApplication
-from PyQt6.QtQml import QQmlApplicationEngine, qmlRegisterType
-
+import pyqml
+import qasync
 
 base_path = Path(".")
 
@@ -26,7 +27,9 @@ def main():
     # Initializes and manages the application execution
     app = QGuiApplication(sys.argv)
     engine = QQmlApplicationEngine()
-
+    loop = qasync.QEventLoop(app)
+    asyncio.set_event_loop(loop)
+    
     # Needed to close the app with Ctrl+C
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
@@ -34,16 +37,19 @@ def main():
     if not os.environ.get("QT_QUICK_CONTROLS_STYLE"):
         os.environ["QT_QUICK_CONTROLS_STYLE"] = "org.kde.desktop"
     
+    # Clean app stop
+    app_close_event = asyncio.Event()
+    app.aboutToQuit.connect(engine.deleteLater)
+    engine.quit.connect(app.quit)
+    app.aboutToQuit.connect(app_close_event.set)
+    engine.quit.connect(app_close_event.set)
+
     # Load qml files
     url = QUrl(str("file:" / base_path.absolute() / "src/qml/main.qml"))
     engine.load(url)
 
-    if len(engine.rootObjects()) == 0:
-        quit()
-
-    app.exec()
-    #with loop:
-    #    loop.run_forever()
+    with loop:
+        loop.run_forever()
     logger.debug("Quitting app")
 
 
