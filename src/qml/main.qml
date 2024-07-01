@@ -15,10 +15,6 @@ Kirigami.ApplicationWindow {
     MPDConnector {
         id: mpd_connector
     }
-    MouseArea {
-        anchors.fill: parent
-        onClicked: mpd_connector.connect()
-    }
 
     Kirigami.Page {
         id: player
