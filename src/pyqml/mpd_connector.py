@@ -34,7 +34,9 @@ class MPDConnector(QObject):
         logger.debug(f"Starting mpd server: {args}")
         return Popen(args)
 
-    async def _connect_mpd_client(self, mpd_socket: str, retcount: int = 3, timeout: int = 1):
+    async def _connect_mpd_client(
+        self, mpd_socket: str, retcount: int = 3, timeout: int = 1
+    ):
         if retcount == 0:
             return False
         try:
@@ -75,6 +77,7 @@ class MPDConnector(QObject):
                 self.mpd_server.terminate()
                 self.mpd_server.wait(3.0)
             except subprocess.TimeoutExpired:
-                logger.warning("MPD server didn't terminate timeout. Killing MPD server")
+                logger.warning(
+                    "MPD server didn't terminate timeout. Killing MPD server"
+                )
                 self.mpd_server.kill()
-
