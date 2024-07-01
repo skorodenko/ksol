@@ -184,6 +184,20 @@ files = [
 cli = ["click (>=5.0)"]
 
 [[package]]
+name = "python-mpd2"
+version = "3.1.1"
+description = "A Python MPD client library"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "python-mpd2-3.1.1.tar.gz", hash = "sha256:4baec3584cc43ed9948d5559079fafc2679b06b2ade273e909b3582654b2b3f5"},
+    {file = "python_mpd2-3.1.1-py2.py3-none-any.whl", hash = "sha256:86bf1100a0b135959d74a9a7a58cf0515bf30bb54eb25ae6fb8e175e50300fc3"},
+]
+
+[package.extras]
+twisted = ["Twisted"]
+
+[[package]]
 name = "qasync"
 version = "0.27.1"
 description = "Python library for using asyncio in Qt-based applications"
@@ -256,4 +270,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.13"
-content-hash = "7a58debc5234b1a0c98c949928a80e79ad5be93b457fa28d78cd190f2d7625f2"
+content-hash = "9a8a737a4d290f5a979b5a41c7d589e7fc3537395acea45a75f87def24996591"
