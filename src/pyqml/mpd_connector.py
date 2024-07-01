@@ -23,7 +23,7 @@ class MPDConnector(QObject):
         super().__init__()
         self.mpd_binary = which("mpd")
         self.mpd_server: Popen | None = None
-    
+
     @qasync.asyncSlot()
     async def connect(self):
         logger.debug("Establishing connection to mpd server")
@@ -45,4 +45,3 @@ class MPDConnector(QObject):
             logger.debug("Stopping native server")
             self.mpd_server.terminate()
             self.mpd_server.wait(3.0)
-

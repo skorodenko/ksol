@@ -29,14 +29,14 @@ def main():
     engine = QQmlApplicationEngine()
     loop = qasync.QEventLoop(app)
     asyncio.set_event_loop(loop)
-    
+
     # Needed to close the app with Ctrl+C
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     # Needed to get proper KDE style outside of Plasma
     if not os.environ.get("QT_QUICK_CONTROLS_STYLE"):
         os.environ["QT_QUICK_CONTROLS_STYLE"] = "org.kde.desktop"
-    
+
     # Clean app stop
     app_close_event = asyncio.Event()
     app.aboutToQuit.connect(engine.deleteLater)
