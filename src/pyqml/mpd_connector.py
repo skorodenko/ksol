@@ -11,7 +11,7 @@ from PySide6.QtCore import QObject, Signal, Slot
 
 import qasync
 
-logger = logging.getLogger("root")
+logger = logging.getLogger("app")
 
 
 QML_IMPORT_NAME = "controllers"

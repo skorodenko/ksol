@@ -18,7 +18,7 @@ with open(base_path / "logger.yml", "rt") as f:
     config = yaml.safe_load(f.read())
 
 logging.config.dictConfig(config)
-logger = logging.getLogger("root")
+logger = logging.getLogger("app")
 
 
 def main():

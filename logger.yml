@@ -7,7 +7,11 @@ handlers:
     class: logging.StreamHandler
     formatter: simple
     stream: ext://sys.stdout
-#loggers:
+loggers:
+  app:
+    level: DEBUG
+    handlers: [console]
+    propagate: no
 root:
   level: DEBUG
   handlers: [console]
