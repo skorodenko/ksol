@@ -3,7 +3,7 @@ from shutil import which
 from subprocess import Popen
 from settings import settings
 from PySide6.QtQml import QmlElement
-from PySide6.QtCore import QObject, Signal, Slot, QThread, QRunnable, QThreadPool
+from PySide6.QtCore import QObject, Signal, Slot
 
 import qasync
 
@@ -21,43 +21,28 @@ class MPDConnector(QObject):
 
     def __init__(self):
         super().__init__()
-        self.thread_pool = QThreadPool()
-        logger.debug(f"Starting threadpool ({self.thread_pool.maxThreadCount()})")
-        self.mpd_server = MPDServer()
+        self.mpd_binary = which("mpd")
+        self.mpd_server: Popen | None = None
     
     @qasync.asyncSlot()
     async def connect(self):
-        logger.debug("Connecting to mpd server")
-        self.thread_pool.start(self.mpd_server)
+        logger.debug("Establishing connection to mpd server")
+        if settings.mpd.socket == settings.mpd.native_socket:
+            logger.debug("Using native mpd server")
+            if self.mpd_binary:
+                logger.debug(f"Found mpd binary: {self.mpd_binary}")
+                self.mpd_server = Popen(
+                    [self.mpd_binary, settings.mpd.native_config, "--no-daemon"]
+                )
+            else:
+                logger.warning("No mpd binary found")
         self.connected.emit()
 
     @Slot()
     def disconnect(self):
         logger.debug("Disconnecting from mpd server")
-        self.mpd_server.stop()
-
-
-class MPDServer(QRunnable, QThread):
-
-    def __init__(self):
-        super().__init__()
-        self.mpd_binary = which("mpd")
-        self.server_subproc = None
-
-    @Slot()
-    def run(self):
-        if settings.mpd.socket == settings.mpd.native_socket:
-            logger.debug("Connecting to native server")
-            if self.mpd_binary:
-                logger.debug(f"Found mpd binary: {self.mpd_binary}")
-                self.server_subproc = Popen(
-                    [self.mpd_binary, settings.mpd.native_config, "--no-daemon"]
-                )
-            else:
-                logger.warning("No mpd binary found")
-
-    def stop(self):
-        if self.server_subproc:
-            logger.debug("Terminating mpd server")
-            self.server_subproc.terminate()
+        if self.mpd_server:
+            logger.debug("Stopping native server")
+            self.mpd_server.terminate()
+            self.mpd_server.wait(3.0)
 

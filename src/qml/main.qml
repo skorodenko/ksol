@@ -6,7 +6,7 @@ import controllers 1.0
 
 Kirigami.ApplicationWindow {
     id: root
-    title: qsTr("Soloviy")
+    title: qsTr("Ksol")
     pageStack.initialPage: [playlists, player]
 
     Component.onCompleted: mpd_connector.connect()
