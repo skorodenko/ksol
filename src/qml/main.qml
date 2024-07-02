@@ -8,13 +8,14 @@ import controllers 1.0
 Kirigami.ApplicationWindow {
     id: root
     title: qsTr("Ksol")
-    pageStack.initialPage: [player]
+    pageStack.initialPage: mainPage
 
     Component.onCompleted: mpd_connector.connect()
     Component.onDestruction: mpd_connector.disconnect()
 
     MPDConnector {
         id: mpd_connector
+        onConnected: toggleMessage.visible = true
     }
 
     globalDrawer: Kirigami.GlobalDrawer {
@@ -34,7 +35,7 @@ Kirigami.ApplicationWindow {
     }
 
     Kirigami.Page {
-        id: player
+        id: mainPage
         globalToolBarStyle: Kirigami.ApplicationHeaderStyle.None
 
         header: QQC2.ToolBar {
@@ -95,6 +96,34 @@ Kirigami.ApplicationWindow {
                     visible: !globalDrawer.collapsible
                     onClicked: globalDrawer.open()
                 }
+            }
+        }
+
+        ColumnLayout {
+            id: tiles_root
+            anchors.fill: parent
+
+            Kirigami.InlineMessage {
+                id: toggleMessage
+                icon.name: "network-server"
+                
+                onVisibleChanged: tmr.start()
+            
+
+                Timer {
+                    id: tmr
+                    interval: 2000
+                    onTriggered: toggleMessage.visible = false
+                }
+
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignTop
+
+                visible: false
+
+                type: Kirigami.MessageType.Positive
+
+                text: qsTr("Positive notification")
             }
         }
     }
