@@ -25,9 +25,9 @@ Kirigami.ApplicationWindow {
         edge: Qt.RightEdge
         handleVisible: false
 
-        header: RowLayout {
+        header: ColumnLayout {
             Layout.fillWidth: true
-            Kirigami.SearchField {
+            QQC2.ComboBox {
                 visible: !globalDrawer.collapsed
                 Layout.fillWidth: true
             }
@@ -106,9 +106,8 @@ Kirigami.ApplicationWindow {
             Kirigami.InlineMessage {
                 id: toggleMessage
                 icon.name: "network-server"
-                
+
                 onVisibleChanged: tmr.start()
-            
 
                 Timer {
                     id: tmr
