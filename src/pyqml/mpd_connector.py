@@ -4,12 +4,13 @@ import asyncio
 import subprocess
 from shutil import which
 from subprocess import Popen
-from settings import settings
 from mpd.asyncio import MPDClient
 from PySide6.QtQml import QmlElement
 from PySide6.QtCore import QObject, Signal, Slot
 
 import qasync
+from settings import settings
+
 
 logger = logging.getLogger("app")
 

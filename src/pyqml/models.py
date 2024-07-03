@@ -1,8 +1,8 @@
-import qasync
 from PySide6.QtQml import QmlElement
 from PySide6.QtCore import Qt, QAbstractListModel, Signal
 
-from enums import PlaylistsGroup
+import qasync
+from entities import PlaylistsGroup
 
 
 QML_IMPORT_NAME = "models"
