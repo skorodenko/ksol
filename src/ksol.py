@@ -12,6 +12,9 @@ from PySide6.QtQml import QQmlApplicationEngine
 import pyqml
 import qasync
 
+from hooks import use_hooks
+
+
 base_path = Path(".")
 
 with open(base_path / "logger.yml", "rt") as f:
@@ -23,6 +26,9 @@ logger = logging.getLogger("app")
 
 def main():
     logger.debug("Starting app")
+    
+    # Fire init hooks
+    use_hooks()
 
     # Initializes and manages the application execution
     app = QGuiApplication(sys.argv)

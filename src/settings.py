@@ -46,5 +46,4 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-settings.commit("./test.toml")
 
