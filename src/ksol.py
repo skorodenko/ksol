@@ -10,7 +10,6 @@ from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 
 import qasync
-import pyqml
 from hooks import use_hooks
 
 
@@ -34,6 +33,9 @@ def main():
     engine = QQmlApplicationEngine()
     loop = qasync.QEventLoop(app)
     asyncio.set_event_loop(loop)
+    
+    # Register pyqml classes
+    import pyqml
 
     # Needed to close the app with Ctrl+C
     signal.signal(signal.SIGINT, signal.SIG_DFL)
