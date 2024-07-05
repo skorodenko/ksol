@@ -1,19 +1,25 @@
 import toml
+from deepdiff import DeepDiff, Delta
 from xdg_base_dirs import xdg_config_home, xdg_data_home
 from pydantic import BaseModel
 from pydantic_settings import (
     BaseSettings,
-    SettingsConfigDict,
     PydanticBaseSettingsSource,
     TomlConfigSettingsSource,
 )
+
+
+from entities import PlaylistsGroup
 
 
 APP_CONFIG = xdg_config_home() / "ksol"
 APP_DATA = xdg_data_home() / "ksol"
 
 
-SETTINGS_FIELS = [str(APP_DATA / "settings.default.toml")]
+SETTINGS_FIELS = [
+    str(APP_DATA / "settings.default.toml"),
+    str(APP_CONFIG / "settings.toml")
+]
 
 
 class MPDSettings(BaseModel):
@@ -21,18 +27,34 @@ class MPDSettings(BaseModel):
     native_socket: str
     native_config: str
 
+class CoreSettings(BaseModel):
+    config_location: str
+
+class RuntimeSettings(BaseModel):
+    group: PlaylistsGroup
 
 class Settings(BaseSettings):
     mpd: MPDSettings
-    model_config = SettingsConfigDict(toml_file=SETTINGS_FIELS)
+    run: RuntimeSettings
+    core: CoreSettings
 
-    def commit(self, output_file: str):
-        parsed = self.model_dump()
-        config_toml = toml.dumps(parsed)
-        with open(output_file, "w") as f:
-            f.write(config_toml)
+    class Config:  
+        toml_file = SETTINGS_FIELS
+        use_enum_values = True
 
-    def rollback(self): ...
+    def commit(self):
+        parsed_config = self.model_dump()
+        with open(APP_DATA / "settings.default.toml", "r") as f:
+            default_config = toml.loads(f.read())
+        ddiff = DeepDiff(default_config, parsed_config, ignore_numeric_type_changes=True)
+        delta = {} + Delta(ddiff, force=True)
+        ddiff_config_toml = toml.dumps(delta)
+        print(self.core.config_location)
+        with open(self.core.config_location, "w") as f:
+            f.write(ddiff_config_toml)
+
+    def rollback(self):
+        self.__init__()
 
     @classmethod
     def settings_customise_sources(
@@ -47,3 +69,4 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+

@@ -18,3 +18,9 @@ class PlaylistsGroup(IntEnum):
     composer = 13
     disc = 14
     directory = 15
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self) -> str:
+        return str(self.value)
