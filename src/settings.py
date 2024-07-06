@@ -9,9 +9,6 @@ from pydantic_settings import (
 )
 
 
-from entities import PlaylistsGroup
-
-
 APP_CONFIG = xdg_config_home() / "ksol"
 APP_DATA = xdg_data_home() / "ksol"
 
@@ -30,12 +27,8 @@ class MPDSettings(BaseModel):
 class CoreSettings(BaseModel):
     config_location: str
 
-class RuntimeSettings(BaseModel):
-    group: PlaylistsGroup
-
 class Settings(BaseSettings):
     mpd: MPDSettings
-    run: RuntimeSettings
     core: CoreSettings
 
     class Config:  

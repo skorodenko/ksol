@@ -19,9 +19,6 @@ def init_default_settings_file(path: Path) -> bool:
             "native_socket": str(APP_DATA / "mpd.socket"),
             "native_config": str(APP_CONFIG / "mpd.conf"),
         },
-        "run": {
-            "group": 0,
-        },
         "core": {
             "config_location": str(APP_CONFIG / "mpd.conf")
         }
