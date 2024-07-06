@@ -7,7 +7,8 @@ from entities import PlaylistsGroup
 
 db = SqliteDatabase(settings.core.state_db_location, pragmas = {
     "journal_mode": "wal",
-    "cache_size": -1024 * 64,
+    "synchronous": "normal",
+    "journal_size_limit": "6144000",
 })
 
 
