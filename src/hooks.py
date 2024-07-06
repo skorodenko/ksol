@@ -20,12 +20,16 @@ def init_default_settings_file(path: Path) -> bool:
             "native_config": str(APP_CONFIG / "mpd.conf"),
         },
         "core": {
-            "config_location": str(APP_CONFIG / "mpd.conf")
-        }
+            "config_location": str(APP_CONFIG / "settings.toml"),
+            "state_db_location": str(APP_DATA / "state.db"),
+        },
+        "app": {
+            "disabled_groups": [],
+        },
     }
-    
+
     default_settings = toml.dumps(default_settings)
-    
+
     # If file doesn't exist -> create file
     if not path.exists():
         with open(path, "w") as f:
@@ -43,13 +47,11 @@ def init_default_settings_file(path: Path) -> bool:
     return False
 
 
-USE_HOOK_LIST = [
-    (init_default_settings_file, [APP_DATA / "settings.default.toml"])
-]
+USE_HOOK_LIST = [(init_default_settings_file, [APP_DATA / "settings.default.toml"])]
 
 
 def use_hooks():
     logger.debug("Firing init hooks")
-    for (hook, args) in USE_HOOK_LIST:
+    for hook, args in USE_HOOK_LIST:
         state = hook(*args)
         logger.debug(f"Hook -> {state}: {hook}, {args}")

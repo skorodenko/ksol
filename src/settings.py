@@ -9,6 +9,9 @@ from pydantic_settings import (
 )
 
 
+from entities import PlaylistsGroup
+
+
 APP_CONFIG = xdg_config_home() / "ksol"
 APP_DATA = xdg_data_home() / "ksol"
 
@@ -24,12 +27,17 @@ class MPDSettings(BaseModel):
     native_socket: str
     native_config: str
 
+class AppSettings(BaseModel):
+    disabled_groups: list[PlaylistsGroup]
+
 class CoreSettings(BaseModel):
     config_location: str
+    state_db_location: str
 
 class Settings(BaseSettings):
     mpd: MPDSettings
     core: CoreSettings
+    app: AppSettings
 
     class Config:  
         toml_file = SETTINGS_FIELS
@@ -42,7 +50,6 @@ class Settings(BaseSettings):
         ddiff = DeepDiff(default_config, parsed_config, ignore_numeric_type_changes=True)
         delta = {} + Delta(ddiff, force=True)
         ddiff_config_toml = toml.dumps(delta)
-        print(self.core.config_location)
         with open(self.core.config_location, "w") as f:
             f.write(ddiff_config_toml)
 

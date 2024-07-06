@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
 import controllers 1.0
+import models 1.0
 
 Kirigami.ApplicationWindow {
     id: root
@@ -18,6 +19,10 @@ Kirigami.ApplicationWindow {
         onConnected: toggleMessage.visible = true
     }
 
+    QPlaylistsGroupModel {
+        id: playlists_group
+    }
+
     globalDrawer: Kirigami.GlobalDrawer {
         id: globalDrawer
         title: "Global menu"
@@ -28,8 +33,13 @@ Kirigami.ApplicationWindow {
         header: ColumnLayout {
             Layout.fillWidth: true
             QQC2.ComboBox {
+                textRole: "name"
+                valueRole: "value"
+                model: playlists_group
+                onActivated: playlists_group.setActive(currentValue)
                 visible: !globalDrawer.collapsed
                 Layout.fillWidth: true
+                Component.onCompleted: currentIndex = playlists_group.active
             }
         }
     }
