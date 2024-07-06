@@ -44,7 +44,7 @@ class MPDConnector(QObject):
             await self.mpd_client.connect(mpd_socket)
             logger.debug(f"Successfuly connected to mpd: {mpd_socket}")
             return True
-        except (socket.gaierror, ConnectionRefusedError):
+        except (socket.gaierror, ConnectionRefusedError, FileNotFoundError):
             logger.warning(f"Failed to connect to mpd: {mpd_socket}")
             await asyncio.sleep(timeout)
             return await self._connect_mpd_client(mpd_socket, retcount - 1, timeout)
