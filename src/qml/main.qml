@@ -1,4 +1,3 @@
-import QtQml
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as QQC2
@@ -16,11 +15,21 @@ Kirigami.ApplicationWindow {
 
     MPDConnector {
         id: mpd_connector
-        onConnected: toggleMessage.visible = true
+        onConnected: function (state) {
+            toggleMessage.visible = true;
+            playlists_list.refresh(playlists_group.active);
+        }
+    }
+
+    QPlaylistsList {
+        id: playlists_list
     }
 
     QPlaylistsGroupModel {
         id: playlists_group
+        onGroupChanged: function (group) {
+            playlists_list.refresh(group);
+        }
     }
 
     globalDrawer: Kirigami.GlobalDrawer {
@@ -30,16 +39,43 @@ Kirigami.ApplicationWindow {
         edge: Qt.RightEdge
         handleVisible: false
 
-        header: ColumnLayout {
+        header: QQC2.ComboBox {
+            textRole: "name"
+            valueRole: "value"
+            model: playlists_group
+            onActivated: playlists_group.setActive(currentValue)
+            visible: !globalDrawer.collapsed
             Layout.fillWidth: true
-            QQC2.ComboBox {
-                textRole: "name"
-                valueRole: "value"
-                model: playlists_group
-                onActivated: playlists_group.setActive(currentValue)
-                visible: !globalDrawer.collapsed
-                Layout.fillWidth: true
-                Component.onCompleted: currentIndex = playlists_group.active
+            Component.onCompleted: currentIndex = playlists_group.active
+        }
+
+        ListView {
+            id: list_view
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+
+            QQC2.ScrollBar.vertical: QQC2.ScrollBar {
+                policy: QQC2.ScrollBar.AlwaysOn
+            }
+
+            model: playlists_list
+
+            delegate: Item {
+                height: 30
+                width: ListView.view.width
+
+                required property string name
+
+                QQC2.Label {
+                    text: parent.name
+                    font.pixelSize: 14
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.leftMargin: 15
+                    anchors.rightMargin: 15
+                    anchors.verticalCenter: parent.verticalCenter
+                    elide: Text.ElideRight
+                }
             }
         }
     }
@@ -89,7 +125,6 @@ Kirigami.ApplicationWindow {
                         QQC2.Label {
                             id: media_duration
                             text: "0:00 / 0:00"
-                            Layout.rightMargin: Qt.Infinity
                         }
                     }
 

@@ -1,10 +1,11 @@
 from PySide6.QtQml import QmlElement
-from PySide6.QtCore import QAbstractListModel, Slot, Property
+from PySide6.QtCore import QAbstractListModel, Slot, Signal, Property, Qt
 
 import qasync
 from db import state
 from settings import settings
 from entities import PlaylistsGroup
+from pyqml.mpd_connector import mpd_client
 
 
 QML_IMPORT_NAME = "models"
@@ -14,6 +15,8 @@ QML_IMPORT_MINOR_VERSION = 0
 
 @QmlElement
 class QPlaylistsGroupModel(QAbstractListModel):
+    groupChanged: Signal = Signal(PlaylistsGroup)
+
     def __init__(self):
         super().__init__()
         self.disabled_groups = settings.app.disabled_groups
@@ -33,19 +36,45 @@ class QPlaylistsGroupModel(QAbstractListModel):
     @Slot(PlaylistsGroup)
     def setActive(self, group: PlaylistsGroup):
         state.playlists_group = group
-    
-    @Property(int)
-    def active(self) -> int:
+        self.groupChanged.emit(group)
+
+    @Property(PlaylistsGroup)
+    def active(self):
         return state.playlists_group
 
     def roleNames(self):
-        return {
-            0: b"name",
-            1: b"value",
-        }
+        return {0: b"name", 1: b"value"}
 
     def rowCount(self, index) -> int:
         return len(self.groups)
 
+
+@QmlElement
+class QPlaylistsList(QAbstractListModel):
+    def __init__(self):
+        super().__init__()
+        self.playlists = []
+        self.mpd_client = mpd_client
+
     @qasync.asyncSlot(PlaylistsGroup)
-    async def refresh(self, group: PlaylistsGroup): ...
+    async def refresh(self, group: PlaylistsGroup):
+        self.layoutAboutToBeChanged.emit()
+        if group == PlaylistsGroup.directory:
+            data = await self.mpd_client.lsinfo("")
+            self.playlists = list(map(lambda x: x.get("directory", ""), data))
+        else:
+            data = await self.mpd_client.list(group.name)
+            self.playlists = list(map(lambda x: x.get(group.name, ""), data))
+        self.layoutChanged.emit()
+
+    def data(self, index, role):
+        if role == Qt.ItemDataRole.DisplayRole:
+            name = self.roleNames().get(role)
+            if name == b"name":
+                return self.playlists[index.row()]
+
+    def roleNames(self):
+        return {0: b"name"}
+
+    def rowCount(self, index) -> int:
+        return len(self.playlists)

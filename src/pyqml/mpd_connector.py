@@ -20,6 +20,9 @@ QML_IMPORT_MAJOR_VERSION = 1
 QML_IMPORT_MINOR_VERSION = 0
 
 
+mpd_client = MPDClient()
+
+
 @QmlElement
 class MPDConnector(QObject):
     connected: Signal = Signal(bool)
@@ -28,7 +31,7 @@ class MPDConnector(QObject):
         super().__init__()
         self.mpd_binary = which("mpd")
         self.mpd_server: Popen | None = None
-        self.mpd_client: MPDClient = MPDClient()
+        self.mpd_client: MPDClient = mpd_client
 
     def _start_native_server(self, mpd_binary: str, mpd_native_config: str):
         args = [mpd_binary, "--no-daemon", mpd_native_config]
