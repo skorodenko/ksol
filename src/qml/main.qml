@@ -35,6 +35,8 @@ Kirigami.ApplicationWindow {
     globalDrawer: Kirigami.GlobalDrawer {
         id: globalDrawer
         title: "Global menu"
+        leftPadding: 0
+        rightPadding: 0
 
         edge: Qt.RightEdge
         handleVisible: false
@@ -42,23 +44,21 @@ Kirigami.ApplicationWindow {
         header: QQC2.ComboBox {
             textRole: "name"
             valueRole: "value"
+            Layout.fillWidth: true
             model: playlists_group
             onActivated: playlists_group.setActive(currentValue)
             visible: !globalDrawer.collapsed
-            Layout.fillWidth: true
             Component.onCompleted: currentIndex = playlists_group.active
         }
 
         ListView {
-            id: list_view
+            model: playlists_list
             Layout.fillWidth: true
             Layout.fillHeight: true
 
             QQC2.ScrollBar.vertical: QQC2.ScrollBar {
                 policy: QQC2.ScrollBar.AlwaysOn
             }
-
-            model: playlists_list
 
             delegate: Item {
                 height: 30
@@ -69,12 +69,11 @@ Kirigami.ApplicationWindow {
                 QQC2.Label {
                     text: parent.name
                     font.pixelSize: 14
+                    elide: Text.ElideRight
+                    anchors.leftMargin: 20
+                    anchors.rightMargin: 20
                     anchors.left: parent.left
                     anchors.right: parent.right
-                    anchors.leftMargin: 15
-                    anchors.rightMargin: 15
-                    anchors.verticalCenter: parent.verticalCenter
-                    elide: Text.ElideRight
                 }
             }
         }
