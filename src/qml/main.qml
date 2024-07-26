@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
+import org.kde.breeze as Breeeze
 import controllers 1.0
 import models 1.0
 
@@ -35,45 +36,60 @@ Kirigami.ApplicationWindow {
     globalDrawer: Kirigami.GlobalDrawer {
         id: globalDrawer
         title: "Global menu"
-        leftPadding: 0
-        rightPadding: 0
 
         edge: Qt.RightEdge
         handleVisible: false
 
-        header: QQC2.ComboBox {
-            textRole: "name"
-            valueRole: "value"
-            Layout.fillWidth: true
-            model: playlists_group
-            onActivated: playlists_group.setActive(currentValue)
-            visible: !globalDrawer.collapsed
-            Component.onCompleted: currentIndex = playlists_group.active
-        }
+        contentItem: Kirigami.HeaderFooterLayout {
+            id: mainLayout
 
-        ListView {
-            model: playlists_list
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-
-            QQC2.ScrollBar.vertical: QQC2.ScrollBar {
-                policy: QQC2.ScrollBar.AlwaysOn
+            anchors {
+                fill: parent
+                topMargin: globalDrawer.collapsed && !showHeaderWhenCollapsed ? -contentItem.y : 0
             }
 
-            delegate: Item {
-                height: 30
-                width: ListView.view.width
+            Behavior on anchors.topMargin {
+                NumberAnimation {
+                    duration: Kirigami.Units.longDuration
+                    easing.type: Easing.InOutQuad
+                }
+            }
 
-                required property string name
+            header: QQC2.ComboBox {
+                textRole: "name"
+                valueRole: "value"
+                Layout.fillWidth: true
+                model: playlists_group
+                onActivated: playlists_group.setActive(currentValue)
+                Component.onCompleted: currentIndex = playlists_group.active
+            }
 
-                QQC2.Label {
-                    text: parent.name
-                    font.pixelSize: 14
-                    elide: Text.ElideRight
-                    anchors.leftMargin: 20
-                    anchors.rightMargin: 20
-                    anchors.left: parent.left
-                    anchors.right: parent.right
+            contentItem: ListView {
+                model: playlists_list
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+
+                implicitWidth: Math.min(Kirigami.Units.gridUnit * 20, globalDrawer.parent.width * 0.8)
+
+                QQC2.ScrollBar.vertical: QQC2.ScrollBar {
+                    policy: QQC2.ScrollBar.AlwaysOn
+                }
+
+                delegate: Item {
+                    height: 30
+                    width: ListView.view.width
+
+                    required property string name
+
+                    QQC2.Label {
+                        text: parent.name
+                        font.pixelSize: 14
+                        elide: Text.ElideRight
+                        anchors.leftMargin: 20
+                        anchors.rightMargin: 20
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                    }
                 }
             }
         }
