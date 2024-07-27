@@ -80,6 +80,18 @@ Kirigami.ApplicationWindow {
 
                     required property string name
 
+                    MouseArea {
+                        id: ma
+                        anchors.fill: parent
+                        acceptedButtons: Qt.LeftButton
+
+                        onDoubleClicked: function (mouse) {
+                            if (mouse.button == Qt.LeftButton) {
+                                console.log("Double click");
+                            }
+                        }
+                    }
+
                     QQC2.Label {
                         text: parent.name
                         font.pixelSize: 14
