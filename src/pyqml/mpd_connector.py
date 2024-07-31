@@ -5,11 +5,14 @@ import subprocess
 from shutil import which
 from subprocess import Popen
 from mpd.asyncio import MPDClient
+from deepdiff import DeepDiff, Delta
 from PySide6.QtQml import QmlElement
 from PySide6.QtCore import QObject, Signal, Slot
 
 import qasync
+from db import state
 from settings import settings
+from entities import MPDStatus
 
 
 logger = logging.getLogger("app")
@@ -26,9 +29,11 @@ mpd_client = MPDClient()
 @QmlElement
 class MPDConnector(QObject):
     connected: Signal = Signal(bool)
+    dbUpdated: Signal = Signal(bool)
 
     def __init__(self):
         super().__init__()
+        self.mpd_idle = None
         self.mpd_binary = which("mpd")
         self.mpd_server: Popen | None = None
         self.mpd_client: MPDClient = mpd_client
@@ -55,7 +60,6 @@ class MPDConnector(QObject):
     @qasync.asyncSlot()
     async def connect(self):
         logger.debug("Establishing connection to mpd server")
-        # Native server
         if settings.mpd.socket == settings.mpd.native_socket:
             logger.debug("Using native mpd server")
             if self.mpd_binary:
@@ -65,8 +69,9 @@ class MPDConnector(QObject):
                 )
             else:
                 logger.warning("No mpd binary found")
-        # MPD Client
         connected = await self._connect_mpd_client(settings.mpd.socket)
+        if connected:
+            self.mpd_idle = asyncio.create_task(self._mpd_idle())
         self.connected.emit(connected)
 
     @Slot()
@@ -85,3 +90,29 @@ class MPDConnector(QObject):
                     "MPD server didn't terminate timeout. Killing MPD server"
                 )
                 self.mpd_server.kill()
+
+    async def _mpd_idle(self):
+        logger.debug("Starting idle task")
+        state.mpd_status = MPDStatus()
+        async for subsystem in self.mpd_client.idle():
+            status_dict = await self.mpd_client.status()
+            status = MPDStatus(**status_dict)
+            ddiff = DeepDiff(state.mpd_status.dict(), status.dict())
+            delta = {} + Delta(ddiff, force=True)
+            state.mpd_status = status
+            for pair in delta.items():
+                self._action_router(pair)
+
+    def _action_router(self, delta: tuple):
+        match delta:
+            case ("updating_db", state):
+                if state is None:
+                    self.dbUpdated.emit(True)
+                else:
+                    self.dbUpdated.emit(False)
+            case _:
+                ...
+
+    @qasync.asyncSlot()
+    async def refresh_db(self):
+        await self.mpd_client.update()

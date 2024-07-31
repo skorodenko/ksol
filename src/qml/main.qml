@@ -13,22 +13,50 @@ Kirigami.ApplicationWindow {
     Component.onCompleted: mpd_connector.connect()
     Component.onDestruction: mpd_connector.disconnect()
 
-    MPDConnector {
-        id: mpd_connector
-        onConnected: function (state) {
-            toggleMessage.visible = true;
-            playlists_list.refresh(playlists_group.active);
-        }
+    function message(message, type, iconName = null) {
+        infoMessage.visible = false;
+        infoMessage.visible = true;
+        infoMessage.text = message;
+        infoMessage.type = type;
+        infoMessage.icon.source = iconName;
     }
 
     QPlaylistsList {
         id: playlists_list
     }
 
+    MPDConnector {
+        id: mpd_connector
+        onConnected: function (state) {
+            root.message("Connected to server", Kirigami.MessageType.Positive, "network-server");
+            playlists_list.refresh(playlists_group.active);
+        }
+        onDbUpdated: function (state) {
+            if (!!state) {
+                root.message("DB Updated", Kirigami.MessageType.Positive, "dialog-information");
+                playlists_list.refresh(playlists_group.active);
+            } else {
+                root.message("DB Updating", Kirigami.MessageType.Warning, "dialog-warning");
+            }
+        }
+    }
+
     QPlaylistsGroupModel {
         id: playlists_group
         onGroupChanged: function (group) {
             playlists_list.refresh(group);
+        }
+    }
+
+    menuBar: QQC2.MenuBar {
+        QQC2.Menu {
+            title: qsTr("&Server")
+            QQC2.Action {
+                text: qsTr("&Refresh DB")
+                onTriggered: function () {
+                    mpd_connector.refresh_db();
+                }
+            }
         }
     }
 
@@ -175,25 +203,20 @@ Kirigami.ApplicationWindow {
             anchors.fill: parent
 
             Kirigami.InlineMessage {
-                id: toggleMessage
-                icon.name: "network-server"
+                id: infoMessage
 
-                onVisibleChanged: tmr.start()
+                onVisibleChanged: tmr.restart()
 
                 Timer {
                     id: tmr
                     interval: 2000
-                    onTriggered: toggleMessage.visible = false
+                    onTriggered: infoMessage.visible = false
                 }
 
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignTop
 
                 visible: false
-
-                type: Kirigami.MessageType.Positive
-
-                text: qsTr("Positive notification")
             }
         }
     }

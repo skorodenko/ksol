@@ -1,3 +1,4 @@
+from pydantic import BaseModel
 from enum import IntEnum
 
 
@@ -23,3 +24,29 @@ class PlaylistsGroup(IntEnum):
 
     def __repr__(self) -> str:
         return str(self.value)
+
+
+class MPDStatus(BaseModel):
+    volume: int = None
+    state: str = None
+    repeat: bool = None
+    random: bool = None
+    single: bool = None
+    consume: bool = None
+    partition: str = None
+    playlist: int = None
+    playlistlength: int = None
+    song: int = None
+    songid: int = None
+    nextsong: int = None
+    nextsongid: int = None
+    time: int = None
+    elapsed: int = None
+    duration: int = None
+    bitrate: str = None
+    xfade: int = None
+    mixrampdb: int = None
+    mixrampdelay: int = None
+    audio: str = None
+    updating_db: int = None
+    error: str = None
