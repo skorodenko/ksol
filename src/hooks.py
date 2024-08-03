@@ -39,6 +39,7 @@ def init_default_settings_file(path: Path) -> bool:
         },
         "app": {
             "disabled_groups": [],
+            "max_tiles": 4,
         },
     }
 

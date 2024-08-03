@@ -68,13 +68,56 @@ class QPlaylistsList(QAbstractListModel):
         self.layoutChanged.emit()
 
     def data(self, index, role):
-        if role == Qt.ItemDataRole.DisplayRole:
-            name = self.roleNames().get(role)
-            if name == b"name":
-                return self.playlists[index.row()]
+        name = self.roleNames().get(role)
+        if name == b"name":
+            return self.playlists[index.row()]
 
     def roleNames(self):
         return {0: b"name"}
 
     def rowCount(self, index) -> int:
         return len(self.playlists)
+
+
+@QmlElement
+class QTilingStack(QAbstractListModel):
+    def __init__(self):
+        super().__init__()
+        self.stack = []
+
+    @qasync.asyncSlot(str)
+    async def addTile(self, uid: str):
+        self.layoutAboutToBeChanged.emit()
+        self.stack.append(uid)
+        self.layoutChanged.emit()
+
+    @Property(int)
+    def size(self):
+        return len(self.stack)
+
+    def tiling_struct(self, size: int):
+        if size == 0:
+            return []
+        if size == 1:
+            return [[2,2]]
+        if size == 2:
+            return [[1,2], [1,2]]
+        if size == 3:
+            return [[1,1], [1,1], [2,1]]
+        if size == 4:
+            return [[1,1], [1,1], [1,1], [1,1]]
+
+    def data(self, index, role):
+        name = self.roleNames().get(role)
+        if name == b"name":
+            return self.stack[index.row()]
+        if name == b"tileIndex":
+            return index.row()
+        if name == b"tilingStruct":
+            return self.tiling_struct(self.size)[index.row()]
+
+    def roleNames(self):
+        return {0: b"name", 1: b"tileIndex", 2: b"tilingStruct"}
+
+    def rowCount(self, index) -> int:
+        return len(self.stack)

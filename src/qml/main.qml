@@ -25,6 +25,10 @@ Kirigami.ApplicationWindow {
         id: playlists_list
     }
 
+    QTilingStack {
+        id: tiling_stack
+    }
+
     MPDConnector {
         id: mpd_connector
         onConnected: function (state) {
@@ -115,7 +119,7 @@ Kirigami.ApplicationWindow {
 
                         onDoubleClicked: function (mouse) {
                             if (mouse.button == Qt.LeftButton) {
-                                console.log("Double click");
+                                tiling_stack.addTile(name);
                             }
                         }
                     }
@@ -204,7 +208,7 @@ Kirigami.ApplicationWindow {
 
             Kirigami.InlineMessage {
                 id: infoMessage
-
+                visible: false
                 onVisibleChanged: tmr.restart()
 
                 Timer {
@@ -215,8 +219,32 @@ Kirigami.ApplicationWindow {
 
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignTop
+            }
 
-                visible: false
+            GridView {
+                id: tiling_grid
+                model: tiling_stack
+
+                cellWidth: tiles_root.width / 2
+                cellHeight: tiles_root.height / 2
+
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                
+                delegate: Item {
+                    required property int tileIndex
+                    required property string name
+                    required property var tilingStruct
+
+                    width: tiling_grid.cellWidth * tilingStruct[0]
+                    height: tiling_grid.cellHeight * tilingStruct[1]
+
+                    Rectangle {
+                        anchors.fill: parent
+                        border.color: "red"
+                        border.width: 2
+                    }
+                }
             }
         }
     }

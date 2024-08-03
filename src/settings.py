@@ -28,6 +28,7 @@ class MPDSettings(BaseModel):
     native_config: str
 
 class AppSettings(BaseModel):
+    max_tiles: int
     disabled_groups: list[PlaylistsGroup]
 
 class CoreSettings(BaseModel):
