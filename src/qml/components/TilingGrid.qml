@@ -15,7 +15,6 @@ QQC2.Control {
         id: tiling_stack
 
         onTileAddStart: function (positions) {
-            console.info(positions);
             for (var i = 0; i < tiling_stack.size; i++) {
                 var currentPos = positions[i];
                 var currentTile = repeater.itemAt(i);
@@ -25,7 +24,7 @@ QQC2.Control {
         }
     }
 
-    contentItem: Grid {
+    contentItem: GridLayout {
         id: grid
 
         rows: 2
@@ -45,8 +44,10 @@ QQC2.Control {
                 property int wSpan: tilingStruct[0]
                 property int hSpan: tilingStruct[1]
 
-                width: control.cellWidth * wSpan
-                height: control.cellHeight * hSpan
+                Layout.columnSpan: wSpan
+                Layout.rowSpan: hSpan
+                Layout.fillWidth: true
+                Layout.fillHeight: true
 
                 color: "blue"
                 border.width: 2
