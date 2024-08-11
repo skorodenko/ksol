@@ -1,5 +1,5 @@
 from PySide6.QtQml import QmlElement
-from PySide6.QtCore import QAbstractListModel, Slot, Signal, Property, Qt
+from PySide6.QtCore import QAbstractListModel, Slot, Signal, Property, QModelIndex
 
 import qasync
 from db import state
@@ -81,15 +81,20 @@ class QPlaylistsList(QAbstractListModel):
 
 @QmlElement
 class QTilingStack(QAbstractListModel):
+    tileAddStart: Signal = Signal(list)    
+    tileAddEnd: Signal = Signal()
+
     def __init__(self):
         super().__init__()
         self.stack = []
 
     @qasync.asyncSlot(str)
-    async def addTile(self, uid: str):
-        self.layoutAboutToBeChanged.emit()
-        self.stack.append(uid)
-        self.layoutChanged.emit()
+    async def addTile(self, strid: str):
+        self.tileAddStart.emit(self.tiling_struct(self.size + 1))
+        self.beginInsertRows(QModelIndex(), self.rowCount(), self.rowCount())
+        self.stack.append(strid)
+        self.endInsertRows()
+        self.tileAddEnd.emit()
 
     @Property(int)
     def size(self):
@@ -119,5 +124,5 @@ class QTilingStack(QAbstractListModel):
     def roleNames(self):
         return {0: b"name", 1: b"tileIndex", 2: b"tilingStruct"}
 
-    def rowCount(self, index) -> int:
+    def rowCount(self, index: QModelIndex = QModelIndex()) -> int:
         return len(self.stack)

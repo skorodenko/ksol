@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
+import "components" as CC
 import controllers 1.0
 import models 1.0
 
@@ -23,10 +24,6 @@ Kirigami.ApplicationWindow {
 
     QPlaylistsList {
         id: playlists_list
-    }
-
-    QTilingStack {
-        id: tiling_stack
     }
 
     MPDConnector {
@@ -119,7 +116,7 @@ Kirigami.ApplicationWindow {
 
                         onDoubleClicked: function (mouse) {
                             if (mouse.button == Qt.LeftButton) {
-                                tiling_stack.addTile(name);
+                                tiling_grid.model.addTile(name);
                             }
                         }
                     }
@@ -221,30 +218,11 @@ Kirigami.ApplicationWindow {
                 Layout.alignment: Qt.AlignTop
             }
 
-            GridView {
+            CC.TilingGrid {
                 id: tiling_grid
-                model: tiling_stack
-
-                cellWidth: tiles_root.width / 2
-                cellHeight: tiles_root.height / 2
 
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                
-                delegate: Item {
-                    required property int tileIndex
-                    required property string name
-                    required property var tilingStruct
-
-                    width: tiling_grid.cellWidth * tilingStruct[0]
-                    height: tiling_grid.cellHeight * tilingStruct[1]
-
-                    Rectangle {
-                        anchors.fill: parent
-                        border.color: "red"
-                        border.width: 2
-                    }
-                }
             }
         }
     }
