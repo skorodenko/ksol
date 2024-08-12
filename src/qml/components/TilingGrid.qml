@@ -49,9 +49,22 @@ QQC2.Control {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 
+                Component.onCompleted: function() {
+                    scale = 1;
+                }
+
+                Behavior on scale {
+                    NumberAnimation {
+                        easing.type: Easing.OutCubic
+                        duration: 150
+                    }
+                }
+
                 color: "blue"
+                radius: 4
                 border.width: 2
                 border.color: "red"
+                scale: 0.4
 
                 Text {
                     anchors.centerIn: parent
