@@ -7,7 +7,7 @@ import models 1.0
 QQC2.Control {
     id: control
 
-    property alias model: repeater.model 
+    property alias model: repeater.model
     property real cellWidth: control.width / 2
     property real cellHeight: control.height / 2
 
@@ -37,6 +37,7 @@ QQC2.Control {
             model: tiling_stack
 
             delegate: Rectangle {
+                id: itemDelegate
                 required property string name
                 required property int tileIndex
                 required property var tilingStruct
@@ -49,7 +50,7 @@ QQC2.Control {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 
-                Component.onCompleted: function() {
+                Component.onCompleted: function () {
                     scale = 1;
                 }
 
@@ -60,15 +61,25 @@ QQC2.Control {
                     }
                 }
 
-                color: "blue"
                 radius: 4
-                border.width: 2
-                border.color: "red"
                 scale: 0.4
+                color: Kirigami.Theme.alternateBackgroundColor
 
-                Text {
-                    anchors.centerIn: parent
-                    text: parent.tileIndex
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: Kirigami.Units.largeSpacing
+
+                    Kirigami.Heading {
+                        Layout.fillWidth: true
+                        horizontalAlignment: Text.AlignHCenter
+                        text: itemDelegate.name
+                        wrapMode: Text.Wrap
+                    }
+
+                    ListView {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                    }
                 }
             }
         }

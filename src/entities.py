@@ -1,5 +1,6 @@
-from pydantic import BaseModel
 from enum import IntEnum
+from datetime import datetime
+from pydantic import BaseModel, Field, field_validator
 
 
 class PlaylistsGroup(IntEnum):
@@ -50,3 +51,35 @@ class MPDStatus(BaseModel):
     audio: str = None
     updating_db: int = None
     error: str = None
+
+
+class Song(BaseModel):
+    file: str
+    time: int
+    duration: float
+    lastmodified: datetime = Field(alias="last-modified")
+    format: str = ""
+    artist: str = ""
+    albumartist: str = ""
+    title: str = ""
+    album: str = ""
+    track: int = ""
+    date: int = 0
+    genre: str = ""
+    composer: str = ""
+    disc: int = 0
+
+    @field_validator("artist", "albumartist", "genre", "composer", mode="before")
+    @classmethod
+    def _list_of_x_to_str(cls, val: str | list, info):
+        if isinstance(val, list):
+            return ", ".join(val)
+        return val
+
+
+class MetaTile(BaseModel):
+    name: str
+    locked: bool = False
+    playlist: list[Song] = []
+
+

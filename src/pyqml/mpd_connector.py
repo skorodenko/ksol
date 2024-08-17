@@ -15,7 +15,7 @@ from settings import settings
 from entities import MPDStatus
 
 
-logger = logging.getLogger("app")
+logger = logging.getLogger("mpd_connector")
 
 
 QML_IMPORT_NAME = "controllers"

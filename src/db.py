@@ -27,6 +27,7 @@ mem_db = SqliteDatabase(
 class State:
     def __init__(self):
         self._kv_int = KeyValue(value_field=IntegerField(), database=db)
+        self._kv_pickle = KeyValue(value_field=PickleField(), database=db)
         self._kvmem_pickle = KeyValue(value_field=PickleField(), database=mem_db)
 
     @property

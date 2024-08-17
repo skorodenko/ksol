@@ -2,10 +2,14 @@ from PySide6.QtQml import QmlElement
 from PySide6.QtCore import QAbstractListModel, Slot, Signal, Property, QModelIndex
 
 import qasync
+import logging
 from db import state
 from settings import settings
-from entities import PlaylistsGroup
+from entities import PlaylistsGroup, MetaTile
 from pyqml.mpd_connector import mpd_client
+
+
+logger = logging.getLogger("models")
 
 
 QML_IMPORT_NAME = "models"
@@ -87,18 +91,47 @@ class QTilingStack(QAbstractListModel):
     def __init__(self):
         super().__init__()
         self.stack = []
-
-    @qasync.asyncSlot(str)
-    async def addTile(self, strid: str):
+    
+    def _add_tile(self, tile: MetaTile):
         self.tileAddStart.emit(self.tiling_struct(self.size + 1))
         self.beginInsertRows(QModelIndex(), self.rowCount(), self.rowCount())
-        self.stack.append(strid)
+        self.stack.append(tile)
         self.endInsertRows()
         self.tileAddEnd.emit()
+
+    def _subst_tile(self, old: MetaTile, new: MetaTile):
+        tile_index = self.stack.index(old)
+        self.stack.pop(tile_index)
+        self.stack.insert(tile_index, new)
+        start = self.createIndex(tile_index, 0)
+        stop = self.createIndex(self.size, 0)
+        self.dataChanged.emit(start, stop)
+
+    @qasync.asyncSlot(str)
+    async def addTile(self, strid: str) -> bool:
+        tile = MetaTile(name = strid)
+        logger.debug(f"Trying to add tile: '{tile}'")
+        if self.size < settings.app.max_tiles:
+            logger.debug(f"Adding tile: '{tile}'")
+            self._add_tile(tile)
+            return True
+        if old_tile := self.first_unlocked:
+            logger.debug(f"Changing '{old_tile}' to '{tile}'")
+            self._subst_tile(old_tile, tile)
+            return True
+        logger.debug(f"Not enough place to add: '{tile}'")
+        return False
 
     @Property(int)
     def size(self):
         return len(self.stack)
+    
+    @Property(MetaTile)
+    def first_unlocked(self):
+        for tile in self.stack:
+            if not tile.locked:
+                return tile
+        return None
 
     def tiling_struct(self, size: int):
         if size == 0:
@@ -115,7 +148,7 @@ class QTilingStack(QAbstractListModel):
     def data(self, index, role):
         name = self.roleNames().get(role)
         if name == b"name":
-            return self.stack[index.row()]
+            return self.stack[index.row()].name
         if name == b"tileIndex":
             return index.row()
         if name == b"tilingStruct":
