@@ -90,19 +90,20 @@ class QTilingStack(QAbstractListModel):
 
     def __init__(self):
         super().__init__()
-        self.stack = []
     
     def _add_tile(self, tile: MetaTile):
         self.tileAddStart.emit(self.tiling_struct(self.size + 1))
         self.beginInsertRows(QModelIndex(), self.rowCount(), self.rowCount())
-        self.stack.append(tile)
+        with state.etile_stack as stack:
+            stack.append(tile)
         self.endInsertRows()
         self.tileAddEnd.emit()
 
     def _subst_tile(self, old: MetaTile, new: MetaTile):
-        tile_index = self.stack.index(old)
-        self.stack.pop(tile_index)
-        self.stack.insert(tile_index, new)
+        with state.etile_stack as stack:
+            tile_index = stack.index(old)
+            stack.pop(tile_index)
+            stack.insert(tile_index, new)
         start = self.createIndex(tile_index, 0)
         stop = self.createIndex(self.size, 0)
         self.dataChanged.emit(start, stop)
@@ -124,11 +125,11 @@ class QTilingStack(QAbstractListModel):
 
     @Property(int)
     def size(self):
-        return len(self.stack)
+        return len(state.tile_stack)
     
     @Property(MetaTile)
     def first_unlocked(self):
-        for tile in self.stack:
+        for tile in state.tile_stack:
             if not tile.locked:
                 return tile
         return None
@@ -148,7 +149,7 @@ class QTilingStack(QAbstractListModel):
     def data(self, index, role):
         name = self.roleNames().get(role)
         if name == b"name":
-            return self.stack[index.row()].name
+            return state.tile_stack[index.row()].name
         if name == b"tileIndex":
             return index.row()
         if name == b"tilingStruct":
@@ -158,4 +159,4 @@ class QTilingStack(QAbstractListModel):
         return {0: b"name", 1: b"tileIndex", 2: b"tilingStruct"}
 
     def rowCount(self, index: QModelIndex = QModelIndex()) -> int:
-        return len(self.stack)
+        return self.size

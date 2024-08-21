@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from peewee import SqliteDatabase, Model, IntegerField
 from playhouse.kv import KeyValue, PickleField
 
@@ -29,6 +30,28 @@ class State:
         self._kv_int = KeyValue(value_field=IntegerField(), database=db)
         self._kv_pickle = KeyValue(value_field=PickleField(), database=db)
         self._kvmem_pickle = KeyValue(value_field=PickleField(), database=mem_db)
+        #self.restore()
+
+    def restore(self):
+        self.tile_stack = self._kv_pickle.get("tile_stack")
+
+    def save(self):
+        self._kv_pickle["tile_stack"] = self.tile_stack
+        
+    @property
+    @contextmanager
+    def etile_stack(self):
+        stack = self.tile_stack
+        yield stack
+        self._kvmem_pickle["tile_stack"] = stack
+    
+    @property
+    def tile_stack(self):
+        return self._kvmem_pickle.get("tile_stack", [])
+    
+    @tile_stack.setter
+    def tile_stack(self, stack):
+        self._kvmem_pickle["tile_stack"] = stack
 
     @property
     def playlists_group(self) -> PlaylistsGroup:

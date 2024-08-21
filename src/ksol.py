@@ -10,6 +10,7 @@ from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 
 import qasync
+from db import state
 from hooks import use_hooks
 
 
@@ -55,9 +56,12 @@ def main():
     url = QUrl(str("file:" / base_path.absolute() / "src/qml/main.qml"))
     engine.load(url)
 
-    with loop:
-        loop.run_forever()
-    logger.debug("Quitting app")
+    try:
+        with loop:
+            loop.run_forever()
+    finally:
+        state.save()
+        logger.debug("Quitting app")
 
 
 if __name__ == "__main__":
