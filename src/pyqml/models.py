@@ -4,6 +4,7 @@ from PySide6.QtCore import QAbstractListModel, Slot, Signal, Property, QModelInd
 import qasync
 import logging
 from db import state
+from uuid import UUID
 from settings import settings
 from entities import PlaylistsGroup, MetaTile
 from pyqml.mpd_connector import mpd_client
@@ -122,7 +123,18 @@ class QTilingStack(QAbstractListModel):
             return True
         logger.debug(f"Not enough place to add: '{tile}'")
         return False
-
+        
+    @qasync.asyncSlot(int)
+    async def deleteTile(self, pos: int):
+        logger.debug(f"Deleting tile at index: {pos}")
+        self.beginRemoveRows(QModelIndex(), pos, pos)
+        with state.etile_stack as stack:
+            stack.pop(pos)
+        self.endRemoveRows()
+        start = self.createIndex(0, 0)
+        stop = self.createIndex(self.size, 0)
+        self.dataChanged.emit(start, stop)
+    
     @Property(int)
     def size(self):
         return len(state.tile_stack)
@@ -152,11 +164,13 @@ class QTilingStack(QAbstractListModel):
             return state.tile_stack[index.row()].name
         if name == b"tileIndex":
             return index.row()
+        if name == b"uuid":
+            return state.tile_stack[index.row()].uuid
         if name == b"tilingStruct":
             return self.tiling_struct(self.size)[index.row()]
 
     def roleNames(self):
-        return {0: b"name", 1: b"tileIndex", 2: b"tilingStruct"}
+        return {0: b"name", 1: b"tileIndex", 2: b"uuid", 3: b"tilingStruct"}
 
     def rowCount(self, index: QModelIndex = QModelIndex()) -> int:
         return self.size

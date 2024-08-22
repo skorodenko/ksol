@@ -1,4 +1,5 @@
 from enum import IntEnum
+from uuid import UUID, uuid4
 from datetime import datetime
 from pydantic import BaseModel, Field, field_validator
 
@@ -79,6 +80,7 @@ class Song(BaseModel):
 
 class MetaTile(BaseModel):
     name: str
+    uuid: UUID = Field(default_factory=uuid4)
     locked: bool = False
     playlist: list[Song] = []
 

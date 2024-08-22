@@ -38,6 +38,7 @@ QQC2.Control {
 
             delegate: Rectangle {
                 id: itemDelegate
+                required property var uuid
                 required property string name
                 required property int tileIndex
                 required property var tilingStruct
@@ -51,7 +52,7 @@ QQC2.Control {
                 Layout.fillHeight: true
 
                 Component.onCompleted: function () {
-                    scale = 1;
+                    itemDelegate.scale = 1;
                 }
 
                 Behavior on scale {
@@ -69,11 +70,28 @@ QQC2.Control {
                     anchors.fill: parent
                     anchors.margins: Kirigami.Units.largeSpacing
 
-                    Kirigami.Heading {
+                    RowLayout {
                         Layout.fillWidth: true
-                        horizontalAlignment: Text.AlignHCenter
-                        text: itemDelegate.name
-                        wrapMode: Text.Wrap
+
+                        Kirigami.Heading {
+                            Layout.alignment: Qt.AlignLeft
+                            horizontalAlignment: Text.AlignHCenter
+                            text: itemDelegate.name
+                            wrapMode: Text.Wrap
+                            level: 3
+                        }
+
+                        Item {
+                            Layout.fillWidth: true
+                        }
+
+                        QQC2.Button {
+                            icon.name: "window-close"
+                            Layout.alignment: Qt.AlignRight
+                            onClicked: function() {
+                                tiling_stack.deleteTile(itemDelegate.tileIndex);   
+                            }
+                        }
                     }
 
                     ListView {

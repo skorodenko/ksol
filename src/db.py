@@ -30,7 +30,7 @@ class State:
         self._kv_int = KeyValue(value_field=IntegerField(), database=db)
         self._kv_pickle = KeyValue(value_field=PickleField(), database=db)
         self._kvmem_pickle = KeyValue(value_field=PickleField(), database=mem_db)
-        #self.restore()
+        self.restore()
 
     def restore(self):
         self.tile_stack = self._kv_pickle.get("tile_stack")
