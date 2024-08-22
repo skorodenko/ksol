@@ -86,19 +86,17 @@ class QPlaylistsList(QAbstractListModel):
 
 @QmlElement
 class QTilingStack(QAbstractListModel):
-    tileAddStart: Signal = Signal(list)    
-    tileAddEnd: Signal = Signal()
+    tileGridUpdate = Signal(list)
 
     def __init__(self):
         super().__init__()
     
     def _add_tile(self, tile: MetaTile):
-        self.tileAddStart.emit(self.tiling_struct(self.size + 1))
+        self.tileGridUpdate.emit(self.tiling_struct(self.size + 1))
         self.beginInsertRows(QModelIndex(), self.rowCount(), self.rowCount())
         with state.etile_stack as stack:
             stack.append(tile)
         self.endInsertRows()
-        self.tileAddEnd.emit()
 
     def _subst_tile(self, old: MetaTile, new: MetaTile):
         with state.etile_stack as stack:
@@ -134,6 +132,7 @@ class QTilingStack(QAbstractListModel):
         start = self.createIndex(0, 0)
         stop = self.createIndex(self.size, 0)
         self.dataChanged.emit(start, stop)
+        self.tileGridUpdate.emit(self.tiling_struct(self.size))
     
     @Property(int)
     def size(self):

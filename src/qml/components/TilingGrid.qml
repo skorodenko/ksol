@@ -14,7 +14,7 @@ QQC2.Control {
     QTilingStack {
         id: tiling_stack
 
-        onTileAddStart: function (positions) {
+        onTileGridUpdate: function (positions) {
             for (var i = 0; i < tiling_stack.size; i++) {
                 var currentPos = positions[i];
                 var currentTile = repeater.itemAt(i);
