@@ -9,7 +9,7 @@ from pydantic_settings import (
 )
 
 
-from entities import PlaylistsGroup
+from entities import SongField
 
 
 APP_CONFIG = xdg_config_home() / "ksol"
@@ -29,7 +29,8 @@ class MPDSettings(BaseModel):
 
 class AppSettings(BaseModel):
     max_tiles: int
-    disabled_groups: list[PlaylistsGroup]
+    disabled_groups: list[SongField]
+    playlist_table_cols: list[str]
 
 class CoreSettings(BaseModel):
     config_location: str

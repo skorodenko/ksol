@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as QQC2
@@ -29,8 +31,8 @@ QQC2.Control {
 
         rows: 2
         columns: 2
-        rowSpacing: 6
-        columnSpacing: 6
+        rowSpacing: Kirigami.Units.largeSpacing
+        columnSpacing: Kirigami.Units.largeSpacing
 
         Repeater {
             id: repeater
@@ -38,8 +40,10 @@ QQC2.Control {
 
             delegate: Rectangle {
                 id: itemDelegate
+
                 required property var uuid
                 required property string name
+                required property var playlist
                 required property int tileIndex
                 required property var tilingStruct
 
@@ -58,11 +62,16 @@ QQC2.Control {
                 Behavior on scale {
                     NumberAnimation {
                         easing.type: Easing.OutCubic
-                        duration: 150
+                        duration: Kirigami.Units.longDuration
                     }
                 }
 
-                radius: 4
+                QPlaylist {
+                    id: qplaylist
+                    playlist: itemDelegate.playlist
+                }
+
+                radius: Kirigami.Units.cornerRadius
                 scale: 0.4
                 color: Kirigami.Theme.alternateBackgroundColor
 
@@ -88,15 +97,61 @@ QQC2.Control {
                         QQC2.Button {
                             icon.name: "window-close"
                             Layout.alignment: Qt.AlignRight
-                            onClicked: function() {
-                                tiling_stack.deleteTile(itemDelegate.tileIndex);   
+                            onClicked: function () {
+                                tiling_stack.deleteTile(itemDelegate.tileIndex);
                             }
                         }
                     }
 
-                    ListView {
+                    Item {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
+
+                        QQC2.HorizontalHeaderView {
+                            id: playlist_hheader
+                            anchors.left: playlist_view.left
+                            anchors.top: parent.top
+                            syncView: playlist_view
+
+                            delegate: Rectangle {
+                                color: Kirigami.Theme.backgroundColor
+                                implicitHeight: 20
+                                implicitWidth: TableView.view.width / qplaylist.columnCount()
+
+                                required property string display
+
+                                QQC2.Label {
+                                    text: parent.display
+                                    anchors.fill: parent
+                                    horizontalAlignment: Text.AlignLeft
+                                    clip: true
+                                }
+                            }
+                        }
+
+                        TableView {
+                            id: playlist_view
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            anchors.top: playlist_hheader.bottom
+
+                            model: qplaylist
+
+                            delegate: Item {
+                                implicitHeight: 20
+                                implicitWidth: TableView.view.width / qplaylist.columnCount()
+                                
+                                required property string display
+
+                                QQC2.Label {
+                                    clip: true
+                                    text: parent.display
+                                    anchors.fill: parent
+                                    horizontalAlignment: Text.AlignLeft
+                                }
+                            }
+                        }
                     }
                 }
             }

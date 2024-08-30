@@ -3,7 +3,7 @@ from peewee import SqliteDatabase, Model, IntegerField
 from playhouse.kv import KeyValue, PickleField
 
 from settings import settings
-from entities import PlaylistsGroup, MPDStatus
+from entities import SongField, MPDStatus
 
 
 db = SqliteDatabase(
@@ -33,7 +33,7 @@ class State:
         self.restore()
 
     def restore(self):
-        self.tile_stack = self._kv_pickle.get("tile_stack")
+        self.tile_stack = self._kv_pickle.get("tile_stack", [])
 
     def save(self):
         self._kv_pickle["tile_stack"] = self.tile_stack
@@ -54,12 +54,12 @@ class State:
         self._kvmem_pickle["tile_stack"] = stack
 
     @property
-    def playlists_group(self) -> PlaylistsGroup:
+    def playlists_group(self) -> SongField:
         group = self._kv_int.get("playlists_group", 0)
-        return PlaylistsGroup(group)
+        return SongField(group)
 
     @playlists_group.setter
-    def playlists_group(self, group: PlaylistsGroup):
+    def playlists_group(self, group: SongField):
         self._kv_int["playlists_group"] = group.value
 
     @property

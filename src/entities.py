@@ -4,7 +4,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field, field_validator
 
 
-class PlaylistsGroup(IntEnum):
+class SongField(IntEnum):
     directory = 0
     file = 1
     time = 2
@@ -82,6 +82,17 @@ class MetaTile(BaseModel):
     name: str
     uuid: UUID = Field(default_factory=uuid4)
     locked: bool = False
+    plgroup: SongField
     playlist: list[Song] = []
 
+    def mpd_playlist_query(self):
+        match self.name, self.plgroup:
+            case name, SongField.directory:
+                return [
+                    f"(base '{name}')",
+                ]
+            case name, group:
+                return [
+                    f"({group.name} == '{name}')",
+                ]
 

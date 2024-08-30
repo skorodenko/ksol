@@ -210,7 +210,7 @@ Kirigami.ApplicationWindow {
 
                 Timer {
                     id: tmr
-                    interval: 2000
+                    interval: Kirigami.Units.humanMoment
                     onTriggered: infoMessage.visible = false
                 }
 

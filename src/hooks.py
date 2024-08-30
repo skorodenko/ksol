@@ -21,7 +21,7 @@ def create_directory_structure(dirs: list[Path]):
     result = False
     for dir in dirs:
         if not dir.exists():
-            dir.mkdir(parents = True)
+            dir.mkdir(parents=True)
             result = True
     return result
 
@@ -38,8 +38,24 @@ def init_default_settings_file(path: Path) -> bool:
             "state_db_location": str(APP_DATA / "state.db"),
         },
         "app": {
-            "disabled_groups": [],
             "max_tiles": 4,
+            "disabled_groups": [],
+            "playlist_table_cols": [
+                "title",
+                "track",
+                "file",
+                "time",
+                "duration",
+                #"lastmodified",
+                #"format",
+                "artist",
+                #"albumartist",
+                #"album",
+                #"date",
+                #"genre",
+                #"composer",
+                "disc",
+            ],
         },
     }
 
@@ -90,11 +106,11 @@ def init_native_mpd_conf(path: Path) -> bool:
             if isinstance(value, dict):
                 retval.append(f"{param} {{\n{parse(value)}\n}}\n")
             else:
-                retval.append(f"{param} \"{parse(value)}\"\n")
+                retval.append(f'{param} "{parse(value)}"\n')
         return "".join(retval)
 
     default_config = parse(default_config)
-    
+
     if not path.exists():
         with open(path, "w") as f:
             f.write(default_config)
