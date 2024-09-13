@@ -1,4 +1,4 @@
-from enum import IntEnum
+from enum import IntEnum, Enum
 from uuid import UUID, uuid4
 from datetime import datetime
 from pydantic import BaseModel, Field, field_validator
@@ -42,9 +42,9 @@ class MPDStatus(BaseModel):
     songid: int = None
     nextsong: int = None
     nextsongid: int = None
-    time: int = None
-    elapsed: int = None
-    duration: int = None
+    time: str = None
+    elapsed: float = None
+    duration: float = None
     bitrate: str = None
     xfade: int = None
     mixrampdb: int = None
@@ -55,6 +55,7 @@ class MPDStatus(BaseModel):
 
 
 class Song(BaseModel):
+    uuid: UUID = Field(default_factory=uuid4)
     file: str
     time: int
     duration: float
@@ -80,7 +81,8 @@ class Song(BaseModel):
 
 class MetaTile(BaseModel):
     name: str
-    uuid: UUID = Field(default_factory=uuid4)
+    sg_uuid: UUID = None
+    pl_uuid: UUID = Field(default_factory=uuid4)
     locked: bool = False
     plgroup: SongField
     playlist: list[Song] = []

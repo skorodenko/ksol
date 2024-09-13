@@ -1,4 +1,5 @@
 pragma ComponentBehavior: Bound
+pragma NativeMethodBehavior: AcceptThisObject
 
 import QtQuick
 import QtQuick.Layouts
@@ -12,6 +13,8 @@ QQC2.Control {
     property alias model: repeater.model
     property real cellWidth: control.width / 2
     property real cellHeight: control.height / 2
+
+    required property var stagePlaylist
 
     QTilingStack {
         id: tiling_stack
@@ -41,7 +44,8 @@ QQC2.Control {
             delegate: Rectangle {
                 id: itemDelegate
 
-                required property var uuid
+                required property var pl_uuid
+                required property var sg_uuid
                 required property string name
                 required property var playlist
                 required property int tileIndex
@@ -139,10 +143,20 @@ QQC2.Control {
                             model: qplaylist
 
                             delegate: Item {
+                                id: pli_delegate
                                 implicitHeight: 20
                                 implicitWidth: TableView.view.width / qplaylist.columnCount()
-                                
+
+                                required property int row
+                                required property var sgUuid
                                 required property string display
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    onDoubleClicked: function () {
+                                        control.stagePlaylist(itemDelegate.pl_uuid, pli_delegate.sgUuid);
+                                    }
+                                }
 
                                 QQC2.Label {
                                     clip: true

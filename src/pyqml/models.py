@@ -179,8 +179,10 @@ class QTilingStack(QAbstractListModel):
 
     def data(self, index, role):
         name = self.roleNames().get(role)
-        if name == b"uuid":
-            return state.tile_stack[index.row()].uuid
+        if name == b"pl_uuid":
+            return state.tile_stack[index.row()].pl_uuid
+        if name == b"sg_uuid":
+            return state.tile_stack[index.row()].sg_uuid
         if name == b"name":
             return state.tile_stack[index.row()].name
         if name == b"playlist":
@@ -192,11 +194,12 @@ class QTilingStack(QAbstractListModel):
 
     def roleNames(self):
         return {
-            0: b"uuid",
-            1: b"name",
-            2: b"playlist",
-            3: b"tileIndex",
-            4: b"tilingStruct",
+            0: b"pl_uuid",
+            1: b"sg_uuid",
+            2: b"name",
+            3: b"playlist",
+            4: b"tileIndex",
+            5: b"tilingStruct",
         }
 
     def rowCount(self, index: QModelIndex = QModelIndex()) -> int:
@@ -222,12 +225,21 @@ class QPlaylist(QAbstractTableModel):
     def columnCount(self, index):
         return len(settings.app.playlist_table_cols)
 
+    def roleNames(self):
+        return {
+            0: b"display",
+            1: b"sgUuid",
+        }
+
     def data(self, index: QModelIndex, role: int):
-        if role == Qt.ItemDataRole.DisplayRole:
+        name = self.roleNames().get(role)
+        if name == b"display":
             return getattr(
                 self._playlist[index.row()],
                 settings.app.playlist_table_cols[index.column()],
             )
+        if name == b"sgUuid":
+            return self._playlist[index.row()].uuid
 
     def headerData(self, section: int, orientation: Qt.Orientation, role: int):
         if role == Qt.ItemDataRole.DisplayRole:

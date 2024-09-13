@@ -29,7 +29,7 @@ Kirigami.ApplicationWindow {
     MPDConnector {
         id: mpd_connector
         onConnected: function (state) {
-            root.message("Connected to server", Kirigami.MessageType.Positive, "network-server");
+            //root.message("Connected to server", Kirigami.MessageType.Positive, "network-server");
             playlists_list.refresh(playlists_group.active);
         }
         onDbUpdated: function (state) {
@@ -38,6 +38,25 @@ Kirigami.ApplicationWindow {
                 playlists_list.refresh(playlists_group.active);
             } else {
                 root.message("DB Updating", Kirigami.MessageType.Warning, "dialog-warning");
+            }
+        }
+        onStatePlay: function (state) {
+            switch (state) {
+            case "stop":
+                playback_play.icon.name = "media-playback-stop";
+                playback_previous.enabled = false;
+                playback_next.enabled = false;
+                break;
+            case "pause":
+                playback_play.icon.name = "media-playback-start";
+                playback_previous.enabled = true;
+                playback_next.enabled = true;
+                break;
+            case "play":
+                playback_play.icon.name = "media-playback-pause";
+                playback_previous.enabled = true;
+                playback_next.enabled = true;
+                break;
             }
         }
     }
@@ -152,19 +171,30 @@ Kirigami.ApplicationWindow {
                     spacing: 0
 
                     QQC2.Button {
-                        id: playback_backward
-                        icon.name: "media-skip-backward"
+                        id: playback_previous
                         flat: true
+                        enabled: false
+                        icon.name: "media-skip-backward"
+                        onClicked: function () {
+                            mpd_connector.play_previous();
+                        }
                     }
                     QQC2.Button {
                         id: playback_play
-                        icon.name: "media-playback-start"
                         flat: true
+                        icon.name: "media-playback-stop"
+                        onClicked: function () {
+                            mpd_connector.play_toggle();
+                        }
                     }
                     QQC2.Button {
-                        id: playback_forward
-                        icon.name: "media-skip-forward"
+                        id: playback_next
                         flat: true
+                        enabled: false
+                        icon.name: "media-skip-forward"
+                        onClicked: function () {
+                            mpd_connector.play_next();
+                        }
                     }
                 }
 
@@ -199,6 +229,21 @@ Kirigami.ApplicationWindow {
             }
         }
 
+        footer: QQC2.ToolBar {
+            implicitHeight: 18
+            background: Rectangle {
+                Kirigami.Theme.inherit: false
+                Kirigami.Theme.colorSet: Kirigami.Theme.Header
+                color: Kirigami.Theme.backgroundColor
+
+                RowLayout {
+                    QQC2.Label {
+                        text: "Test"
+                    }
+                }
+            }
+        }
+
         ColumnLayout {
             id: tiles_root
             anchors.fill: parent
@@ -210,7 +255,7 @@ Kirigami.ApplicationWindow {
 
                 Timer {
                     id: tmr
-                    interval: Kirigami.Units.humanMoment
+                    interval: Kirigami.Units.humanMoment / 2
                     onTriggered: infoMessage.visible = false
                 }
 
@@ -220,6 +265,8 @@ Kirigami.ApplicationWindow {
 
             CC.TilingGrid {
                 id: tiling_grid
+
+                stagePlaylist: (pl_uuid, sg_uuid) => mpd_connector.stagePlaylist(pl_uuid, sg_uuid)
 
                 Layout.fillWidth: true
                 Layout.fillHeight: true

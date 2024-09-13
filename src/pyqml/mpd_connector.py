@@ -2,6 +2,7 @@ import socket
 import logging
 import asyncio
 import subprocess
+from uuid import UUID
 from shutil import which
 from subprocess import Popen
 from mpd.asyncio import MPDClient
@@ -30,6 +31,7 @@ mpd_client = MPDClient()
 class MPDConnector(QObject):
     connected: Signal = Signal(bool)
     dbUpdated: Signal = Signal(bool)
+    statePlay: Signal = Signal(str)
 
     def __init__(self):
         super().__init__()
@@ -93,26 +95,76 @@ class MPDConnector(QObject):
 
     async def _mpd_idle(self):
         logger.debug("Starting idle task")
-        state.mpd_status = MPDStatus()
+        status_dict = await self.mpd_client.status()
+        state.mpd_status = MPDStatus(**status_dict)
+        status_dict = state.mpd_status.dict()
+        # Initial UI update
+        for pair in status_dict.items():
+            # Ignore updating_db status 'cause no change occurs
+            if pair[0] == "updating_db":
+                continue
+            self._idle_action_router(pair)
+        logger.debug("Finished initial UI update")
         async for subsystem in self.mpd_client.idle():
             status_dict = await self.mpd_client.status()
             status = MPDStatus(**status_dict)
             ddiff = DeepDiff(state.mpd_status.dict(), status.dict())
             delta = {} + Delta(ddiff, force=True)
             state.mpd_status = status
+            # UI update
             for pair in delta.items():
-                self._action_router(pair)
+                self._idle_action_router(pair)
 
-    def _action_router(self, delta: tuple):
+    def _idle_action_router(self, delta: tuple):
+        logger.debug(f"State router: {delta}")
         match delta:
             case ("updating_db", state):
                 if state is None:
                     self.dbUpdated.emit(True)
                 else:
                     self.dbUpdated.emit(False)
+            case ("state", state):
+                self.statePlay.emit(state)
             case _:
                 ...
+    
+    @qasync.asyncSlot(UUID, UUID)
+    async def stagePlaylist(self, pl_uuid: UUID, sg_uuid: UUID):
+        logger.debug(f"Staging playlist: {pl_uuid}/{sg_uuid}")
+        tile = state.get_tile(pl_uuid)
+        playpos = None
+        for i, song in enumerate(tile.playlist):
+            if song.uuid == sg_uuid:
+                playpos = i
+            await mpd_client.addid(song.file, i)
+        await mpd_client.play(playpos)
+        # Save state
+        tile.sg_uuid = sg_uuid
+        state.active_tile = tile
+
+    
+    @qasync.asyncSlot()
+    async def play_next(self):
+        logger.debug("Play next")
+        self.mpd_client.next()
+    
+    @qasync.asyncSlot()
+    async def play_previous(self):
+        logger.debug("Play previous")
+        self.mpd_client.previous()
+
+    @qasync.asyncSlot()
+    async def play_toggle(self):
+        status = await self.mpd_client.status()
+        status = MPDStatus(**status)
+        logger.debug(f"Play toggle. Current state {status.state}")
+        match status.state:
+            case "play":
+                await self.mpd_client.pause(1)
+            case "pause":
+                await self.mpd_client.pause(0)
 
     @qasync.asyncSlot()
     async def refresh_db(self):
+        logger.debug("Starting db update")
         await self.mpd_client.update()

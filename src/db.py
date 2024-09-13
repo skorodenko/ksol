@@ -1,9 +1,10 @@
+from uuid import UUID
 from contextlib import contextmanager
 from peewee import SqliteDatabase, Model, IntegerField
 from playhouse.kv import KeyValue, PickleField
 
 from settings import settings
-from entities import SongField, MPDStatus
+from entities import SongField, MPDStatus, MetaTile
 
 
 db = SqliteDatabase(
@@ -34,21 +35,25 @@ class State:
 
     def restore(self):
         self.tile_stack = self._kv_pickle.get("tile_stack", [])
+        if active_tile := self._kv_pickle.get("active_tile", None):
+            self.active_tile = active_tile
 
     def save(self):
         self._kv_pickle["tile_stack"] = self.tile_stack
-        
+        if active_tile := self.active_tile:
+            self._kv_pickle["active_tile"] = active_tile
+
     @property
     @contextmanager
     def etile_stack(self):
         stack = self.tile_stack
         yield stack
         self._kvmem_pickle["tile_stack"] = stack
-    
+
     @property
     def tile_stack(self):
         return self._kvmem_pickle.get("tile_stack", [])
-    
+
     @tile_stack.setter
     def tile_stack(self, stack):
         self._kvmem_pickle["tile_stack"] = stack
@@ -69,6 +74,23 @@ class State:
     @mpd_status.setter
     def mpd_status(self, status: MPDStatus):
         self._kvmem_pickle["mpd_status"] = status
+
+    @property
+    def active_tile(self):
+        return self._kvmem_pickle.get("active_tile", None)
+
+    @active_tile.setter
+    def active_tile(self, tile: MetaTile):
+        self._kvmem_pickle["active_tile"] = tile
+
+    def get_tile(self, index) -> MetaTile:
+        if isinstance(index, int):
+            return self.tile_stack[index]
+        if isinstance(index, UUID):
+            for tile in self.tile_stack:
+                if tile.pl_uuid == index:
+                    return tile
+        raise NotImplementedError("Method not implemented")
 
 
 class BaseModel(Model):
