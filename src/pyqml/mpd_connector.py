@@ -29,7 +29,7 @@ mpd_client = MPDClient()
 
 @QmlElement
 class MPDConnector(QObject):
-    connected: Signal = Signal(bool)
+    connected: Signal = Signal(str)
     dbUpdated: Signal = Signal(bool)
     statePlay: Signal = Signal(str)
 
@@ -61,6 +61,7 @@ class MPDConnector(QObject):
 
     @qasync.asyncSlot()
     async def connect(self):
+        self.connected.emit("connecting")
         logger.debug("Establishing connection to mpd server")
         if settings.mpd.socket == settings.mpd.native_socket:
             logger.debug("Using native mpd server")
@@ -74,7 +75,9 @@ class MPDConnector(QObject):
         connected = await self._connect_mpd_client(settings.mpd.socket)
         if connected:
             self.mpd_idle = asyncio.create_task(self._mpd_idle())
-        self.connected.emit(connected)
+            self.connected.emit("connected")
+        else:
+            self.connected.emit("disconnected")
 
     @Slot()
     def disconnect(self):

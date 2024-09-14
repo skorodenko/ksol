@@ -29,8 +29,21 @@ Kirigami.ApplicationWindow {
     MPDConnector {
         id: mpd_connector
         onConnected: function (state) {
-            //root.message("Connected to server", Kirigami.MessageType.Positive, "network-server");
-            playlists_list.refresh(playlists_group.active);
+            switch (state) {
+            case "connected":
+                playlists_list.refresh(playlists_group.active);
+                connectionStateLabel.text = "Connected";
+                connectionStateLabelBackground.color = Kirigami.Theme.positiveBackgroundColor;
+                break;
+            case "connecting":
+                connectionStateLabel.text = "Connecting";
+                connectionStateLabelBackground.color = Kirigami.Theme.neutralBackgroundColor;
+                break;
+            case "disconnected":
+                connectionStateLabel.text = "Disconnected";
+                connectionStateLabelBackground.color = Kirigami.Theme.negativeBackgroundColor;
+                break;
+            }
         }
         onDbUpdated: function (state) {
             if (!!state) {
@@ -230,15 +243,26 @@ Kirigami.ApplicationWindow {
         }
 
         footer: QQC2.ToolBar {
-            implicitHeight: 18
+            id: footer
+            implicitHeight: 20
             background: Rectangle {
+                height: parent.height
                 Kirigami.Theme.inherit: false
                 Kirigami.Theme.colorSet: Kirigami.Theme.Header
                 color: Kirigami.Theme.backgroundColor
-
                 RowLayout {
+                    anchors.fill: parent
                     QQC2.Label {
-                        text: "Test"
+                        id: connectionStateLabel
+                        Layout.fillHeight: true
+                        Layout.leftMargin: 2 * Kirigami.Units.largeSpacing
+                        text: "Disconnected"
+                        leftPadding: Kirigami.Units.smallSpacing
+                        rightPadding: Kirigami.Units.smallSpacing
+                        background: Rectangle {
+                            id: connectionStateLabelBackground
+                            color: Kirigami.Theme.negativeBackgroundColor
+                        }
                     }
                 }
             }
