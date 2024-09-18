@@ -32,6 +32,7 @@ class MPDConnector(QObject):
     connected: Signal = Signal(str)
     dbUpdated: Signal = Signal(bool)
     statePlay: Signal = Signal(str)
+    songChange: Signal = Signal()
 
     def __init__(self):
         super().__init__()
@@ -121,13 +122,18 @@ class MPDConnector(QObject):
     def _idle_action_router(self, delta: tuple):
         logger.debug(f"State router: {delta}")
         match delta:
-            case ("updating_db", state):
-                if state is None:
+            case ("updating_db", value):
+                if value is None:
                     self.dbUpdated.emit(True)
                 else:
                     self.dbUpdated.emit(False)
-            case ("state", state):
-                self.statePlay.emit(state)
+            case ("state", value):
+                self.statePlay.emit(value)
+            case ("songid", value):
+                tile = state.active_tile
+                song = tile.get_song(value)
+                tile.sg_uuid = song.uuid
+                state.active_tile = tile
             case _:
                 ...
     
@@ -144,20 +150,19 @@ class MPDConnector(QObject):
         # Save state
         tile.sg_uuid = sg_uuid
         state.active_tile = tile
-
     
     @qasync.asyncSlot()
-    async def play_next(self):
+    async def playNext(self):
         logger.debug("Play next")
         self.mpd_client.next()
     
     @qasync.asyncSlot()
-    async def play_previous(self):
+    async def playPrevious(self):
         logger.debug("Play previous")
         self.mpd_client.previous()
 
     @qasync.asyncSlot()
-    async def play_toggle(self):
+    async def playToggle(self):
         status = await self.mpd_client.status()
         status = MPDStatus(**status)
         logger.debug(f"Play toggle. Current state {status.state}")
@@ -168,6 +173,6 @@ class MPDConnector(QObject):
                 await self.mpd_client.pause(0)
 
     @qasync.asyncSlot()
-    async def refresh_db(self):
+    async def refreshDb(self):
         logger.debug("Starting db update")
         await self.mpd_client.update()

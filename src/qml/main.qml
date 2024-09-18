@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as QQC2
@@ -87,7 +89,7 @@ Kirigami.ApplicationWindow {
             QQC2.Action {
                 text: qsTr("&Refresh DB")
                 onTriggered: function () {
-                    mpd_connector.refresh_db();
+                    mpd_connector.refreshDb();
                 }
             }
         }
@@ -189,7 +191,7 @@ Kirigami.ApplicationWindow {
                         enabled: false
                         icon.name: "media-skip-backward"
                         onClicked: function () {
-                            mpd_connector.play_previous();
+                            mpd_connector.playPrevious();
                         }
                     }
                     QQC2.Button {
@@ -197,7 +199,7 @@ Kirigami.ApplicationWindow {
                         flat: true
                         icon.name: "media-playback-stop"
                         onClicked: function () {
-                            mpd_connector.play_toggle();
+                            mpd_connector.playToggle();
                         }
                     }
                     QQC2.Button {
@@ -206,7 +208,7 @@ Kirigami.ApplicationWindow {
                         enabled: false
                         icon.name: "media-skip-forward"
                         onClicked: function () {
-                            mpd_connector.play_next();
+                            mpd_connector.playNext();
                         }
                     }
                 }

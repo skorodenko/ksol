@@ -98,3 +98,13 @@ class MetaTile(BaseModel):
                     f"({group.name} == '{name}')",
                 ]
 
+    def get_song(self, id):
+        # If id is songid
+        if isinstance(id, int):
+            for song in self.playlist:
+                if song.songid == id:
+                    return song
+        # If id is filename
+        if isinstance(id. str):
+            ...
+
