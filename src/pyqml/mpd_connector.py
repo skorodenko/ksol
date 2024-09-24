@@ -176,6 +176,14 @@ class MPDConnector(QObject):
         logger.debug("Play next")
         self.mpd_client.next()
 
+    @Slot(QUuid, QUuid, result=dict)
+    def getSongInfo(self, pl_uuid: QUuid, sg_uuid: QUuid) -> dict:
+        logger.debug(f"Get song info: {pl_uuid} {sg_uuid}")
+        tile = state.get_tile(pl_uuid)
+        song = tile.get_song(sg_uuid)
+        logger.debug(f"Song info: {song.dict()}")
+        return song.dict()
+
     @qasync.asyncSlot()
     async def playPrevious(self):
         logger.debug("Play previous")

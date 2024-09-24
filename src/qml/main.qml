@@ -75,6 +75,8 @@ Kirigami.ApplicationWindow {
             }
         }
         onSongChange: function(pl_uuid, sg_uuid) {
+            var info = mpd_connector.getSongInfo(pl_uuid, sg_uuid);
+            media_title.text = info.title + " | " + info.artist;
             tiling_grid.songChange(pl_uuid, sg_uuid);
         }
     }
