@@ -35,13 +35,9 @@ class State:
 
     def restore(self):
         self.tile_stack = self._kv_pickle.get("tile_stack", [])
-        if active_tile := self._kv_pickle.get("active_tile", None):
-            self.active_tile = active_tile
 
     def save(self):
         self._kv_pickle["tile_stack"] = self.tile_stack
-        if active_tile := self.active_tile:
-            self._kv_pickle["active_tile"] = active_tile
 
     @property
     @contextmanager
@@ -74,14 +70,6 @@ class State:
     @mpd_status.setter
     def mpd_status(self, status: MPDStatus):
         self._kvmem_pickle["mpd_status"] = status
-
-    @property
-    def active_tile(self):
-        return self._kvmem_pickle.get("active_tile", None)
-
-    @active_tile.setter
-    def active_tile(self, tile: MetaTile):
-        self._kvmem_pickle["active_tile"] = tile
 
     def get_tile(self, index) -> MetaTile:
         if isinstance(index, int):
