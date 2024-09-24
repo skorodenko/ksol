@@ -4,6 +4,7 @@ pragma NativeMethodBehavior: AcceptThisObject
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as QQC2
+import QtQuick.Controls.impl
 import org.kde.kirigami as Kirigami
 import models 1.0
 
@@ -150,8 +151,20 @@ QQC2.Control {
                                 implicitWidth: TableView.view.width / qplaylist.columnCount()
 
                                 required property int row
+                                required property int column
                                 required property var sgUuid
                                 required property string display
+
+                                Connections {
+                                    target: control
+                                    function onSongChange(pl_uuid, sg_uuid) {
+                                        if (column == 0 && sgUuid == sg_uuid) {
+                                            song_play_icon.source = "media-playback-start";
+                                        } else {
+                                            song_play_icon.source = "";
+                                        }
+                                    }
+                                }
 
                                 MouseArea {
                                     anchors.fill: parent
@@ -160,18 +173,21 @@ QQC2.Control {
                                     }
                                 }
 
-                                Connections {
-                                    target: control
-                                    function onSongChange(pl_uuid, sg_uuid) {
-                                        console.info(sg_uuid == sgUuid);
-                                    }
-                                }
-
-                                QQC2.Label {
+                                RowLayout {
                                     clip: true
-                                    text: parent.display
-                                    anchors.fill: parent
-                                    horizontalAlignment: Text.AlignLeft
+                                    Kirigami.Icon {
+                                        id: song_play_icon
+                                        implicitHeight: song_play_text.contentHeight
+                                        //source: "media-playback-start"
+                                    }
+                                    QQC2.Label {
+                                        id: song_play_text
+                                        clip: true
+                                        //text: "media-playback-stop"
+                                        horizontalAlignment: Qt.AlignLeft
+                                        text: pli_delegate.display
+                                        //anchors.fill: parent
+                                    }
                                 }
                             }
                         }

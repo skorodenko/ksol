@@ -1,7 +1,7 @@
-from uuid import UUID
 from contextlib import contextmanager
 from peewee import SqliteDatabase, Model, IntegerField
 from playhouse.kv import KeyValue, PickleField
+from PySide6.QtCore import QUuid
 
 from settings import settings
 from entities import SongField, MPDStatus, MetaTile
@@ -86,7 +86,7 @@ class State:
     def get_tile(self, index) -> MetaTile:
         if isinstance(index, int):
             return self.tile_stack[index]
-        if isinstance(index, UUID):
+        if isinstance(index, QUuid):
             for tile in self.tile_stack:
                 if tile.pl_uuid == index:
                     return tile

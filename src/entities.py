@@ -1,5 +1,5 @@
 from enum import IntEnum
-from uuid import UUID, uuid4
+from PySide6.QtCore import QUuid
 from datetime import datetime
 from pydantic import BaseModel, Field, field_validator
 
@@ -55,8 +55,9 @@ class MPDStatus(BaseModel):
 
 
 class Song(BaseModel):
-    uuid: UUID = Field(default_factory=uuid4)
-    songid: int = None
+    uuid: QUuid = Field(default_factory=QUuid.createUuid)
+    id: int = None
+    pos: int = None
     file: str
     time: int
     duration: float
@@ -72,6 +73,9 @@ class Song(BaseModel):
     composer: str = ""
     disc: int = 0
 
+    class Config:
+        arbitrary_types_allowed = True
+
     @field_validator("artist", "albumartist", "genre", "composer", mode="before")
     @classmethod
     def _list_of_x_to_str(cls, val: str | list, info):
@@ -82,11 +86,14 @@ class Song(BaseModel):
 
 class MetaTile(BaseModel):
     name: str
-    sg_uuid: UUID = None
-    pl_uuid: UUID = Field(default_factory=uuid4)
+    sg_uuid: QUuid = None
+    pl_uuid: QUuid = Field(default_factory=QUuid.createUuid)
     locked: bool = False
     plgroup: SongField
     playlist: list[Song] = []
+    
+    class Config:
+        arbitrary_types_allowed = True
 
     def mpd_playlist_query(self):
         match self.name, self.plgroup:
