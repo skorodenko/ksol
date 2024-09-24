@@ -1,4 +1,4 @@
-from enum import IntEnum, Enum
+from enum import IntEnum
 from uuid import UUID, uuid4
 from datetime import datetime
 from pydantic import BaseModel, Field, field_validator
@@ -56,6 +56,7 @@ class MPDStatus(BaseModel):
 
 class Song(BaseModel):
     uuid: UUID = Field(default_factory=uuid4)
+    songid: int = None
     file: str
     time: int
     duration: float
@@ -101,10 +102,5 @@ class MetaTile(BaseModel):
     def get_song(self, id):
         # If id is songid
         if isinstance(id, int):
-            for song in self.playlist:
-                if song.songid == id:
-                    return song
-        # If id is filename
-        if isinstance(id. str):
-            ...
+            return self.playlist[id]
 

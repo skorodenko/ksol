@@ -9,9 +9,12 @@ from PySide6.QtCore import QUrl
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 
+# Fire init hooks
+from hooks import use_hooks
+use_hooks()
+
 import qasync
 from db import state
-from hooks import use_hooks
 
 
 base_path = Path(".")
@@ -26,8 +29,6 @@ logger = logging.getLogger("app")
 def main():
     logger.debug("Starting app")
     
-    # Fire init hooks
-    use_hooks()
 
     # Initializes and manages the application execution
     app = QGuiApplication(sys.argv)

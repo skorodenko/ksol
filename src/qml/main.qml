@@ -74,6 +74,9 @@ Kirigami.ApplicationWindow {
                 break;
             }
         }
+        onSongChange: function(pl_uuid, sg_uuid) {
+            tiling_grid.songChange(pl_uuid, sg_uuid);
+        }
     }
 
     QPlaylistsGroupModel {

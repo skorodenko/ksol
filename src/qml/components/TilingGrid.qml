@@ -10,6 +10,8 @@ import models 1.0
 QQC2.Control {
     id: control
 
+    signal songChange(var pl_uuid, var sg_uuid)
+
     property alias model: repeater.model
     property real cellWidth: control.width / 2
     property real cellHeight: control.height / 2
@@ -155,6 +157,13 @@ QQC2.Control {
                                     anchors.fill: parent
                                     onDoubleClicked: function () {
                                         control.stagePlaylist(itemDelegate.pl_uuid, pli_delegate.sgUuid);
+                                    }
+                                }
+
+                                Connections {
+                                    target: control
+                                    function onSongChange(pl_uuid, sg_uuid) {
+                                        console.info(sg_uuid == sgUuid);
                                     }
                                 }
 

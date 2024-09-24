@@ -12,6 +12,7 @@ APP_CONFIG = xdg_config_home() / "ksol"
 APP_DATA = xdg_data_home() / "ksol"
 APP_CACHE = xdg_cache_home() / "ksol"
 DIRECTORIES = [
+    APP_CONFIG,
     APP_DATA / "mpd" / "playlists",
     APP_CACHE / "mpd",
 ]

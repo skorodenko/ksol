@@ -5,6 +5,7 @@ import subprocess
 from uuid import UUID
 from shutil import which
 from subprocess import Popen
+from pydantic import TypeAdapter
 from mpd.asyncio import MPDClient
 from deepdiff import DeepDiff, Delta
 from PySide6.QtQml import QmlElement
@@ -13,7 +14,7 @@ from PySide6.QtCore import QObject, Signal, Slot
 import qasync
 from db import state
 from settings import settings
-from entities import MPDStatus
+from entities import MPDStatus, Song
 
 
 logger = logging.getLogger("mpd_connector")
@@ -32,7 +33,7 @@ class MPDConnector(QObject):
     connected: Signal = Signal(str)
     dbUpdated: Signal = Signal(bool)
     statePlay: Signal = Signal(str)
-    songChange: Signal = Signal()
+    songChange: Signal = Signal(UUID, UUID)
 
     def __init__(self):
         super().__init__()
@@ -107,7 +108,7 @@ class MPDConnector(QObject):
             # Ignore updating_db status 'cause no change occurs
             if pair[0] == "updating_db":
                 continue
-            self._idle_action_router(pair)
+            await self._idle_action_router(pair)
         logger.debug("Finished initial UI update")
         async for subsystem in self.mpd_client.idle():
             status_dict = await self.mpd_client.status()
@@ -117,9 +118,18 @@ class MPDConnector(QObject):
             state.mpd_status = status
             # UI update
             for pair in delta.items():
-                self._idle_action_router(pair)
+                await self._idle_action_router(pair)
 
-    def _idle_action_router(self, delta: tuple):
+    async def signature_check(self, tile_uuid: UUID) -> bool:
+        tile = state.get_tile(tile_uuid)
+        ta = TypeAdapter(list[Song])
+        p_queue = await mpd_client.playlistinfo()
+        p_queue = ta.validate_python(p_queue)
+        p_queue = set(s.file for s in p_queue)
+        t_queue = set(s.file for s in tile.playlist)
+        return p_queue == t_queue
+
+    async def _idle_action_router(self, delta: tuple):
         logger.debug(f"State router: {delta}")
         match delta:
             case ("updating_db", value):
@@ -129,14 +139,21 @@ class MPDConnector(QObject):
                     self.dbUpdated.emit(False)
             case ("state", value):
                 self.statePlay.emit(value)
-            case ("songid", value):
-                tile = state.active_tile
-                song = tile.get_song(value)
-                tile.sg_uuid = song.uuid
-                state.active_tile = tile
+            case ("song", value):
+                for tile in state.tile_stack:
+                    # If one of tiles matches signature of queue
+                    if (await self.signature_check(tile.pl_uuid)):
+                        song = tile.get_song(value)
+                        tile.sg_uuid = song.uuid
+                        state.active_tile = tile
+                        self.songChange.emit(tile.pl_uuid, tile.sg_uuid)
+                # If no tile match queue signature
+                # there is active tile -> turn into generic
+                # no active tile -> turn 1st into generic
+                # no tiles at all -> create generic tile
             case _:
                 ...
-    
+
     @qasync.asyncSlot(UUID, UUID)
     async def stagePlaylist(self, pl_uuid: UUID, sg_uuid: UUID):
         logger.debug(f"Staging playlist: {pl_uuid}/{sg_uuid}")
@@ -146,16 +163,16 @@ class MPDConnector(QObject):
             if song.uuid == sg_uuid:
                 playpos = i
             await mpd_client.addid(song.file, i)
+        status = await mpd_client.status()
+        status = MPDStatus(**status)
+        await mpd_client.delete((i+1, status.playlistlength))
         await mpd_client.play(playpos)
-        # Save state
-        tile.sg_uuid = sg_uuid
-        state.active_tile = tile
-    
+
     @qasync.asyncSlot()
     async def playNext(self):
         logger.debug("Play next")
         self.mpd_client.next()
-    
+
     @qasync.asyncSlot()
     async def playPrevious(self):
         logger.debug("Play previous")
