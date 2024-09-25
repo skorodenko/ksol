@@ -5,7 +5,6 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
-import org.kde.kirigami.delegates as KD
 import models 1.0
 
 QQC2.Control {
@@ -168,26 +167,21 @@ QQC2.Control {
                                     }
                                 }
 
-                                KD.IconTitleSubtitle {
-                                    id: song_info
+                                RowLayout {
                                     clip: true
-                                    icon.name: pli_delegate.activeSong ? "media-playback-start" : ""
-                                    title: pli_delegate.display
-                                    elide: Text.ElideRight
+                                    Kirigami.Icon {
+                                        id: song_play_icon
+                                        implicitHeight: song_play_text.contentHeight
+                                        source: "media-playback-start"
+                                        visible: pli_delegate.activeSong
+                                    }
+                                    QQC2.Label {
+                                        id: song_play_text
+                                        clip: true
+                                        horizontalAlignment: Qt.AlignLeft
+                                        text: pli_delegate.display
+                                    }
                                 }
-                                //                                RowLayout {
-                                //                                    clip: true
-                                //                                    Kirigami.Icon {
-                                //                                        id: song_play_icon
-                                //                                        implicitHeight: song_play_text.contentHeight
-                                //                                    }
-                                //                                    QQC2.Label {
-                                //                                        id: song_play_text
-                                //                                        clip: true
-                                //                                        horizontalAlignment: Qt.AlignLeft
-                                //                                        text: pli_delegate.display
-                                //                                    }
-                                //                                }
                             }
                         }
                     }
