@@ -147,8 +147,7 @@ class MPDConnector(QObject):
                     # If one of tiles matches signature of queue
                     if await self.signature_check(tile.pl_uuid):
                         song = tile.get_song(song.pos)
-                        tile.sg_uuid = song.uuid
-                        self.songChange.emit(tile.pl_uuid, tile.sg_uuid)
+                        self.songChange.emit(tile.pl_uuid, song.uuid)
                 # If no tile match queue signature
                 # there is active tile -> turn into generic
                 # no active tile -> turn 1st into generic

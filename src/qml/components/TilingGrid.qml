@@ -4,8 +4,8 @@ pragma NativeMethodBehavior: AcceptThisObject
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as QQC2
-import QtQuick.Controls.impl
 import org.kde.kirigami as Kirigami
+import org.kde.kirigami.delegates as KD
 import models 1.0
 
 QQC2.Control {
@@ -48,7 +48,6 @@ QQC2.Control {
                 id: itemDelegate
 
                 required property var pl_uuid
-                required property var sg_uuid
                 required property string name
                 required property var playlist
                 required property int tileIndex
@@ -145,26 +144,22 @@ QQC2.Control {
 
                             model: qplaylist
 
+                            Connections {
+                                target: control
+                                function onSongChange(pl_uuid, sg_uuid) {
+                                    qplaylist.setActiveSong(sg_uuid);
+                                }
+                            }
+
                             delegate: Item {
                                 id: pli_delegate
                                 implicitHeight: 20
                                 implicitWidth: TableView.view.width / qplaylist.columnCount()
 
-                                required property int row
                                 required property int column
                                 required property var sgUuid
+                                required property bool activeSong
                                 required property string display
-
-                                Connections {
-                                    target: control
-                                    function onSongChange(pl_uuid, sg_uuid) {
-                                        if (column == 0 && sgUuid == sg_uuid) {
-                                            song_play_icon.source = "media-playback-start";
-                                        } else {
-                                            song_play_icon.source = "";
-                                        }
-                                    }
-                                }
 
                                 MouseArea {
                                     anchors.fill: parent
@@ -173,22 +168,26 @@ QQC2.Control {
                                     }
                                 }
 
-                                RowLayout {
+                                KD.IconTitleSubtitle {
+                                    id: song_info
                                     clip: true
-                                    Kirigami.Icon {
-                                        id: song_play_icon
-                                        implicitHeight: song_play_text.contentHeight
-                                        //source: "media-playback-start"
-                                    }
-                                    QQC2.Label {
-                                        id: song_play_text
-                                        clip: true
-                                        //text: "media-playback-stop"
-                                        horizontalAlignment: Qt.AlignLeft
-                                        text: pli_delegate.display
-                                        //anchors.fill: parent
-                                    }
+                                    icon.name: pli_delegate.activeSong ? "media-playback-start" : ""
+                                    title: pli_delegate.display
+                                    elide: Text.ElideRight
                                 }
+                                //                                RowLayout {
+                                //                                    clip: true
+                                //                                    Kirigami.Icon {
+                                //                                        id: song_play_icon
+                                //                                        implicitHeight: song_play_text.contentHeight
+                                //                                    }
+                                //                                    QQC2.Label {
+                                //                                        id: song_play_text
+                                //                                        clip: true
+                                //                                        horizontalAlignment: Qt.AlignLeft
+                                //                                        text: pli_delegate.display
+                                //                                    }
+                                //                                }
                             }
                         }
                     }

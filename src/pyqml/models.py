@@ -7,6 +7,7 @@ from PySide6.QtCore import (
     Signal,
     Property,
     QModelIndex,
+    QUuid,
 )
 
 import qasync
@@ -181,8 +182,6 @@ class QTilingStack(QAbstractListModel):
         name = self.roleNames().get(role)
         if name == b"pl_uuid":
             return state.tile_stack[index.row()].pl_uuid
-        if name == b"sg_uuid":
-            return state.tile_stack[index.row()].sg_uuid
         if name == b"name":
             return state.tile_stack[index.row()].name
         if name == b"playlist":
@@ -195,11 +194,10 @@ class QTilingStack(QAbstractListModel):
     def roleNames(self):
         return {
             0: b"pl_uuid",
-            1: b"sg_uuid",
-            2: b"name",
-            3: b"playlist",
-            4: b"tileIndex",
-            5: b"tilingStruct",
+            1: b"name",
+            2: b"playlist",
+            3: b"tileIndex",
+            4: b"tilingStruct",
         }
 
     def rowCount(self, index: QModelIndex = QModelIndex()) -> int:
@@ -219,6 +217,12 @@ class QPlaylist(QAbstractTableModel):
     def playlist(self, value):
         self._playlist = value
 
+    @Slot(QUuid)
+    def setActiveSong(self, value: QUuid):
+        self.layoutAboutToBeChanged.emit()
+        self._activeUuid = value
+        self.layoutChanged.emit()
+
     def rowCount(self, index):
         return len(self._playlist)
 
@@ -229,6 +233,7 @@ class QPlaylist(QAbstractTableModel):
         return {
             0: b"display",
             1: b"sgUuid",
+            2: b"activeSong",
         }
 
     def data(self, index: QModelIndex, role: int):
@@ -240,6 +245,10 @@ class QPlaylist(QAbstractTableModel):
             )
         if name == b"sgUuid":
             return self._playlist[index.row()].uuid
+        if name == b"activeSong":
+            active = getattr(self, "_activeUuid", None)
+            column = index.column()
+            return column == 0 and active == self._playlist[index.row()].uuid
 
     def headerData(self, section: int, orientation: Qt.Orientation, role: int):
         if role == Qt.ItemDataRole.DisplayRole:

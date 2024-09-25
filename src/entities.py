@@ -86,7 +86,6 @@ class Song(BaseModel):
 
 class MetaTile(BaseModel):
     name: str
-    sg_uuid: QUuid = None
     pl_uuid: QUuid = Field(default_factory=QUuid.createUuid)
     locked: bool = False
     plgroup: SongField
@@ -107,7 +106,11 @@ class MetaTile(BaseModel):
                 ]
 
     def get_song(self, id):
-        # If id is songid
         if isinstance(id, int):
             return self.playlist[id]
+        if isinstance(id, QUuid):
+            for song in self.playlist:
+                if song.uuid == id:
+                    return song
+        raise NotImplementedError(f"Value {id} not allowed")
 
