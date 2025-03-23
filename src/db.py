@@ -72,11 +72,11 @@ class State:
         self._kvmem_pickle["mpd_status"] = status
 
     def get_tile(self, index) -> MetaTile:
-        if isinstance(index, QUuid):
+        if self.tile_stack and isinstance(index, QUuid):
             for tile in self.tile_stack:
                 if tile.pl_uuid == index:
                     return tile
-        if isinstance(index, int):
+        if self.tile_stack and isinstance(index, int):
             return self.tile_stack[index]
         raise NotImplementedError("Method not implemented")
 

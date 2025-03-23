@@ -74,7 +74,7 @@ Kirigami.ApplicationWindow {
                 break;
             }
         }
-        onSongChange: function(pl_uuid, sg_uuid) {
+        onSongChange: function (pl_uuid, sg_uuid) {
             var info = mpd_connector.getSongInfo(pl_uuid, sg_uuid);
             media_title.text = info.title + " | " + info.artist;
             tiling_grid.songChange(pl_uuid, sg_uuid);
@@ -268,6 +268,8 @@ Kirigami.ApplicationWindow {
                         rightPadding: Kirigami.Units.smallSpacing
                         background: Rectangle {
                             id: connectionStateLabelBackground
+                            Kirigami.Theme.inherit: false
+                            Kirigami.Theme.colorSet: Kirigami.Theme.Window
                             color: Kirigami.Theme.negativeBackgroundColor
                         }
                     }

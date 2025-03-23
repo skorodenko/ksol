@@ -29,35 +29,35 @@ class SongField(IntEnum):
 
 
 class MPDStatus(BaseModel):
-    volume: int = None
-    state: str = None
-    repeat: bool = None
-    random: bool = None
-    single: bool = None
-    consume: bool = None
-    partition: str = None
-    playlist: int = None
-    playlistlength: int = None
-    song: int = None
-    songid: int = None
-    nextsong: int = None
-    nextsongid: int = None
-    time: str = None
-    elapsed: float = None
-    duration: float = None
-    bitrate: str = None
-    xfade: int = None
-    mixrampdb: int = None
-    mixrampdelay: int = None
-    audio: str = None
-    updating_db: int = None
-    error: str = None
+    volume: int | None = None
+    state: str | None = None
+    repeat: bool | None = None
+    random: bool | None = None
+    single: bool | None = None
+    consume: bool | None = None
+    partition: str | None = None
+    playlist: int | None = None
+    playlistlength: int | None = None
+    song: int | None = None
+    songid: int | None = None
+    nextsong: int | None = None
+    nextsongid: int | None = None
+    time: str | None = None
+    elapsed: float | None = None
+    duration: float | None = None
+    bitrate: str | None = None
+    xfade: int | None = None
+    mixrampdb: int | None = None
+    mixrampdelay: int | None = None
+    audio: str | None = None
+    updating_db: int | None = None
+    error: str | None = None
 
 
 class Song(BaseModel):
     uuid: QUuid = Field(default_factory=QUuid.createUuid)
-    id: int = None
-    pos: int = None
+    id: int | None = None
+    pos: int | None = None
     file: str
     time: int
     duration: float
@@ -67,7 +67,7 @@ class Song(BaseModel):
     albumartist: str = ""
     title: str = ""
     album: str = ""
-    track: int = ""
+    track: int | None = None
     date: int = 0
     genre: str = ""
     composer: str = ""
