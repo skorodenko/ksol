@@ -121,15 +121,6 @@ class MPDConnector(QObject):
             for pair in delta.items():
                 await self._idle_action_router(pair)
 
-    async def signature_check(self, tile_uuid: QUuid) -> bool:
-        tile = state.get_tile(tile_uuid)
-        ta = TypeAdapter(list[Song])
-        p_queue = await mpd_client.playlistinfo()
-        p_queue = ta.validate_python(p_queue)
-        p_queue = set(s.file for s in p_queue)
-        t_queue = set(s.file for s in tile.playlist)
-        return p_queue == t_queue
-
     async def _idle_action_router(self, delta: tuple):
         logger.debug(f"State router: {delta}")
         match delta:
@@ -143,11 +134,6 @@ class MPDConnector(QObject):
             case ("songid", value):
                 song = await mpd_client.playlistid(value)
                 song = Song(**song[0])
-                for tile in state.tile_stack:
-                    # If one of tiles matches signature of queue
-                    if await self.signature_check(tile.pl_uuid):
-                        song = tile.get_song(song.pos)
-                        self.songChange.emit(tile.pl_uuid, song.uuid)
                 # If no tile match queue signature
                 # there is active tile -> turn into generic
                 # no active tile -> turn 1st into generic
@@ -155,33 +141,25 @@ class MPDConnector(QObject):
             case _:
                 ...
 
-    @qasync.asyncSlot(QUuid, QUuid)
-    async def stagePlaylist(self, pl_uuid: QUuid, sg_uuid: QUuid):
-        logger.debug(f"Staging playlist: {pl_uuid}/{sg_uuid}")
-        tile = state.get_tile(pl_uuid)
-        playpos = None
-        for i, song in enumerate(tile.playlist):
-            if song.uuid == sg_uuid:
-                playpos = i
-            await mpd_client.addid(song.file, i)
-        # status = await mpd_client.status()
-        # status = MPDStatus(**status)
-        # await mpd_client.delete((i+1, status.playlistlength))
-        await mpd_client.delete((i + 1, 9999))
-        await mpd_client.play(playpos)
+#    @qasync.asyncSlot(QUuid, QUuid)
+#    async def stagePlaylist(self, pl_uuid: QUuid, sg_uuid: QUuid):
+#        logger.debug(f"Staging playlist: {pl_uuid}/{sg_uuid}")
+#        tile = state.get_tile(pl_uuid)
+#        playpos = None
+#        for i, song in enumerate(tile.playlist):
+#            if song.uuid == sg_uuid:
+#                playpos = i
+#            await mpd_client.addid(song.file, i)
+#        # status = await mpd_client.status()
+#        # status = MPDStatus(**status)
+#        # await mpd_client.delete((i+1, status.playlistlength))
+#        await mpd_client.delete((i + 1, 9999))
+#        await mpd_client.play(playpos)
 
     @qasync.asyncSlot()
     async def playNext(self):
         logger.debug("Play next")
         self.mpd_client.next()
-
-    @Slot(QUuid, QUuid, result=dict)
-    def getSongInfo(self, pl_uuid: QUuid, sg_uuid: QUuid) -> dict:
-        logger.debug(f"Get song info: {pl_uuid} {sg_uuid}")
-        tile = state.get_tile(pl_uuid)
-        song = tile.get_song(sg_uuid)
-        logger.debug(f"Song info: {song.dict()}")
-        return song.dict()
 
     @qasync.asyncSlot()
     async def playPrevious(self):

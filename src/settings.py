@@ -29,7 +29,7 @@ class MPDSettings(BaseModel):
 
 class AppSettings(BaseModel):
     max_tiles: int
-    disabled_groups: list[SongField]
+    search_groups: list[SongField]
     playlist_table_cols: list[str]
 
 class CoreSettings(BaseModel):
@@ -55,7 +55,7 @@ class Settings(BaseSettings):
         with open(self.core.config_location, "w") as f:
             f.write(ddiff_config_toml)
 
-    def rollback(self):
+    def reload(self):
         self.__init__()
 
     @classmethod

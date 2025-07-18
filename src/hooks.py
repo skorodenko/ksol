@@ -2,6 +2,7 @@ import toml
 import hashlib
 import logging
 from pathlib import Path
+from entities import SongField
 from xdg_base_dirs import xdg_data_home, xdg_config_home, xdg_cache_home
 
 
@@ -32,7 +33,7 @@ def init_default_settings_file(path: Path) -> bool:
         "mpd": {
             "socket": str(APP_DATA / "mpd.socket"),
             "native_socket": str(APP_DATA / "mpd.socket"),
-            "native_config": str(APP_CONFIG / "mpd.conf"),
+            "native_config": str(APP_CONFIG / "mpd.native.conf"),
         },
         "core": {
             "config_location": str(APP_CONFIG / "settings.toml"),
@@ -40,7 +41,12 @@ def init_default_settings_file(path: Path) -> bool:
         },
         "app": {
             "max_tiles": 4,
-            "disabled_groups": [],
+            "search_groups": [
+                SongField.directory,
+                SongField.artist,
+                SongField.album,
+                SongField.genre,
+            ],
             "playlist_table_cols": [
                 "title",
                 "track",
@@ -122,7 +128,7 @@ def init_native_mpd_conf(path: Path) -> bool:
 USE_HOOK_LIST = [
     (create_directory_structure, [DIRECTORIES]),
     (init_default_settings_file, [APP_DATA / "settings.default.toml"]),
-    (init_native_mpd_conf, [APP_CONFIG / "mpd.conf"]),
+    (init_native_mpd_conf, [APP_CONFIG / "mpd.native.conf"]),
 ]
 
 

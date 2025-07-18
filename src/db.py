@@ -1,10 +1,8 @@
-from contextlib import contextmanager
 from peewee import SqliteDatabase, Model, IntegerField
 from playhouse.kv import KeyValue, PickleField
-from PySide6.QtCore import QUuid
 
 from settings import settings
-from entities import SongField, MPDStatus, MetaTile
+from entities import SongField, MPDStatus
 
 
 db = SqliteDatabase(
@@ -40,21 +38,6 @@ class State:
         self._kv_pickle["tile_stack"] = self.tile_stack
 
     @property
-    @contextmanager
-    def etile_stack(self):
-        stack = self.tile_stack
-        yield stack
-        self._kvmem_pickle["tile_stack"] = stack
-
-    @property
-    def tile_stack(self):
-        return self._kvmem_pickle.get("tile_stack", [])
-
-    @tile_stack.setter
-    def tile_stack(self, stack):
-        self._kvmem_pickle["tile_stack"] = stack
-
-    @property
     def playlists_group(self) -> SongField:
         group = self._kv_int.get("playlists_group", 0)
         return SongField(group)
@@ -70,15 +53,6 @@ class State:
     @mpd_status.setter
     def mpd_status(self, status: MPDStatus):
         self._kvmem_pickle["mpd_status"] = status
-
-    def get_tile(self, index) -> MetaTile:
-        if self.tile_stack and isinstance(index, QUuid):
-            for tile in self.tile_stack:
-                if tile.pl_uuid == index:
-                    return tile
-        if self.tile_stack and isinstance(index, int):
-            return self.tile_stack[index]
-        raise NotImplementedError("Method not implemented")
 
 
 class BaseModel(Model):

@@ -35,6 +35,8 @@ def main():
     engine = QQmlApplicationEngine()
     loop = qasync.QEventLoop(app)
     asyncio.set_event_loop(loop)
+
+    engine.addImportPath(".")
     
     # Register pyqml classes
     import pyqml

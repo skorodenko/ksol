@@ -1,5 +1,4 @@
 from enum import IntEnum
-from PySide6.QtCore import QUuid
 from datetime import datetime
 from pydantic import BaseModel, Field, field_validator
 
@@ -55,7 +54,6 @@ class MPDStatus(BaseModel):
 
 
 class Song(BaseModel):
-    uuid: QUuid = Field(default_factory=QUuid.createUuid)
     id: int | None = None
     pos: int | None = None
     file: str
@@ -82,35 +80,4 @@ class Song(BaseModel):
         if isinstance(val, list):
             return ", ".join(val)
         return val
-
-
-class MetaTile(BaseModel):
-    name: str
-    pl_uuid: QUuid = Field(default_factory=QUuid.createUuid)
-    locked: bool = False
-    plgroup: SongField
-    playlist: list[Song] = []
-    
-    class Config:
-        arbitrary_types_allowed = True
-
-    def mpd_playlist_query(self):
-        match self.name, self.plgroup:
-            case name, SongField.directory:
-                return [
-                    f"(base '{name}')",
-                ]
-            case name, group:
-                return [
-                    f"({group.name} == '{name}')",
-                ]
-
-    def get_song(self, id):
-        if isinstance(id, int):
-            return self.playlist[id]
-        if isinstance(id, QUuid):
-            for song in self.playlist:
-                if song.uuid == id:
-                    return song
-        raise NotImplementedError(f"Value {id} not allowed")
 

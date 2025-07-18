@@ -1,0 +1,5 @@
+module src.qml
+Drun 1.0 drun.qml
+Main 1.0 main.qml
+AppShortcuts 1.0 shortcuts.qml
+
