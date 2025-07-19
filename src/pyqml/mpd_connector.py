@@ -13,7 +13,7 @@ from PySide6.QtCore import QObject, Signal, Slot, QUuid
 import qasync
 from db import state
 from settings import settings
-from entities import MPDStatus, Song
+from entities import MPDStatus, Song, SongField
 
 
 logger = logging.getLogger("mpd_connector")
@@ -141,20 +141,20 @@ class MPDConnector(QObject):
             case _:
                 ...
 
-#    @qasync.asyncSlot(QUuid, QUuid)
-#    async def stagePlaylist(self, pl_uuid: QUuid, sg_uuid: QUuid):
-#        logger.debug(f"Staging playlist: {pl_uuid}/{sg_uuid}")
-#        tile = state.get_tile(pl_uuid)
-#        playpos = None
-#        for i, song in enumerate(tile.playlist):
-#            if song.uuid == sg_uuid:
-#                playpos = i
-#            await mpd_client.addid(song.file, i)
-#        # status = await mpd_client.status()
-#        # status = MPDStatus(**status)
-#        # await mpd_client.delete((i+1, status.playlistlength))
-#        await mpd_client.delete((i + 1, 9999))
-#        await mpd_client.play(playpos)
+    @qasync.asyncSlot(str, SongField)
+    async def stagePlaylist(self, name: str, group: SongField):
+        logger.debug(f"Staging playlist: {name}/{group}")
+    #        tile = state.get_tile(pl_uuid)
+    #        playpos = None
+    #        for i, song in enumerate(tile.playlist):
+    #            if song.uuid == sg_uuid:
+    #                playpos = i
+    #            await mpd_client.addid(song.file, i)
+    #        status = await mpd_client.status()
+    #        status = MPDStatus(**status)
+    #        await mpd_client.delete((i+1, status.playlistlength))
+    #        await mpd_client.delete((i + 1, 9999))
+    #        await mpd_client.play(playpos)
 
     @qasync.asyncSlot()
     async def playNext(self):

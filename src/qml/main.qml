@@ -197,6 +197,14 @@ Kirigami.ApplicationWindow {
             }
         }
 
+        Connections {
+            target: drun
+
+            function onStagePlaylist(name, group) {
+                mpd_connector.stagePlaylist(name, group);
+            }
+        }
+
         AppShortcuts {
             id: shortcuts
             Connections {

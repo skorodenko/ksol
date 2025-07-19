@@ -14,7 +14,7 @@ QQC2.Popup {
         search.forceActiveFocus();
     }
 
-    signal stage_playlist(var name, var group)
+    signal stagePlaylist(var name, var group)
 
     property alias playlists_list: playlists_list
     property alias playlists_group: playlists_group
@@ -59,6 +59,8 @@ QQC2.Popup {
                     required property string name
                     required property var value
 
+                    focusPolicy: Qt.NoFocus
+
                     onClicked: {
                         playlists_group.setActive(value);
                     }
@@ -98,11 +100,10 @@ QQC2.Popup {
         Shortcut {
             sequences: ["Return"]
             onActivated: function () {
-                root.stage_playlist(listView.currentItem.name, "");
-                console.log(listView.currentItem.name, playlists_group.active);
+                root.stagePlaylist(listView.currentItem.name, playlists_group.active);
+                root.visible = false;
             }
         }
-
 
         delegate: Item {
             id: delegateItem
@@ -124,8 +125,8 @@ QQC2.Popup {
 
                 onDoubleClicked: function (mouse) {
                     if (mouse.button == Qt.LeftButton) {
-                        root.stage_playlist(delegateItem.name, "");
-                        console.log(delegateItem.name, playlists_group.active);
+                        root.stagePlaylist(delegateItem.name, playlists_group.active);
+                        root.visible = false;
                     }
                 }
             }
