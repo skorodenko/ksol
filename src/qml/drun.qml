@@ -11,7 +11,7 @@ QQC2.Popup {
     modal: true
 
     onVisibleChanged: {
-        search.forceActiveFocus();
+        listView.forceActiveFocus();
     }
 
     signal stagePlaylist(var name, var group)
@@ -43,7 +43,12 @@ QQC2.Popup {
             Layout.alignment: Qt.AlignLeft
             QQC2.TextField {
                 id: search
-                KeyNavigation.down: listView
+                focusPolicy: Qt.NoFocus
+                Keys.onPressed: function (event) {
+                    if (!(event.key > Qt.Key_Space || event.key < Qt.Key_AsciiTilde || event.key === Qt.Key_Backspace)) {
+                        event.accepted = true;
+                    }
+                }
             }
         }
 
@@ -91,6 +96,8 @@ QQC2.Popup {
         model: playlists_list
 
         implicitWidth: Math.min(Kirigami.Units.gridUnit * 20, parent.width)
+
+        Keys.forwardTo: [search]
 
         QQC2.ScrollBar.vertical: QQC2.ScrollBar {
             id: scrollbar

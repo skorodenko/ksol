@@ -7,7 +7,6 @@ from PySide6.QtCore import (
     Signal,
     Property,
     QModelIndex,
-    QUuid,
 )
 
 import qasync
@@ -15,7 +14,7 @@ import logging
 from db import state
 from settings import settings
 from pydantic import TypeAdapter
-from entities import SongField, Song
+from entities import Queue, SongField, Song
 from pyqml.mpd_connector import mpd_client
 
 
@@ -122,27 +121,29 @@ class QPlaylistsList(QAbstractListModel):
 
 
 @QmlElement
-class QPlaylist(QAbstractTableModel):
+class QQueue(QAbstractTableModel):
     def __init__(self):
         super().__init__()
-        self._playlist = []
+        self._queue: Queue | None = None
 
-    @Property(list)
-    def playlist(self):
-        return self._playlist
+    @Property(Queue)
+    def queue(self):
+        return self._queue
 
-    @playlist.setter
-    def playlist(self, value):
-        self._playlist = value
+    @queue.setter
+    def queue(self, value):
+        self.beginResetModel()
+        self._queue = value
+        self.endResetModel()
 
-    @Slot(QUuid)
-    def setActiveSong(self, value: QUuid):
-        self.layoutAboutToBeChanged.emit()
-        self._activeUuid = value
-        self.layoutChanged.emit()
+    #    @Slot(QUuid)
+    #    def setActiveSong(self, value: QUuid):
+    #        self.layoutAboutToBeChanged.emit()
+    #        self._activeUuid = value
+    #        self.layoutChanged.emit()
 
     def rowCount(self, index):
-        return len(self._playlist)
+        return len(self._queue.contents) if self._queue is not None else 0
 
     def columnCount(self, index):
         return len(settings.app.playlist_table_cols)
@@ -157,13 +158,13 @@ class QPlaylist(QAbstractTableModel):
         name = self.roleNames().get(role)
         if name == b"display":
             return getattr(
-                self._playlist[index.row()],
+                self._queue.contents[index.row()],
                 settings.app.playlist_table_cols[index.column()],
             )
         if name == b"activeSong":
-            active = getattr(self, "_activeUuid", None)
+            # active = getattr(self, "_activeUuid", None)
             column = index.column()
-            return column == 0 and active == self._playlist[index.row()].uuid
+            return column == 0  # and active == self._queue[index.row()].uuid
 
     def headerData(self, section: int, orientation: Qt.Orientation, role: int):
         if role == Qt.ItemDataRole.DisplayRole:

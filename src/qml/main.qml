@@ -74,22 +74,87 @@ Kirigami.ApplicationWindow {
             var info = mpd_connector.getSongInfo(pl_uuid, sg_uuid);
             media_title.text = info.title + " | " + info.artist;
         }
+        onQueueStage: function (queue) {
+            qqueue.queue = queue;
+        }
     }
 
-    QPlaylist {
-        id: qplaylist
+    QQueue {
+        id: qqueue
+    }
+
+    Connections {
+        target: drun
+
+        function onStagePlaylist(name, group) {
+            mpd_connector.stageQueue(name, group);
+        }
+    }
+
+    AppShortcuts {
+        id: shortcuts
+        Connections {
+            target: shortcuts.drun_open
+            function onActivated() {
+                drun.visible = true;
+            }
+        }
+
+        Connections {
+            target: shortcuts.drun_close
+            function onActivated() {
+                drun.visible = false;
+                drun.group_filter = "";
+            }
+        }
+
+        Connections {
+            target: shortcuts.drun_group1
+            function onActivated() {
+                drun.group_repeater.itemAt(0).click();
+            }
+        }
+
+        Connections {
+            target: shortcuts.drun_group2
+            function onActivated() {
+                drun.group_repeater.itemAt(1).click();
+            }
+        }
+
+        Connections {
+            target: shortcuts.drun_group3
+            function onActivated() {
+                drun.group_repeater.itemAt(2).click();
+            }
+        }
+
+        Connections {
+            target: shortcuts.drun_group4
+            function onActivated() {
+                drun.group_repeater.itemAt(3).click();
+            }
+        }
+    }
+
+    Drun {
+        id: drun
+        implicitWidth: root.width * 0.8
+        implicitHeight: root.height * 0.8
+        anchors.centerIn: parent
     }
 
     Kirigami.Page {
         id: mainPage
         globalToolBarStyle: Kirigami.ApplicationHeaderStyle.None
 
+        padding: Kirigami.Units.smallSpacing
+
         header: QQC2.ToolBar {
             implicitHeight: 48
 
             RowLayout {
                 spacing: 8
-                anchors.rightMargin: 8
                 anchors.fill: parent
 
                 RowLayout {
@@ -197,69 +262,7 @@ Kirigami.ApplicationWindow {
             }
         }
 
-        Connections {
-            target: drun
-
-            function onStagePlaylist(name, group) {
-                mpd_connector.stagePlaylist(name, group);
-            }
-        }
-
-        AppShortcuts {
-            id: shortcuts
-            Connections {
-                target: shortcuts.drun_open
-                function onActivated() {
-                    drun.visible = true;
-                }
-            }
-
-            Connections {
-                target: shortcuts.drun_close
-                function onActivated() {
-                    drun.visible = false;
-                    drun.group_filter = "";
-                }
-            }
-
-            Connections {
-                target: shortcuts.drun_group1
-                function onActivated() {
-                    drun.group_repeater.itemAt(0).click();
-                }
-            }
-
-            Connections {
-                target: shortcuts.drun_group2
-                function onActivated() {
-                    drun.group_repeater.itemAt(1).click();
-                }
-            }
-
-            Connections {
-                target: shortcuts.drun_group3
-                function onActivated() {
-                    drun.group_repeater.itemAt(2).click();
-                }
-            }
-
-            Connections {
-                target: shortcuts.drun_group4
-                function onActivated() {
-                    drun.group_repeater.itemAt(3).click();
-                }
-            }
-        }
-
-        Drun {
-            id: drun
-            implicitWidth: root.width * 0.8
-            implicitHeight: root.height * 0.8
-            anchors.centerIn: parent
-        }
-
-        ColumnLayout {
-            id: tiles_root
+        Item {
             anchors.fill: parent
 
             Kirigami.InlineMessage {
@@ -277,94 +280,74 @@ Kirigami.ApplicationWindow {
                 Layout.alignment: Qt.AlignTop
             }
 
-            QQC2.Control {
-                id: control
+            QQC2.HorizontalHeaderView {
+                id: playlist_hheader
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                syncView: playlist_view
 
-                property real cellWidth: control.width / 2
-                property real cellHeight: control.height / 2
+                delegate: Rectangle {
+                    color: Kirigami.Theme.alternateBackgroundColor
+                    implicitHeight: 20
+                    implicitWidth: TableView.view.width / qqueue.columnCount()
 
-                Rectangle {
-                    id: itemDelegate
+                    required property string display
 
-                    ColumnLayout {
+                    QQC2.Label {
+                        text: parent.display
                         anchors.fill: parent
-                        anchors.margins: Kirigami.Units.largeSpacing
+                        horizontalAlignment: Text.AlignLeft
+                        clip: true
+                    }
+                }
+            }
 
-                        Item {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
+            TableView {
+                id: playlist_view
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                anchors.top: playlist_hheader.bottom
 
-                            QQC2.HorizontalHeaderView {
-                                id: playlist_hheader
-                                anchors.left: playlist_view.left
-                                anchors.top: parent.top
-                                syncView: playlist_view
+                model: qqueue
 
-                                delegate: Rectangle {
-                                    color: Kirigami.Theme.backgroundColor
-                                    implicitHeight: 20
-                                    implicitWidth: TableView.view.width / qplaylist.columnCount()
+                //                                Connections {
+                //                                    target: control
+                //                                    function onSongChange(pl_uuid, sg_uuid) {
+                //                                        qplaylist.setActiveSong(sg_uuid);
+                //                                    }
+                //                                }
 
-                                    required property string display
+                delegate: Item {
+                    id: pli_delegate
+                    implicitHeight: 20
+                    implicitWidth: TableView.view.width / qqueue.columnCount()
 
-                                    QQC2.Label {
-                                        text: parent.display
-                                        anchors.fill: parent
-                                        horizontalAlignment: Text.AlignLeft
-                                        clip: true
-                                    }
-                                }
-                            }
+                    required property int column
+                    //required property bool activeSong
+                    required property string display
 
-                            TableView {
-                                id: playlist_view
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                anchors.bottom: parent.bottom
-                                anchors.top: playlist_hheader.bottom
+                    //                                    MouseArea {
+                    //                                        anchors.fill: parent
+                    //                                        onDoubleClicked: function () {
+                    //                                            control.stagePlaylist(itemDelegate.pl_uuid, pli_delegate.sgUuid);
+                    //                                        }
+                    //                                    }
 
-                                model: qplaylist
-
-                                //                                Connections {
-                                //                                    target: control
-                                //                                    function onSongChange(pl_uuid, sg_uuid) {
-                                //                                        qplaylist.setActiveSong(sg_uuid);
-                                //                                    }
-                                //                                }
-
-                                delegate: Item {
-                                    id: pli_delegate
-                                    implicitHeight: 20
-                                    implicitWidth: TableView.view.width / qplaylist.columnCount()
-
-                                    required property int column
-                                    //required property bool activeSong
-                                    //required property string display
-
-                                    //                                    MouseArea {
-                                    //                                        anchors.fill: parent
-                                    //                                        onDoubleClicked: function () {
-                                    //                                            control.stagePlaylist(itemDelegate.pl_uuid, pli_delegate.sgUuid);
-                                    //                                        }
-                                    //                                    }
-
-                                    RowLayout {
-                                        clip: true
-                                        Kirigami.Icon {
-                                            id: song_play_icon
-                                            implicitHeight: song_play_text.contentHeight
-                                            source: "media-playback-start"
-                                            visible: pli_delegate.activeSong
-                                        }
-                                        QQC2.Label {
-                                            id: song_play_text
-                                            clip: true
-                                            horizontalAlignment: Qt.AlignLeft
-                                            text: pli_delegate.display
-                                        }
-                                    }
-                                }
-                            }
+                    RowLayout {
+                        clip: true
+                        //                            Kirigami.Icon {
+                        //                                id: song_play_icon
+                        //                                implicitHeight: song_play_text.contentHeight
+                        //                                source: "media-playback-start"
+                        //                                visible: pli_delegate.activeSong
+                        //                            }
+                        QQC2.Label {
+                            id: song_play_text
+                            clip: true
+                            horizontalAlignment: Qt.AlignLeft
+                            text: pli_delegate.display
                         }
                     }
                 }

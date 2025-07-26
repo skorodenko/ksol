@@ -1,5 +1,6 @@
 from enum import IntEnum
 from datetime import datetime
+from typing_extensions import Optional
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -81,3 +82,28 @@ class Song(BaseModel):
             return ", ".join(val)
         return val
 
+
+class Queue(BaseModel):
+    name: str
+    plgroup: SongField
+    activeSong: Optional[int] = None
+    contents: list[Song] = []
+
+#    class Config:
+#        arbitrary_types_allowed = True
+
+    def mpd_queue_query(self):
+        match self.name, self.plgroup:
+            case name, SongField.directory:
+                return [
+                    f"(base '{name}')",
+                ]
+            case name, group:
+                return [
+                    f"({group.name} == '{name}')",
+                ]
+
+    def get_song(self, id):
+        if isinstance(id, int):
+            return self.contents[id]
+        raise NotImplementedError(f"Value {id} not allowed")
