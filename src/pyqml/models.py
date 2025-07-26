@@ -9,6 +9,7 @@ from PySide6.QtCore import (
     QModelIndex,
 )
 
+import re
 import qasync
 import logging
 from db import state
@@ -91,7 +92,7 @@ class QPlaylistsList(QAbstractListModel):
     @filter.setter
     def filter(self, text: str):
         self.layoutAboutToBeChanged.emit()
-        self.playlists_proxy = list(filter(lambda x: text in x, self.playlists))
+        self.playlists_proxy = list(filter(lambda x: re.search(text, x, re.IGNORECASE), self.playlists))
         self._filter = text
         self.layoutChanged.emit()
 
@@ -105,7 +106,7 @@ class QPlaylistsList(QAbstractListModel):
             playlists = map(lambda x: x.get(group.name, ""), data)
             playlists = list(filter(lambda x: x != "", playlists))
             self.playlists = playlists
-        self.playlists_proxy = list(filter(lambda x: self.filter in x, self.playlists))
+        self.filter = self.filter # Trigger filter
         self.layoutChanged.emit()
 
     def data(self, index, role):
