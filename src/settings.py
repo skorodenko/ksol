@@ -30,7 +30,6 @@ class MPDSettings(BaseModel):
 class AppSettings(BaseModel):
     max_tiles: int
     search_groups: list[SongField]
-    playlist_table_cols: list[str]
 
 class CoreSettings(BaseModel):
     config_location: str

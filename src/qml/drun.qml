@@ -104,14 +104,6 @@ QQC2.Popup {
             policy: QQC2.ScrollBar.AlwaysOn
         }
 
-        Shortcut {
-            sequences: ["Return"]
-            onActivated: function () {
-                root.stagePlaylist(listView.currentItem.name, playlists_group.active);
-                root.visible = false;
-            }
-        }
-
         delegate: Item {
             id: delegateItem
             height: 30
@@ -119,6 +111,11 @@ QQC2.Popup {
 
             required property string name
             required property int index
+
+            Keys.onReturnPressed: function () {
+                root.stagePlaylist(listView.currentItem.name, playlists_group.active);
+                root.visible = false;
+            }
 
             MouseArea {
                 anchors.fill: parent

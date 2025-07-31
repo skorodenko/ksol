@@ -28,7 +28,6 @@ logger = logging.getLogger("app")
 
 def main():
     logger.debug("Starting app")
-    
 
     # Initializes and manages the application execution
     app = QGuiApplication(sys.argv)
@@ -63,7 +62,6 @@ def main():
         with loop:
             loop.run_forever()
     finally:
-        state.save()
         logger.debug("Quitting app")
 
 

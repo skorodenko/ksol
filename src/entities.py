@@ -5,21 +5,21 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class SongField(IntEnum):
-    directory = 0
-    file = 1
-    time = 2
-    duration = 3
-    lastmodified = 4
-    format = 5
-    artist = 6
-    albumartist = 7
-    title = 8
-    album = 9
-    track = 10
-    date = 11
-    genre = 12
-    composer = 13
-    disc = 14
+    track = 0
+    disc = 1
+    title = 2
+    artist = 3
+    album = 4
+    date = 5
+    genre = 6
+    composer = 7
+    albumartist = 8
+    file = 9
+    format = 10
+    lastmodified = 11
+    time = 12
+    duration = 13
+    directory = 14
 
     def __str__(self) -> str:
         return str(self.value)

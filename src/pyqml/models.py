@@ -125,7 +125,8 @@ class QPlaylistsList(QAbstractListModel):
 class QQueue(QAbstractTableModel):
     def __init__(self):
         super().__init__()
-        self._queue: Queue | None = None
+        self._queue: Queue = None
+        self._wds = state.get_header_width()
 
     @Property(Queue)
     def queue(self):
@@ -147,28 +148,52 @@ class QQueue(QAbstractTableModel):
         return len(self._queue.contents) if self._queue is not None else 0
 
     def columnCount(self, index):
-        return len(settings.app.playlist_table_cols)
+        return SongField.duration + 1 # IGNORE Directory entry
 
     def roleNames(self):
-        return {
-            0: b"display",
-            1: b"activeSong",
-        }
+        roles = super().roleNames()
+        roles[Qt.ItemDataRole.UserRole + 1] = b"cellValue"
+        roles[Qt.ItemDataRole.UserRole + 2] = b"songActive"
+        roles[Qt.ItemDataRole.UserRole + 3] = b"columnWidth"
+        roles[Qt.ItemDataRole.UserRole + 4] = b"columnName"
+        return roles
 
     def data(self, index: QModelIndex, role: int):
         name = self.roleNames().get(role)
-        if name == b"display":
+        if name == b"cellValue":
             return getattr(
                 self._queue.contents[index.row()],
-                settings.app.playlist_table_cols[index.column()],
+                SongField(index.column()).name,
             )
-        if name == b"activeSong":
+        if name == b"songActive":
             # active = getattr(self, "_activeUuid", None)
             column = index.column()
             return column == 0  # and active == self._queue[index.row()].uuid
+        if name == b"columnWidth":
+            column = index.column()
+            return self._wds[column]
+
+    def flags(self, index: QModelIndex) -> Qt.ItemFlag:
+        return Qt.ItemFlag.ItemIsEditable
+
+    def setData(self, index: QModelIndex, value, role) -> bool:
+        name = self.roleNames().get(role)
+        if name == b"columnWidth":
+            self._wds[index.column()] = value
+            return True
+        return False
+    
+    @Slot()
+    def free(self):
+        logger.debug("QQueue free")
+        state.set_header_width(self._wds)
 
     def headerData(self, section: int, orientation: Qt.Orientation, role: int):
-        if role == Qt.ItemDataRole.DisplayRole:
+        name = self.roleNames().get(role)
+        if name == b"columnName":
             if orientation == Qt.Orientation.Horizontal:
-                name = settings.app.playlist_table_cols[section]
+                name = SongField(section).name
                 return name.capitalize()
+        if name == b"columnWidth":
+            if orientation == Qt.Orientation.Horizontal:
+                return self._wds[section]

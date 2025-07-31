@@ -29,13 +29,6 @@ class State:
         self._kv_int = KeyValue(value_field=IntegerField(), database=db)
         self._kv_pickle = KeyValue(value_field=PickleField(), database=db)
         self._kvmem_pickle = KeyValue(value_field=PickleField(), database=mem_db)
-        self.restore()
-
-    def restore(self):
-        self.tile_stack = self._kv_pickle.get("tile_stack", [])
-
-    def save(self):
-        self._kv_pickle["tile_stack"] = self.tile_stack
 
     @property
     def playlists_group(self) -> SongField:
@@ -53,6 +46,16 @@ class State:
     @mpd_status.setter
     def mpd_status(self, status: MPDStatus):
         self._kvmem_pickle["mpd_status"] = status
+
+    def get_header_width(self) -> dict[int, float]:
+        wds = self._kv_pickle.get("header_width", None)
+        if wds is None:
+            num = max(SongField)
+            wds = {col:1/num for col in range(num)}
+        return wds
+
+    def set_header_width(self, wds: dict[int, float]):
+        self._kv_pickle["header_width"] = wds
 
 
 class BaseModel(Model):

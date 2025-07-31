@@ -47,22 +47,6 @@ def init_default_settings_file(path: Path) -> bool:
                 SongField.album,
                 SongField.genre,
             ],
-            "playlist_table_cols": [
-                "title",
-                "track",
-                "file",
-                "time",
-                "duration",
-                #"lastmodified",
-                #"format",
-                "artist",
-                #"albumartist",
-                #"album",
-                #"date",
-                #"genre",
-                #"composer",
-                "disc",
-            ],
         },
     }
 
