@@ -15,8 +15,8 @@ Kirigami.ApplicationWindow {
 
     Component.onCompleted: mpd_connector.connect()
     Component.onDestruction: {
-        mpd_connector.disconnect()
-        qqueue.free()
+        mpd_connector.disconnect();
+        qqueue.free();
     }
 
     function message(message, type, iconName = null) {
@@ -265,7 +265,7 @@ Kirigami.ApplicationWindow {
             }
         }
 
-        Item {
+        ColumnLayout {
             anchors.fill: parent
 
             Kirigami.InlineMessage {
@@ -273,25 +273,24 @@ Kirigami.ApplicationWindow {
                 visible: false
                 onVisibleChanged: tmr.restart()
 
+                Layout.fillWidth: true
+
                 Timer {
                     id: tmr
                     interval: Kirigami.Units.humanMoment / 2
                     onTriggered: infoMessage.visible = false
                 }
-
-                Layout.fillWidth: true
-                Layout.alignment: Qt.AlignTop
             }
 
             QQC2.HorizontalHeaderView {
                 id: queue_hheader
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: parent.top
+                
+                z: 1
+                Layout.fillWidth: true
+
                 syncView: queue_view
 
                 delegate: QQC2.TableViewDelegate {
-                    implicitHeight: 20
                     implicitWidth: columnWidth * queue_view.width
 
                     required property real columnWidth
@@ -309,11 +308,8 @@ Kirigami.ApplicationWindow {
 
             TableView {
                 id: queue_view
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                anchors.top: queue_hheader.bottom
-                contentWidth: parent.width
+                Layout.fillWidth: true
+                Layout.fillHeight: true
 
                 rowSpacing: Kirigami.Units.smallSpacing
 
@@ -328,15 +324,12 @@ Kirigami.ApplicationWindow {
 
                 delegate: QQC2.TableViewDelegate {
                     id: queue_delegate
-                    implicitHeight: 20
                     implicitWidth: columnWidth * queue_view.width
 
                     //required property int column
                     required property string cellValue
                     required property bool songActive
                     required property real columnWidth
-
-                    text: cellValue
 
                     //                                    MouseArea {
                     //                                        anchors.fill: parent
@@ -345,7 +338,7 @@ Kirigami.ApplicationWindow {
                     //                                        }
                     //                                    }
                     //
-                    
+
                     function propagateWidthChange() {
                         model.columnWidth = width / parent.width;
                     }
