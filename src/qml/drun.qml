@@ -11,6 +11,8 @@ QQC2.Popup {
     modal: true
 
     onVisibleChanged: {
+        search.text = "";
+        listView.currentIndex = 0;
         listView.forceActiveFocus();
     }
 
@@ -18,8 +20,6 @@ QQC2.Popup {
 
     property alias playlists_list: playlists_list
     property alias playlists_group: playlists_group
-    property alias group_repeater: group_repeater
-    property alias group_filter: search.text
 
     QPlaylistsGroupModel {
         id: playlists_group
@@ -31,6 +31,73 @@ QQC2.Popup {
     QPlaylistsList {
         id: playlists_list
         filter: search.text
+
+        onLayoutChanged: function () {
+            if (playlists_list.rowCount() > 0) {
+                listView.currentIndex = 0;
+                listView.forceActiveFocus();
+            }
+        }
+    }
+
+    Shortcut {
+        id: drun_open
+        sequences: ["f"]
+        context: Qt.ApplicationShortcut
+        enabled: !root.visible
+        onActivated: function () {
+            root.visible = true;
+        }
+    }
+
+    Shortcut {
+        id: drun_close
+        sequences: ["Escape"]
+        context: Qt.ApplicationShortcut
+        enabled: root.visible
+        onActivated: function () {
+            root.visible = false;
+        }
+    }
+
+    Shortcut {
+        id: drun_group1
+        sequences: ["F1"]
+        context: Qt.ApplicationShortcut
+        enabled: root.visible
+        onActivated: function () {
+            group_repeater.itemAt(0).click();
+        }
+    }
+
+    Shortcut {
+        id: drun_group2
+        sequences: ["F2"]
+        context: Qt.ApplicationShortcut
+        enabled: root.visible
+        onActivated: function () {
+            group_repeater.itemAt(1).click();
+        }
+    }
+
+    Shortcut {
+        id: drun_group3
+        sequences: ["F3"]
+        context: Qt.ApplicationShortcut
+        enabled: root.visible
+        onActivated: function () {
+            group_repeater.itemAt(2).click();
+        }
+    }
+
+    Shortcut {
+        id: drun_group4
+        sequences: ["F4"]
+        context: Qt.ApplicationShortcut
+        enabled: root.visible
+        onActivated: function () {
+            group_repeater.itemAt(3).click();
+        }
     }
 
     RowLayout {

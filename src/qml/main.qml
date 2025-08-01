@@ -94,52 +94,6 @@ Kirigami.ApplicationWindow {
         }
     }
 
-    AppShortcuts {
-        id: shortcuts
-        Connections {
-            target: shortcuts.drun_open
-            function onActivated() {
-                drun.visible = true;
-            }
-        }
-
-        Connections {
-            target: shortcuts.drun_close
-            function onActivated() {
-                drun.visible = false;
-                drun.group_filter = "";
-            }
-        }
-
-        Connections {
-            target: shortcuts.drun_group1
-            function onActivated() {
-                drun.group_repeater.itemAt(0).click();
-            }
-        }
-
-        Connections {
-            target: shortcuts.drun_group2
-            function onActivated() {
-                drun.group_repeater.itemAt(1).click();
-            }
-        }
-
-        Connections {
-            target: shortcuts.drun_group3
-            function onActivated() {
-                drun.group_repeater.itemAt(2).click();
-            }
-        }
-
-        Connections {
-            target: shortcuts.drun_group4
-            function onActivated() {
-                drun.group_repeater.itemAt(3).click();
-            }
-        }
-    }
-
     Drun {
         id: drun
         implicitWidth: root.width * 0.8
@@ -284,7 +238,7 @@ Kirigami.ApplicationWindow {
 
             QQC2.HorizontalHeaderView {
                 id: queue_hheader
-                
+
                 z: 1
                 Layout.fillWidth: true
 
