@@ -1,11 +1,16 @@
 pub mod config;
-pub mod q_mpd_connector;
+pub mod mpd_connector;
 
 use cxx_qt_lib::{QQmlApplicationEngine, QQuickStyle, QString, QUrl};
 use cxx_qt_lib_extras::QApplication;
 use std::env;
+use log::debug;
 
 fn main() {
+    env_logger::init();
+    
+    debug!("Starting application");
+
     let mut app = QApplication::new();
     let mut engine = QQmlApplicationEngine::new();
 

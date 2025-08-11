@@ -7,10 +7,9 @@ fn main() {
         // - Qt Gui is linked by enabling the qt_gui Cargo feature of cxx-qt-lib.
         // - Qt Qml is linked by enabling the qt_qml Cargo feature of cxx-qt-lib.
         // - Qt Qml requires linking Qt Network on macOS
-        .qt_module("Network")
         .qml_module(QmlModule {
             uri: "github.skorodenko.ksol",
-            rust_files: &["src/q_mpd_connector.rs"],
+            rust_files: &["src/mpd_connector.rs"],
             qml_files: &["src/qml/main.qml"],
             ..Default::default()
         })

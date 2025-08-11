@@ -25,6 +25,7 @@ pub mod qobject {
     }
 }
 
+use log::debug;
 use core::pin::Pin;
 use std::path::PathBuf;
 use subprocess::Popen;
@@ -38,6 +39,7 @@ pub struct MPDConnector {
 
 impl qobject::QMPDConnector {
     pub fn connect(self: Pin<&mut Self>) {
+        debug!("Calling 'connect'");
         let mpd_binary: PathBuf = match which("mpd") {
             Ok(v) => v,
             Err(_) => PathBuf::from(""),
