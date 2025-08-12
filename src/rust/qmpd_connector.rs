@@ -39,11 +39,10 @@ pub struct MPDConnector {
 
 impl qobject::QMPDConnector {
     pub fn connect(self: Pin<&mut Self>) {
-        debug!("Calling 'connect'");
+        debug!("Connecting to mpd");
         let mpd_binary: PathBuf = match which("mpd") {
             Ok(v) => v,
             Err(_) => PathBuf::from(""),
         };
-        println!("{:?}", mpd_binary.into_os_string().into_string());
     }
 }

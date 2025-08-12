@@ -9,7 +9,7 @@ fn main() {
         // - Qt Qml requires linking Qt Network on macOS
         .qml_module(QmlModule {
             uri: "github.skorodenko.ksol",
-            rust_files: &["src/mpd_connector.rs"],
+            rust_files: &["src/rust/qmpd_connector.rs"],
             qml_files: &["src/qml/main.qml"],
             ..Default::default()
         })

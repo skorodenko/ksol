@@ -1,14 +1,15 @@
-pub mod config;
-pub mod mpd_connector;
+pub mod rust;
 
 use cxx_qt_lib::{QQmlApplicationEngine, QQuickStyle, QString, QUrl};
 use cxx_qt_lib_extras::QApplication;
+use log::{LevelFilter, debug};
 use std::env;
-use log::debug;
 
 fn main() {
-    env_logger::init();
-    
+    env_logger::builder()
+        .filter_level(LevelFilter::Debug)
+        .init();
+
     debug!("Starting application");
 
     let mut app = QApplication::new();
@@ -23,10 +24,14 @@ fn main() {
     }
 
     if let Some(engine) = engine.as_mut() {
-        engine.load(&QUrl::from("qrc:/qt/qml/github/skorodenko/ksol/src/qml/main.qml"));
+        engine.load(&QUrl::from(
+            "qrc:/qt/qml/github/skorodenko/ksol/src/qml/main.qml",
+        ));
     }
 
     if let Some(app) = app.as_mut() {
         app.exec();
     }
+
+    debug!("Application closed")
 }
