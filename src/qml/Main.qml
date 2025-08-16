@@ -1,9 +1,9 @@
 pragma ComponentBehavior: Bound
 
-import QtQuick 6.9
-import QtQuick.Layouts 6.9
-import QtQuick.Controls 6.9 as QQC2
-import org.kde.kirigami 2.20 as Kirigami
+import QtQuick
+import QtQuick.Layouts
+import QtQuick.Controls as QQC2
+import org.kde.kirigami as Kirigami
 import github.skorodenko.ksol 1.0
 
 

@@ -1,9 +1,9 @@
 pragma ComponentBehavior: Bound
 
-import QtQuick 6.9
-import QtQuick.Layouts 6.9
-import QtQuick.Controls 6.9 as QQC2
-import org.kde.kirigami 2.20 as Kirigami
+import QtQuick
+import QtQuick.Layouts
+import QtQuick.Controls as QQC2
+import org.kde.kirigami as Kirigami
 import github.skorodenko.ksol 1.0
 
 QQC2.Popup {
@@ -119,13 +119,13 @@ QQC2.Popup {
         }
 
         Item {
-            Layout.preferredWidth: parent.width * 0.3
+            Layout.preferredWidth: parent.width * 0.1
         }
 
         RowLayout {
+            Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.alignment: Qt.AlignRight
-            Layout.preferredWidth: parent.width * 0.3
 
             spacing: Kirigami.Units.largeSpacing
 
@@ -137,7 +137,10 @@ QQC2.Popup {
                     required property string name
                     required property int value
 
-                    text: name
+                    Kirigami.Heading {
+                        anchors.centerIn: parent
+                        text: parent.name
+                    }
 
                     focusPolicy: Qt.NoFocus
                     Layout.fillWidth: true
