@@ -49,7 +49,7 @@ impl Default for MPDSettings {
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
-            search_groups: vec![SongField::Directory],
+            search_groups: vec![SongField::Directory, SongField::Artist, SongField::Album, SongField::Track],
         }
     }
 }
