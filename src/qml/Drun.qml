@@ -13,7 +13,7 @@ QQC2.Popup {
     onVisibleChanged: {
         search.text = "";
         //listView.currentIndex = 0;
-        //listView.forceActiveFocus();
+        listView.forceActiveFocus();
     }
 
     signal stagePlaylist(var name, var group)
@@ -106,44 +106,48 @@ QQC2.Popup {
         anchors.left: parent.left
         anchors.right: parent.right
 
-        Row {
+        QQC2.TextField {
+            id: search
+            focusPolicy: Qt.NoFocus
             Layout.alignment: Qt.AlignLeft
-            QQC2.TextField {
-                id: search
-                focusPolicy: Qt.NoFocus
-                Keys.onPressed: function (event) {
-                    if (!(event.key > Qt.Key_Space || event.key < Qt.Key_AsciiTilde || event.key === Qt.Key_Backspace)) {
-                        event.accepted = true;
-                    }
+            Layout.preferredWidth: parent.width * 0.3
+            Keys.onPressed: function (event) {
+                if (!(event.key > Qt.Key_Space || event.key < Qt.Key_AsciiTilde || event.key === Qt.Key_Backspace)) {
+                    event.accepted = true;
                 }
             }
         }
 
-        Row {
-            spacing: Kirigami.Units.largeSpacing
+        Item {
+            Layout.preferredWidth: parent.width * 0.3
+        }
 
+        RowLayout {
+            Layout.fillHeight: true
             Layout.alignment: Qt.AlignRight
+            Layout.preferredWidth: parent.width * 0.3
+
+            spacing: Kirigami.Units.largeSpacing
 
             Repeater {
                 id: group_repeater
                 model: playlists_group
 
-                delegate: QQC2.Button {
+                QQC2.Button {
+                    required property string name
+                    required property int value
+
+                    text: name
+
                     focusPolicy: Qt.NoFocus
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
 
-                    required property var name
-
-                    Component.onCompleted: {
-                        console.log(name);
-                    }
                     //onClicked: {
                     //    playlists_group.setActive(model.value);
                     //}
 
-                    text: name
-                    flat: true
                     background: Rectangle {
-                        anchors.fill: parent
                         color: Kirigami.Theme.activeBackgroundColor
                         //color: value === playlists_group.active ? Kirigami.Theme.activeBackgroundColor : Kirigami.Theme.alternateBackgroundColor
                         radius: Kirigami.Units.cornerRadius
@@ -168,8 +172,8 @@ QQC2.Popup {
 
         implicitWidth: Math.min(Kirigami.Units.gridUnit * 20, parent.width)
 
-        //        Keys.forwardTo: [search]
-        //
+        Keys.forwardTo: [search]
+
         QQC2.ScrollBar.vertical: QQC2.ScrollBar {
             id: scrollbar
             policy: QQC2.ScrollBar.AlwaysOn

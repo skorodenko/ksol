@@ -5,8 +5,7 @@ import QtQuick.Layouts 6.9
 import QtQuick.Controls 6.9 as QQC2
 import org.kde.kirigami 2.20 as Kirigami
 import github.skorodenko.ksol 1.0
-//import controllers 1.0
-//import models 1.0
+
 
 Kirigami.ApplicationWindow {
     id: root

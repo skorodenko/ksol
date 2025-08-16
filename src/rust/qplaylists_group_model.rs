@@ -1,7 +1,7 @@
 #[cxx_qt::bridge]
 mod qobject {
 
-    extern "C++" {
+    unsafe extern "C++" {
         include!(<QAbstractListModel>);
         type QAbstractListModel;
 
@@ -24,7 +24,7 @@ mod qobject {
         Value,
     }
 
-    extern "RustQt" {
+    unsafe extern "RustQt" {
         #[qobject]
         #[qml_element]
         #[base = QAbstractListModel]
@@ -43,9 +43,7 @@ mod qobject {
     }
 }
 
-use cxx_qt::CxxQtType;
 use crate::rust::settings::Settings;
-use log::debug;
 use qobject::*;
 
 #[derive(Default)]
@@ -59,7 +57,7 @@ impl qobject::QPlaylistsGroupModel {
         return roles;
     }
 
-    pub fn row_count(&self, index: &QModelIndex) -> i32 {
+    pub fn row_count(&self, _index: &QModelIndex) -> i32 {
         let settings = Settings::load();
         return settings.app.search_groups.len() as i32;
     }
