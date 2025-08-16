@@ -1,4 +1,4 @@
-pub mod rust;
+extern crate ksol;
 
 use cxx_qt_lib::{QQmlApplicationEngine, QQuickStyle, QString, QUrl};
 use cxx_qt_lib_extras::QApplication;
@@ -25,7 +25,7 @@ fn main() {
 
     if let Some(engine) = engine.as_mut() {
         engine.load(&QUrl::from(
-            "qrc:/qt/qml/github/skorodenko/ksol/src/qml/main.qml",
+            "qrc:/qt/qml/github/skorodenko/ksol/src/qml/Main.qml",
         ));
     }
 

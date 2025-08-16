@@ -1,20 +1,23 @@
 [package]
-name = "ksol-rs"
+name = "ksol"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-cxx = "1.0.95"
-cxx-qt = "0.7"
-cxx-qt-lib = { version="0.7", features = ["qt_full"] }
-cxx-qt-lib-extras = "0.7"
+bincode = { version = "2.0.1", features = ["serde"] }
+cxx = "1.0.168"
+cxx-qt = "0.7.2"
+cxx-qt-lib = { version = "0.7.2", features = ["qt_full"] }
+cxx-qt-lib-extras = "0.7.2"
 env_logger = "0.11.8"
 log = "0.4.27"
+once_cell = "1.21.3"
 serde = { version = "1.0.219", features = ["derive"] }
+sled = "0.34.7"
 subprocess = "0.2.9"
 which = "8.0.0"
 xdg = "3.0.0"
 
 [build-dependencies]
 # The link_qt_object_files feature is required for statically linking Qt 6.
-cxx-qt-build = { version = "0.7", features = [ "link_qt_object_files" ] }
+cxx-qt-build = { version = "0.7.2", features = ["link_qt_object_files"] }

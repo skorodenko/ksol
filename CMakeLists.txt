@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.28)
 
-project(kirigami_rust)
+project(ksol)
 
 find_package(ECM 6.0 REQUIRED NO_MODULE)
 set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
@@ -11,7 +11,7 @@ include(ECMFindQmlModule)
 ecm_find_qmlmodule(org.kde.kirigami REQUIRED)
 find_package(KF6 REQUIRED COMPONENTS QQC2DesktopStyle)
 
-add_custom_target(kirigami_rust
+add_custom_target(ksol
     ALL
     COMMAND cargo build --target-dir ${CMAKE_CURRENT_BINARY_DIR}
 )

@@ -1,4 +1,4 @@
-import QtQuick
+import QtQuick 6.9
 
 Item {
     readonly property alias drun_open: drun_open

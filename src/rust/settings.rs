@@ -1,9 +1,8 @@
 use crate::rust::entities::SongField;
 use serde;
-use std::sync::Mutex;
+//use std::sync::Mutex;
+use once_cell::sync::OnceCell;
 use xdg::BaseDirectories;
-
-pub static settings: Mutex<Settings> = Mutex::new(Settings::load());
 
 #[derive(serde::Deserialize, Debug)]
 pub struct MPDSettings {
@@ -27,14 +26,13 @@ pub struct Settings {
 }
 
 impl Settings {
-    pub fn load() -> Self {
+    pub fn load() -> &'static Self {
         let xdg_dirs = BaseDirectories::with_prefix("ksol");
         let app_config = xdg_dirs.get_config_home();
         let app_data = xdg_dirs.get_data_home();
 
-        return Self {
-            ..Default::default()
-        };
+        static INSTANCE: OnceCell<Settings> = OnceCell::new();
+        INSTANCE.get_or_init(Settings::default)
     }
 }
 
