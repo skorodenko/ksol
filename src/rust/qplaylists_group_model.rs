@@ -1,10 +1,9 @@
 #[cxx_qt::bridge]
 mod qobject {
-
-    unsafe extern "C++" {
+    extern "C++" {
         include!(<QAbstractListModel>);
         type QAbstractListModel;
-
+        
         include!("cxx-qt-lib/qvariant.h");
         type QVariant = cxx_qt_lib::QVariant;
 
@@ -22,9 +21,10 @@ mod qobject {
     enum Roles {
         Name,
         Value,
+        ActiveGroup,
     }
 
-    unsafe extern "RustQt" {
+    extern "RustQt" {
         #[qobject]
         #[qml_element]
         #[base = QAbstractListModel]
@@ -44,6 +44,8 @@ mod qobject {
 }
 
 use crate::rust::settings::Settings;
+use crate::rust::state::State;
+
 use qobject::*;
 
 #[derive(Default)]
@@ -54,6 +56,7 @@ impl qobject::QPlaylistsGroupModel {
         let mut roles = QHash_i32_QByteArray::default();
         roles.insert(Roles::Name.repr, "name".into());
         roles.insert(Roles::Value.repr, "value".into());
+        roles.insert(Roles::ActiveGroup.repr, "activeGroup".into());
         return roles;
     }
 
@@ -64,13 +67,16 @@ impl qobject::QPlaylistsGroupModel {
 
     pub fn data(&self, index: &QModelIndex, role: i32) -> QVariant {
         let settings = Settings::load();
+        let state = State::load();
         let role = Roles { repr: role };
         let sg = settings.app.search_groups.get(index.row() as usize);
         let sg_name = QString::from(&sg.expect("asdgasdfg").to_string());
         let sg_value = *sg.unwrap() as i32;
+        let sg_active = state.group as i32;
         return match role {
             Roles::Name => (&sg_name).into(),
             Roles::Value => (&sg_value).into(),
+            Roles::ActiveGroup => (&sg_active).into(),
             _ => QVariant::default(),
         };
     }

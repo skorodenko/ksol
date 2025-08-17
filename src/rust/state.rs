@@ -10,7 +10,7 @@ pub struct State {
 
 impl State {
     pub fn get_group(&self) -> SongField {
-        return SongField::Directory;
+        return self.group;
     }
 
     pub fn set_group(&mut self, new_value: SongField) {
@@ -44,9 +44,8 @@ impl Default for State {
 
         let group = match db.get(b"group").unwrap() {
             Some(v) => {
-                debug!("TEST {:#?}", v);
-                //let val: SongField = bincode::decode_from_slice(&v, bincode::config::standard()).unwrap();
-                SongField::Directory
+                let (val, _bytes_read): (SongField, usize) = bincode::serde::decode_from_slice(v.as_ref(), bincode::config::standard()).unwrap();
+                val
             },
             None => SongField::Directory,
         };
