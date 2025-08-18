@@ -9,10 +9,6 @@ pub struct State {
 }
 
 impl State {
-    pub fn get_group(&self) -> SongField {
-        return self.group;
-    }
-
     pub fn set_group(&mut self, new_value: SongField) {
         self.group = new_value;
     }

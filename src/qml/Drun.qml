@@ -134,7 +134,7 @@ QQC2.Popup {
                 model: playlists_group
 
                 QQC2.Button {
-                    required property var model
+                    required property int activeGroup
                     required property string name
                     required property int value
 
@@ -148,11 +148,11 @@ QQC2.Popup {
                     Layout.fillHeight: true
 
                     onClicked: {
-                        model.active_group = value;
+                        playlists_group.setActive(value);
                     }
 
                     background: Rectangle {
-                        color: parent.value === parent.model.activeGroup ? Kirigami.Theme.activeBackgroundColor : Kirigami.Theme.alternateBackgroundColor
+                        color: parent.value === parent.activeGroup ? Kirigami.Theme.activeBackgroundColor : Kirigami.Theme.alternateBackgroundColor
                         radius: Kirigami.Units.cornerRadius
                     }
                 }

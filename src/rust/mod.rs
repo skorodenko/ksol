@@ -3,5 +3,4 @@ pub mod qplaylists_group_model;
 pub mod settings;
 pub mod entities;
 pub mod state;
-pub mod ctypes;
 
