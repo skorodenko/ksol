@@ -1,4 +1,7 @@
+#[macro_use]
+extern crate num_derive;
 extern crate ksol;
+
 
 use cxx_qt_lib::{QQmlApplicationEngine, QQuickStyle, QString, QUrl};
 use cxx_qt_lib_extras::QApplication;

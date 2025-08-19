@@ -1,7 +1,8 @@
 use serde;
+use num_derive::{ToPrimitive, FromPrimitive};
 use std::fmt::{Display, Formatter, Result};
 
-#[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug)]
+#[derive(serde::Deserialize, serde::Serialize, ToPrimitive, FromPrimitive, Copy, Clone, Debug)]
 #[repr(i32)]
 pub enum SongField {
     Track = 1,
