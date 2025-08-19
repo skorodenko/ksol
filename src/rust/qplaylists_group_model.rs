@@ -24,49 +24,62 @@ mod qobject {
     enum Roles {
         Name,
         Value,
-        ActiveGroup,
     }
 
     extern "RustQt" {
         #[qobject]
         #[qml_element]
         #[base = QAbstractListModel]
+        #[qproperty(i32, active_group, READ = get_active_group, WRITE = set_active_group)]
         type QPlaylistsGroupModel = super::PlaylistsGroupModel;
 
-        #[cxx_override]
-        #[rust_name = "role_names"]
-        fn roleNames(self: &QPlaylistsGroupModel) -> QHash_i32_QByteArray;
+        #[qsignal]
+        #[cxx_name = "activeGroupChanged"]
+        fn active_group_changed(self: Pin<&mut QPlaylistsGroupModel>);
 
         #[cxx_override]
-        #[rust_name = "row_count"]
-        fn rowCount(self: &QPlaylistsGroupModel, index: &QModelIndex) -> i32;
+        #[cxx_name = "roleNames"]
+        fn role_names(self: &QPlaylistsGroupModel) -> QHash_i32_QByteArray;
+
+        #[cxx_override]
+        #[cxx_name = "rowCount"]
+        fn row_count(self: &QPlaylistsGroupModel, index: &QModelIndex) -> i32;
 
         #[cxx_override]
         fn data(self: &QPlaylistsGroupModel, index: &QModelIndex, role: i32) -> QVariant;
 
         #[qinvokable]
-        #[rust_name = "set_active"]
-        fn setActive(self: &QPlaylistsGroupModel, value: &QVariant);
+        #[cxx_name = "getActiveGroup"]
+        fn get_active_group(self: &QPlaylistsGroupModel) -> i32;
+
+        #[qinvokable]
+        #[cxx_name = "setActiveGroup"]
+        fn set_active_group(self: Pin<&mut QPlaylistsGroupModel>, value: &QVariant);
     }
 }
 
 use crate::rust::entities::SongField;
 use crate::rust::settings::Settings;
-use crate::rust::state::State;
+use bincode::config;
+use bincode::serde::decode_from_slice;
 use core::pin::Pin;
+use cxx_qt::CxxQtType;
 use log::error;
+use num_traits::FromPrimitive;
+use serde;
 
 use qobject::*;
 
-#[derive(Default)]
-pub struct PlaylistsGroupModel {}
+#[derive(serde::Deserialize, serde::Serialize)]
+pub struct PlaylistsGroupModel {
+    pub active_group: SongField,
+}
 
 impl qobject::QPlaylistsGroupModel {
     pub fn role_names(&self) -> QHash_i32_QByteArray {
         let mut roles = QHash_i32_QByteArray::default();
         roles.insert(Roles::Name.repr, "name".into());
         roles.insert(Roles::Value.repr, "value".into());
-        roles.insert(Roles::ActiveGroup.repr, "activeGroup".into());
         return roles;
     }
 
@@ -77,46 +90,51 @@ impl qobject::QPlaylistsGroupModel {
 
     pub fn data(&self, index: &QModelIndex, role: i32) -> QVariant {
         let settings = Settings::load();
-        let state = State::load();
         let role = Roles { repr: role };
         let sg = settings.app.search_groups.get(index.row() as usize);
         let sg_name = QString::from(&sg.expect("asdgasdfg").to_string());
         let sg_value = *sg.unwrap() as i32;
-        let sg_active = state.group as i32;
         return match role {
             Roles::Name => (&sg_name).into(),
             Roles::Value => (&sg_value).into(),
-            Roles::ActiveGroup => (&sg_active).into(),
             _ => QVariant::default(),
         };
     }
 
-    pub fn set_active(&self, variant: &QVariant) {
+    pub fn get_active_group(&self) -> i32 {
+        println!("TESTES");
+        self.active_group as i32
+    }
+
+    pub fn set_active_group(mut self: Pin<&mut Self>, variant: &QVariant) {
         if let Some(value) = variant.value::<i32>() {
-            let value = SongField::from_i32(value);
-            println!("{:?}", value);
+            let value = SongField::from_i32(value).unwrap();
+            self.as_mut().rust_mut().active_group = value;
+            self.active_group_changed();
         } else {
             error!("Bad operation");
         }
-        //let &mut state = State::load();
-        //        match role {
-        //            Roles::ActiveGroup => {
-        //                if let Some(value) = variant.value::<i32>() {
-        //                    //self.set_boolean(boolean);
-        //                    true
-        //                } else {
-        //                    false
-        //                }
-        //            },
-        //            _ => { false }
-        //        }
-        //        if let (Some(value), role) = (variant.value::<i32>(), Roles::ActiveGroup) {
-        //            //state.set_group(SongField::Directory);
-        //            error!("Test");
-        //            true
-        //        } else {
-        //            error!("Bad operation");
-        //            false
-        //        }
+    }
+}
+
+impl Default for PlaylistsGroupModel {
+    fn default() -> Self {
+        let db = match sled::open("db") {
+            Ok(v) => v,
+            Err(e) => {
+                panic!("Failed to open/create state db {}", e);
+            }
+        };
+
+        match db.get(b"playlists_group_model").unwrap() {
+            Some(val) => {
+                let (val, _): (Self, usize) =
+                    decode_from_slice(val.as_ref(), config::standard()).unwrap();
+                val
+            }
+            None => Self {
+                active_group: SongField::Directory,
+            },
+        }
     }
 }

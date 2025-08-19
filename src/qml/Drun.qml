@@ -134,7 +134,7 @@ QQC2.Popup {
                 model: playlists_group
 
                 QQC2.Button {
-                    required property int activeGroup
+                    //required property int activeGroup
                     required property string name
                     required property int value
 
@@ -148,7 +148,7 @@ QQC2.Popup {
                     Layout.fillHeight: true
 
                     onClicked: {
-                        playlists_group.setActive(value);
+                        playlists_group.setActiveGroup(value);
                     }
 
                     background: Rectangle {
