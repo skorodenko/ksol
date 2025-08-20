@@ -30,7 +30,7 @@ mod qobject {
         #[qobject]
         #[qml_element]
         #[base = QAbstractListModel]
-        #[qproperty(i32, active_group, READ = get_active_group, WRITE = set_active_group)]
+        #[qproperty(i32, activeGroup, READ = get_active_group, WRITE = set_active_group, NOTIFY = active_group_changed)]
         type QPlaylistsGroupModel = super::PlaylistsGroupModel;
 
         #[qsignal]
@@ -49,11 +49,9 @@ mod qobject {
         fn data(self: &QPlaylistsGroupModel, index: &QModelIndex, role: i32) -> QVariant;
 
         #[qinvokable]
-        #[cxx_name = "getActiveGroup"]
         fn get_active_group(self: &QPlaylistsGroupModel) -> i32;
 
         #[qinvokable]
-        #[cxx_name = "setActiveGroup"]
         fn set_active_group(self: Pin<&mut QPlaylistsGroupModel>, value: &QVariant);
     }
 }
@@ -61,7 +59,7 @@ mod qobject {
 use crate::rust::entities::SongField;
 use crate::rust::settings::Settings;
 use bincode::config;
-use bincode::serde::decode_from_slice;
+use bincode::serde::{decode_from_slice, encode_to_vec};
 use core::pin::Pin;
 use cxx_qt::CxxQtType;
 use log::error;
@@ -102,7 +100,6 @@ impl qobject::QPlaylistsGroupModel {
     }
 
     pub fn get_active_group(&self) -> i32 {
-        println!("TESTES");
         self.active_group as i32
     }
 
@@ -114,6 +111,19 @@ impl qobject::QPlaylistsGroupModel {
         } else {
             error!("Bad operation");
         }
+    }
+}
+
+impl Drop for PlaylistsGroupModel {
+    fn drop(&mut self) {
+        let db = match sled::open("db") {
+            Ok(v) => v,
+            Err(e) => {
+                panic!("Failed to open/create state db {}", e);
+            }
+        };
+        let bcode: &[u8] = &encode_to_vec(self, config::standard()).unwrap();
+        let _ = db.insert(b"playlists_group_model", bcode);
     }
 }
 
