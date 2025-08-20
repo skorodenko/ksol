@@ -83,13 +83,13 @@ impl qobject::QPlaylistsGroupModel {
 
     pub fn row_count(&self, _index: &QModelIndex) -> i32 {
         let settings = Settings::load();
-        return settings.app.search_groups.len() as i32;
+        return settings.search_groups.len() as i32;
     }
 
     pub fn data(&self, index: &QModelIndex, role: i32) -> QVariant {
         let settings = Settings::load();
         let role = Roles { repr: role };
-        let sg = settings.app.search_groups.get(index.row() as usize);
+        let sg = settings.search_groups.get(index.row() as usize);
         let sg_name = QString::from(&sg.expect("asdgasdfg").to_string());
         let sg_value = *sg.unwrap() as i32;
         return match role {

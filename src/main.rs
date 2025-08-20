@@ -1,12 +1,13 @@
 extern crate ksol;
 
-
+use tokio;
 use cxx_qt_lib::{QQmlApplicationEngine, QQuickStyle, QString, QUrl};
 use cxx_qt_lib_extras::QApplication;
 use log::{LevelFilter, debug};
 use std::env;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     env_logger::builder()
         .filter_level(LevelFilter::Debug)
         .init();

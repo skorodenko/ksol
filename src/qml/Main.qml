@@ -28,23 +28,23 @@ Kirigami.ApplicationWindow {
 
     QMPDConnector {
         id: mpd_connector
-//        onConnected: function (state) {
-//            switch (state) {
-//            case "connected":
-//                drun.playlists_list.refresh(drun.playlists_group.active);
-//                connectionStateLabel.text = "Connected";
-//                connectionStateLabelBackground.color = Kirigami.Theme.positiveBackgroundColor;
-//                break;
-//            case "connecting":
-//                connectionStateLabel.text = "Connecting";
-//                connectionStateLabelBackground.color = Kirigami.Theme.neutralBackgroundColor;
-//                break;
-//            case "disconnected":
-//                connectionStateLabel.text = "Disconnected";
-//                connectionStateLabelBackground.color = Kirigami.Theme.negativeBackgroundColor;
-//                break;
-//            }
-//        }
+        onConnectionUpdate: function (state) {
+            switch (state) {
+            case "connected":
+                //drun.playlists_list.refresh(drun.playlists_group.active);
+                connectionStateLabel.text = "Connected";
+                connectionStateLabelBackground.color = Kirigami.Theme.positiveBackgroundColor;
+                break;
+            case "connecting":
+                connectionStateLabel.text = "Connecting";
+                connectionStateLabelBackground.color = Kirigami.Theme.neutralBackgroundColor;
+                break;
+            case "disconnected":
+                connectionStateLabel.text = "Disconnected";
+                connectionStateLabelBackground.color = Kirigami.Theme.negativeBackgroundColor;
+                break;
+            }
+        }
 //        onDbUpdated: function (state) {
 //            if (!!state) {
 //                root.message("DB Updated", Kirigami.MessageType.Positive, "dialog-information");
