@@ -52,7 +52,7 @@ impl Default for Settings {
         let mpd_config = app_data.join("mpd");
 
         Self {
-            mpd_socket: mpd_config.join("mpd.socket").to_str().unwrap().to_string(),
+            mpd_socket: "localhost:6600".to_string(),
             search_groups: vec![
                 SongField::Directory,
                 SongField::Artist,
@@ -71,7 +71,7 @@ impl Default for InternalSettings {
         let mpd_config = app_data.join("mpd");
 
         Self {
-            native_socket: mpd_config.join("mpd.socket").to_str().unwrap().to_string(),
+            native_socket: "localhost:6600".to_string(),
             native_config: mpd_config.join("mpd.conf").to_str().unwrap().to_string(),
         }
     }
