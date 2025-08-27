@@ -182,7 +182,7 @@ Kirigami.ApplicationWindow {
                             text: qsTr("Refresh DB")
                             icon.name: "server-database"
                             onClicked: {
-                                mpd_connector.refreshDb();
+                                mpd_connector.updateDb();
                             }
                         }
                     }
