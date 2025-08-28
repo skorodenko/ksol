@@ -31,48 +31,49 @@ use qobject::*;
 
 use crate::rust::settings::{InternalSettings, Settings};
 
-use async_mpd::MpdClient;
 use core::pin::Pin;
 use cxx_qt::Threading;
 use log;
+use mpd_client::Client;
+use mpd_client::client::{ConnectionEvent, ConnectionEvents, Subsystem};
 use std::path::PathBuf;
 use std::sync::Arc;
+use tokio::net::TcpStream;
 use tokio::process::Command;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, RwLock};
 use tokio::time::{Duration, sleep, timeout};
 use which::which;
 
 #[derive(Default)]
 pub struct MPDConnector {
-    pub mpd_client: Arc<Mutex<MpdClient>>,
+    pub client: Arc<RwLock<Option<Client>>>,
+    pub idle: Arc<RwLock<Option<ConnectionEvents>>>,
 }
 
 impl qobject::QMPDConnector {
     fn idle(self: Pin<&mut Self>) {
-        let mutex = self.mpd_client.clone();
+        let mpd_idle = self.idle.clone();
         let qt_thread = self.qt_thread();
         tokio::spawn(async move {
             loop {
-                let mut mpd_client = mutex.lock().await;
-                let idle = timeout(Duration::from_millis(100), mpd_client.idle()).await;
-                match idle {
-                    Ok(Ok(_)) => println!("Task finished within timeout."),
-                    Ok(Err(e)) => println!("Task failed: {:?}", e),
-                    Err(_) => {} 
+                let mut mpd_idle = mpd_idle.write().await;
+                match mpd_idle.as_mut().unwrap().next().await {
+                    Some(e) => println!("Yay {:?}", e),
+                    _ => println!("Shit"),
                 }
-                //log::debug!("{:?}", idle);
+                sleep(Duration::from_millis(10)).await;
             }
         });
     }
 
     pub fn update_db(self: Pin<&mut QMPDConnector>) {
         log::debug!("Updating MPD DB");
-        let mutex = self.mpd_client.clone();
-        tokio::spawn(async move {
-            let mut mpd_client = mutex.lock().await;
-            let res = mpd_client.update("".into()).await;
-            log::debug!("{:?}", res);
-        });
+        //        let mutex = self.mpd_client.clone();
+        //        tokio::spawn(async move {
+        //            let mut mpd_client = mutex.lock().await;
+        //            let res = mpd_client.update("".into()).await;
+        //            log::debug!("{:?}", res);
+        //        });
     }
 
     fn start_native_server(self: Pin<&mut Self>, mpd_binary: &PathBuf, native_config: &String) {
@@ -94,16 +95,21 @@ impl qobject::QMPDConnector {
     }
 
     fn connect_client(self: Pin<&mut Self>, retcount: Option<i32>, timeout: Option<f32>) {
-        let mutex = self.mpd_client.clone();
+        let mpd_client = self.client.clone();
+        let mpd_idle = self.idle.clone();
         let qt_thread = self.qt_thread();
         let mut retcount = retcount.unwrap_or(5);
         let timeout = timeout.unwrap_or(1.5);
         tokio::spawn(async move {
             let state = loop {
                 let settings = Settings::load();
-                let mut mpd_client = mutex.lock().await;
-                match mpd_client.connect(&settings.mpd_socket).await {
-                    Ok(_) => {
+                let mut mpd_client = mpd_client.write().await;
+                let mut mpd_idle = mpd_idle.write().await;
+                match TcpStream::connect(&settings.mpd_socket).await {
+                    Ok(connection) => {
+                        let mpd_connection = Client::connect(connection).await.unwrap();
+                        mpd_client.replace(mpd_connection.0);
+                        mpd_idle.replace(mpd_connection.1);
                         log::debug!("Succesfully connected to MPD server");
                         break "connected";
                     }
