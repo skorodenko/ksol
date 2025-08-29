@@ -20,39 +20,39 @@ mod qobject {
         type QModelIndex = cxx_qt_lib::QModelIndex;
     }
 
-    #[qenum(QPlaylistsGroupModel)]
-    enum QPlaylistsGroupRoles {
+    #[qenum(QPlaylistsListModel)]
+    enum QPlaylistsListRoles {
         Name,
-        Value,
     }
 
     extern "RustQt" {
         #[qobject]
         #[qml_element]
         #[base = QAbstractListModel]
-        #[qproperty(i32, activeGroup, READ = get_active_group, WRITE = set_active_group, NOTIFY = active_group_changed)]
-        type QPlaylistsGroupModel = super::PlaylistsGroupModel;
+        #[qproperty(i32, activeGroup, READ = get_active_group, WRITE = set_active_group, NOTIFY = update)]
+        //#[qproperty(QString, filter, READ = get_filter, WRITE = set_filter, NOTIFY = active_group_changed)]
+        type QPlaylistsListModel = super::PlaylistsListModel;
 
         #[qsignal]
-        #[cxx_name = "activeGroupChanged"]
-        fn active_group_changed(self: Pin<&mut QPlaylistsGroupModel>);
+        #[cxx_name = "update"]
+        fn update(self: Pin<&mut QPlaylistsListModel>);
 
         #[cxx_override]
         #[cxx_name = "roleNames"]
-        fn role_names(self: &QPlaylistsGroupModel) -> QHash_i32_QByteArray;
+        fn role_names(self: &QPlaylistsListModel) -> QHash_i32_QByteArray;
 
         #[cxx_override]
         #[cxx_name = "rowCount"]
-        fn row_count(self: &QPlaylistsGroupModel, index: &QModelIndex) -> i32;
+        fn row_count(self: &QPlaylistsListModel, index: &QModelIndex) -> i32;
 
         #[cxx_override]
-        fn data(self: &QPlaylistsGroupModel, index: &QModelIndex, role: i32) -> QVariant;
+        fn data(self: &QPlaylistsListModel, index: &QModelIndex, role: i32) -> QVariant;
 
         #[qinvokable]
-        fn get_active_group(self: &QPlaylistsGroupModel) -> i32;
+        fn get_active_group(self: &QPlaylistsListModel) -> i32;
 
         #[qinvokable]
-        fn set_active_group(self: Pin<&mut QPlaylistsGroupModel>, value: i32);
+        fn set_active_group(self: Pin<&mut QPlaylistsListModel>, value: i32);
     }
 }
 
@@ -68,15 +68,15 @@ use serde;
 use qobject::*;
 
 #[derive(serde::Deserialize, serde::Serialize)]
-pub struct PlaylistsGroupModel {
+pub struct PlaylistsListModel {
     pub active_group: SongField,
+    pub filter: String,
 }
 
-impl qobject::QPlaylistsGroupModel {
+impl qobject::QPlaylistsListModel {
     pub fn role_names(&self) -> QHash_i32_QByteArray {
         let mut roles = QHash_i32_QByteArray::default();
-        roles.insert(QPlaylistsGroupRoles::Name.repr, "name".into());
-        roles.insert(QPlaylistsGroupRoles::Value.repr, "value".into());
+        roles.insert(QPlaylistsListRoles::Name.repr, "name".into());
         return roles;
     }
 
@@ -87,13 +87,11 @@ impl qobject::QPlaylistsGroupModel {
 
     pub fn data(&self, index: &QModelIndex, role: i32) -> QVariant {
         let settings = Settings::load();
-        let role = QPlaylistsGroupRoles { repr: role };
+        let role = QPlaylistsListRoles { repr: role };
         let sg = settings.search_groups.get(index.row() as usize);
         let sg_name = QString::from(&sg.expect("asdgasdfg").to_string());
-        let sg_value = *sg.unwrap() as i32;
         return match role {
-            QPlaylistsGroupRoles::Name => (&sg_name).into(),
-            QPlaylistsGroupRoles::Value => (&sg_value).into(),
+            QPlaylistsListRoles::Name => (&sg_name).into(),
             _ => QVariant::default(),
         };
     }
@@ -105,11 +103,11 @@ impl qobject::QPlaylistsGroupModel {
     pub fn set_active_group(mut self: Pin<&mut Self>, value: i32) {
         let value = SongField::from_i32(value).unwrap();
         self.as_mut().rust_mut().active_group = value;
-        self.active_group_changed();
+        self.update();
     }
 }
 
-impl Drop for PlaylistsGroupModel {
+impl Drop for PlaylistsListModel {
     fn drop(&mut self) {
         let db = match sled::open("db") {
             Ok(v) => v,
@@ -118,11 +116,11 @@ impl Drop for PlaylistsGroupModel {
             }
         };
         let bcode: &[u8] = &encode_to_vec(self, config::standard()).unwrap();
-        let _ = db.insert(b"playlists_group_model", bcode);
+        let _ = db.insert(b"playlists_list_model", bcode);
     }
 }
 
-impl Default for PlaylistsGroupModel {
+impl Default for PlaylistsListModel {
     fn default() -> Self {
         let db = match sled::open("db") {
             Ok(v) => v,
@@ -131,7 +129,7 @@ impl Default for PlaylistsGroupModel {
             }
         };
 
-        match db.get(b"playlists_group_model").unwrap() {
+        match db.get(b"playlists_list_model").unwrap() {
             Some(val) => {
                 let (val, _): (Self, usize) =
                     decode_from_slice(val.as_ref(), config::standard()).unwrap();
@@ -139,6 +137,7 @@ impl Default for PlaylistsGroupModel {
             }
             None => Self {
                 active_group: SongField::Directory,
+                filter: String::default(),
             },
         }
     }

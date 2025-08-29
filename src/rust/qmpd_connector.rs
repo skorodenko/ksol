@@ -69,7 +69,7 @@ impl qobject::QMPDConnector {
                     }
                     Some(e) => println!("Yay {:?}", e),
                     None => {
-                        log::warn!("Connection lost?");
+                        log::warn!("Connection lost");
                         sleep(Duration::from_millis(300)).await;
                     }
                 }
@@ -81,10 +81,14 @@ impl qobject::QMPDConnector {
     pub fn update_db(self: Pin<&mut QMPDConnector>) {
         log::debug!("Updating MPD DB");
         let mpd_client = self.client.clone();
+        let qt_thread = self.qt_thread();
         tokio::spawn(async move {
             let mpd_client = mpd_client.read().await;
             let command = Update::new();
             let _ = mpd_client.as_ref().unwrap().command(command).await;
+            let _ = qt_thread.queue(|mut qobject| {
+                let _ = qobject.as_mut().db_updated(false);
+            });
         });
     }
 
