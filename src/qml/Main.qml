@@ -6,17 +6,16 @@ import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
 import github.skorodenko.ksol 1.0
 
-
 Kirigami.ApplicationWindow {
     id: root
     title: qsTr("Ksol")
     pageStack.initialPage: mainPage
 
     Component.onCompleted: mpd_connector.connect()
-//    Component.onDestruction: {
-//        mpd_connector.disconnect();
-//        qqueue.free();
-//    }
+    //    Component.onDestruction: {
+    //        mpd_connector.disconnect();
+    //        qqueue.free();
+    //    }
 
     function message(message, type, iconName = null) {
         infoMessage.visible = false;
@@ -45,54 +44,54 @@ Kirigami.ApplicationWindow {
                 break;
             }
         }
-//        onDbUpdated: function (state) {
-//            if (!!state) {
-//                root.message("DB Updated", Kirigami.MessageType.Positive, "dialog-information");
-//                drun.playlists_list.refresh(drun.playlists_group.active);
-//            } else {
-//                root.message("DB Updating", Kirigami.MessageType.Warning, "dialog-warning");
-//            }
-//        }
-//        onStatePlay: function (state) {
-//            switch (state) {
-//            case "stop":
-//                playback_play.icon.name = "media-playback-stop";
-//                playback_previous.enabled = false;
-//                playback_next.enabled = false;
-//                break;
-//            case "pause":
-//                playback_play.icon.name = "media-playback-start";
-//                playback_previous.enabled = true;
-//                playback_next.enabled = true;
-//                break;
-//            case "play":
-//                playback_play.icon.name = "media-playback-pause";
-//                playback_previous.enabled = true;
-//                playback_next.enabled = true;
-//                break;
-//            }
-//        }
-//        onSongChange: function (pl_uuid, sg_uuid) {
-//            var info = mpd_connector.getSongInfo(pl_uuid, sg_uuid);
-//            media_title.text = info.title + " | " + info.artist;
-//        }
-//        onQueueStage: function (queue) {
-//            qqueue.queue = queue;
-//        }
+        onDbUpdated: function (state) {
+            if (!!state) {
+                root.message("DB Updated", Kirigami.MessageType.Positive, "dialog-information");
+                //drun.playlists_list.refresh(drun.playlists_group.active);
+            } else {
+                root.message("DB Updating", Kirigami.MessageType.Warning, "dialog-warning");
+            }
+        }
+        //        onStatePlay: function (state) {
+        //            switch (state) {
+        //            case "stop":
+        //                playback_play.icon.name = "media-playback-stop";
+        //                playback_previous.enabled = false;
+        //                playback_next.enabled = false;
+        //                break;
+        //            case "pause":
+        //                playback_play.icon.name = "media-playback-start";
+        //                playback_previous.enabled = true;
+        //                playback_next.enabled = true;
+        //                break;
+        //            case "play":
+        //                playback_play.icon.name = "media-playback-pause";
+        //                playback_previous.enabled = true;
+        //                playback_next.enabled = true;
+        //                break;
+        //            }
+        //        }
+        //        onSongChange: function (pl_uuid, sg_uuid) {
+        //            var info = mpd_connector.getSongInfo(pl_uuid, sg_uuid);
+        //            media_title.text = info.title + " | " + info.artist;
+        //        }
+        //        onQueueStage: function (queue) {
+        //            qqueue.queue = queue;
+        //        }
     }
-//
-//    QQueue {
-//        id: qqueue
-//    }
-//
-//    Connections {
-//        target: drun
-//
-//        function onStagePlaylist(name, group) {
-//            mpd_connector.stageQueue(name, group);
-//        }
-//    }
-//
+    //
+    //    QQueue {
+    //        id: qqueue
+    //    }
+    //
+    //    Connections {
+    //        target: drun
+    //
+    //        function onStagePlaylist(name, group) {
+    //            mpd_connector.stageQueue(name, group);
+    //        }
+    //    }
+    //
     Drun {
         id: drun
         implicitWidth: root.width * 0.8
@@ -218,96 +217,96 @@ Kirigami.ApplicationWindow {
             }
         }
 
-//        ColumnLayout {
-//            anchors.fill: parent
-//
-//            Kirigami.InlineMessage {
-//                id: infoMessage
-//                visible: false
-//                onVisibleChanged: tmr.restart()
-//
-//                Layout.fillWidth: true
-//
-//                Timer {
-//                    id: tmr
-//                    interval: Kirigami.Units.humanMoment / 2
-//                    onTriggered: infoMessage.visible = false
-//                }
-//            }
-//
-//            QQC2.HorizontalHeaderView {
-//                id: queue_hheader
-//
-//                z: 1
-//                Layout.fillWidth: true
-//
-//                syncView: queue_view
-//
-//                delegate: QQC2.TableViewDelegate {
-//                    implicitWidth: columnWidth * queue_view.width
-//
-//                    required property real columnWidth
-//                    required property string columnName
-//
-//                    Kirigami.Heading {
-//                        anchors.fill: parent
-//                        wrapMode: Text.Wrap
-//                        horizontalAlignment: Text.AlignLeft
-//                        text: parent.columnName
-//                        level: 3
-//                    }
-//                }
-//            }
-//
-//            TableView {
-//                id: queue_view
-//                Layout.fillWidth: true
-//                Layout.fillHeight: true
-//
-//                rowSpacing: Kirigami.Units.smallSpacing
-//
-//                model: qqueue
-//
-//                //                                Connections {
-//                //                                    target: control
-//                //                                    function onSongChange(pl_uuid, sg_uuid) {
-//                //                                        qplaylist.setActiveSong(sg_uuid);
-//                //                                    }
-//                //                                }
-//
-//                delegate: QQC2.TableViewDelegate {
-//                    id: queue_delegate
-//                    implicitWidth: columnWidth * queue_view.width
-//
-//                    //required property int column
-//                    required property string cellValue
-//                    required property bool songActive
-//                    required property real columnWidth
-//
-//                    //                                    MouseArea {
-//                    //                                        anchors.fill: parent
-//                    //                                        onDoubleClicked: function () {
-//                    //                                            control.stagePlaylist(itemDelegate.pl_uuid, pli_delegate.sgUuid);
-//                    //                                        }
-//                    //                                    }
-//                    //
-//
-//                    function propagateWidthChange() {
-//                        model.columnWidth = width / parent.width;
-//                    }
-//
-//                    onWidthChanged: Qt.callLater(propagateWidthChange)
-//
-//                    Kirigami.Heading {
-//                        id: song_play_text
-//                        width: parent.width
-//                        horizontalAlignment: Qt.AlignLeft
-//                        text: queue_delegate.cellValue
-//                        elide: Text.ElideRight
-//                        level: 3
-//                    }
-//                }
-//            }
-//        }
+        ColumnLayout {
+            anchors.fill: parent
+
+            Kirigami.InlineMessage {
+                id: infoMessage
+                visible: false
+                onVisibleChanged: tmr.restart()
+
+                Layout.fillWidth: true
+
+                Timer {
+                    id: tmr
+                    interval: Kirigami.Units.humanMoment / 2
+                    onTriggered: infoMessage.visible = false
+                }
+            }
+
+            //            QQC2.HorizontalHeaderView {
+            //                id: queue_hheader
+            //
+            //                z: 1
+            //                Layout.fillWidth: true
+            //
+            //                syncView: queue_view
+            //
+            //                delegate: QQC2.TableViewDelegate {
+            //                    implicitWidth: columnWidth * queue_view.width
+            //
+            //                    required property real columnWidth
+            //                    required property string columnName
+            //
+            //                    Kirigami.Heading {
+            //                        anchors.fill: parent
+            //                        wrapMode: Text.Wrap
+            //                        horizontalAlignment: Text.AlignLeft
+            //                        text: parent.columnName
+            //                        level: 3
+            //                    }
+            //                }
+            //            }
+            //
+            //            TableView {
+            //                id: queue_view
+            //                Layout.fillWidth: true
+            //                Layout.fillHeight: true
+            //
+            //                rowSpacing: Kirigami.Units.smallSpacing
+            //
+            //                model: qqueue
+            //
+            //                //                                Connections {
+            //                //                                    target: control
+            //                //                                    function onSongChange(pl_uuid, sg_uuid) {
+            //                //                                        qplaylist.setActiveSong(sg_uuid);
+            //                //                                    }
+            //                //                                }
+            //
+            //                delegate: QQC2.TableViewDelegate {
+            //                    id: queue_delegate
+            //                    implicitWidth: columnWidth * queue_view.width
+            //
+            //                    //required property int column
+            //                    required property string cellValue
+            //                    required property bool songActive
+            //                    required property real columnWidth
+            //
+            //                    //                                    MouseArea {
+            //                    //                                        anchors.fill: parent
+            //                    //                                        onDoubleClicked: function () {
+            //                    //                                            control.stagePlaylist(itemDelegate.pl_uuid, pli_delegate.sgUuid);
+            //                    //                                        }
+            //                    //                                    }
+            //                    //
+            //
+            //                    function propagateWidthChange() {
+            //                        model.columnWidth = width / parent.width;
+            //                    }
+            //
+            //                    onWidthChanged: Qt.callLater(propagateWidthChange)
+            //
+            //                    Kirigami.Heading {
+            //                        id: song_play_text
+            //                        width: parent.width
+            //                        horizontalAlignment: Qt.AlignLeft
+            //                        text: queue_delegate.cellValue
+            //                        elide: Text.ElideRight
+            //                        level: 3
+            //                    }
+            //                }
+            //            }
+        }
     }
 }

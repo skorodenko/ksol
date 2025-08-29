@@ -15,6 +15,10 @@ pub mod qobject {
         #[cxx_name = "connectionUpdate"]
         fn connection_update(self: Pin<&mut QMPDConnector>, status: QString);
 
+        #[qsignal]
+        #[cxx_name = "dbUpdated"]
+        fn db_updated(self: Pin<&mut QMPDConnector>, status: bool);
+
         #[qinvokable]
         #[cxx_name = "connect"]
         fn connect(self: Pin<&mut QMPDConnector>);
@@ -34,14 +38,14 @@ use crate::rust::settings::{InternalSettings, Settings};
 use core::pin::Pin;
 use cxx_qt::Threading;
 use log;
-use mpd_client::Client;
 use mpd_client::client::{ConnectionEvent, ConnectionEvents, Subsystem};
+use mpd_client::{Client, commands::Update};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::net::TcpStream;
 use tokio::process::Command;
-use tokio::sync::{Mutex, RwLock};
-use tokio::time::{Duration, sleep, timeout};
+use tokio::sync::RwLock;
+use tokio::time::{Duration, sleep};
 use which::which;
 
 #[derive(Default)]
@@ -58,25 +62,33 @@ impl qobject::QMPDConnector {
             loop {
                 let mut mpd_idle = mpd_idle.write().await;
                 match mpd_idle.as_mut().unwrap().next().await {
+                    Some(ConnectionEvent::SubsystemChange(Subsystem::Update)) => {
+                        let _ = qt_thread.queue(|mut qobject| {
+                            let _ = qobject.as_mut().db_updated(true);
+                        });
+                    }
                     Some(e) => println!("Yay {:?}", e),
-                    _ => println!("Shit"),
+                    None => {
+                        log::warn!("Connection lost?");
+                        sleep(Duration::from_millis(300)).await;
+                    }
                 }
-                sleep(Duration::from_millis(10)).await;
+                sleep(Duration::from_millis(50)).await;
             }
         });
     }
 
     pub fn update_db(self: Pin<&mut QMPDConnector>) {
         log::debug!("Updating MPD DB");
-        //        let mutex = self.mpd_client.clone();
-        //        tokio::spawn(async move {
-        //            let mut mpd_client = mutex.lock().await;
-        //            let res = mpd_client.update("".into()).await;
-        //            log::debug!("{:?}", res);
-        //        });
+        let mpd_client = self.client.clone();
+        tokio::spawn(async move {
+            let mpd_client = mpd_client.read().await;
+            let command = Update::new();
+            let _ = mpd_client.as_ref().unwrap().command(command).await;
+        });
     }
 
-    fn start_native_server(self: Pin<&mut Self>, mpd_binary: &PathBuf, native_config: &String) {
+    fn start_native_server(self: Pin<&mut Self>, mpd_binary: &PathBuf, _native_config: &String) {
         log::debug!("Starting native mpd server");
         let cmpd_binary = mpd_binary.clone();
         //let cnative_config = native_config.clone();
@@ -94,12 +106,11 @@ impl qobject::QMPDConnector {
         });
     }
 
-    fn connect_client(self: Pin<&mut Self>, retcount: Option<i32>, timeout: Option<f32>) {
+    fn connect_client(self: Pin<&mut Self>) {
         let mpd_client = self.client.clone();
         let mpd_idle = self.idle.clone();
         let qt_thread = self.qt_thread();
-        let mut retcount = retcount.unwrap_or(5);
-        let timeout = timeout.unwrap_or(1.5);
+        let mut retcount = 5;
         tokio::spawn(async move {
             let state = loop {
                 let settings = Settings::load();
@@ -120,7 +131,7 @@ impl qobject::QMPDConnector {
                             break "disconnected";
                         }
                         log::warn!("Failed to connect: {}", e.to_string());
-                        tokio::time::sleep(tokio::time::Duration::from_secs_f32(timeout)).await;
+                        tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
                     }
                 };
             };
@@ -147,6 +158,6 @@ impl qobject::QMPDConnector {
                 Err(_) => panic!("Using native socket, but no mpd binary was found"),
             };
         }
-        self.connect_client(None, None);
+        self.connect_client();
     }
 }
