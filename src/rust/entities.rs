@@ -1,6 +1,25 @@
+use core::time::Duration;
+use mpd_client::{responses::Song, tag::Tag};
+use num_derive::FromPrimitive;
 use serde;
 use std::fmt::{Display, Formatter, Result};
-use num_derive::FromPrimitive;
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct QSong {
+    pub track: i32,
+    pub disc: i32,
+    pub title: String,
+    pub artist: String,
+    pub album: String,
+    pub date: String,
+    pub genre: String,
+    pub composer: String,
+    pub file: String,
+    pub format: String,
+    pub lastmodified: String,
+    pub duration: Duration,
+    pub directory: String,
+}
 
 #[derive(serde::Deserialize, serde::Serialize, FromPrimitive, Copy, Clone, Debug)]
 #[repr(i32)]
@@ -17,9 +36,40 @@ pub enum SongField {
     File = 10,
     Format = 11,
     Lastmodified = 12,
-    Time = 13,
-    Duration = 14,
-    Directory = 15,
+    Duration = 13,
+    Directory = 14,
+}
+
+impl From<Song> for QSong {
+    fn from(value: Song) -> Self {
+        Self {
+            track: value
+                .tags
+                .get(&Tag::Track)
+                .unwrap()
+                .join(",")
+                .parse()
+                .unwrap_or(0),
+            disc: value
+                .tags
+                .get(&Tag::Disc)
+                .unwrap()
+                .join(",")
+                .parse()
+                .unwrap_or(0),
+            title: value.tags.get(&Tag::Title).unwrap().join(","),
+            artist: value.tags.get(&Tag::Artist).unwrap().join(","),
+            album: value.tags.get(&Tag::Album).unwrap().join(","),
+            date: value.tags.get(&Tag::Date).unwrap().join(","),
+            genre: value.tags.get(&Tag::Genre).unwrap().join(","),
+            composer: value.tags.get(&Tag::Composer).unwrap().join(","),
+            file: value.url,
+            format: value.format.unwrap_or("".into()),
+            lastmodified: "".into(),
+            duration: value.duration.unwrap(),
+            directory: "".into(),
+        }
+    }
 }
 
 impl Display for SongField {
@@ -37,7 +87,6 @@ impl Display for SongField {
             Self::File => write!(f, "File"),
             Self::Format => write!(f, "Format"),
             Self::Lastmodified => write!(f, "Last modified"),
-            Self::Time => write!(f, "Time"),
             Self::Duration => write!(f, "Duration"),
             Self::Directory => write!(f, "Directory"),
         }

@@ -13,6 +13,9 @@ mod qobject {
         include!("cxx-qt-lib/qstring.h");
         type QString = cxx_qt_lib::QString;
 
+        //include!("cxx-qt-lib/qbytearray.h");
+        //type QByteArray = cxx_qt_lib::QByteArray;
+
         include!("cxx-qt-lib/qhash.h");
         type QHash_i32_QByteArray = cxx_qt_lib::QHash<cxx_qt_lib::QHashPair_i32_QByteArray>;
 
@@ -29,8 +32,7 @@ mod qobject {
         #[qobject]
         #[qml_element]
         #[base = QAbstractListModel]
-        #[qproperty(i32, activeGroup, READ = get_active_group, WRITE = set_active_group, NOTIFY = update)]
-        //#[qproperty(QString, filter, READ = get_filter, WRITE = set_filter, NOTIFY = active_group_changed)]
+        #[qproperty(QString, filter, READ = get_filter, WRITE = set_filter, NOTIFY = update)]
         type QPlaylistsListModel = super::PlaylistsListModel;
 
         #[qsignal]
@@ -49,14 +51,14 @@ mod qobject {
         fn data(self: &QPlaylistsListModel, index: &QModelIndex, role: i32) -> QVariant;
 
         #[qinvokable]
-        fn get_active_group(self: &QPlaylistsListModel) -> i32;
+        fn get_filter(self: &QPlaylistsListModel) -> QString;
 
         #[qinvokable]
-        fn set_active_group(self: Pin<&mut QPlaylistsListModel>, value: i32);
+        fn set_filter(self: Pin<&mut QPlaylistsListModel>, value: QString);
     }
 }
 
-use crate::rust::entities::SongField;
+use crate::rust::entities::{QSong, SongField};
 use crate::rust::settings::Settings;
 use bincode::config;
 use bincode::serde::{decode_from_slice, encode_to_vec};
@@ -69,20 +71,20 @@ use qobject::*;
 
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct PlaylistsListModel {
-    pub active_group: SongField,
     pub filter: String,
+    //pub queue: Vec<QSong>,
 }
 
 impl qobject::QPlaylistsListModel {
     pub fn role_names(&self) -> QHash_i32_QByteArray {
         let mut roles = QHash_i32_QByteArray::default();
         roles.insert(QPlaylistsListRoles::Name.repr, "name".into());
-        return roles;
+        roles
     }
 
     pub fn row_count(&self, _index: &QModelIndex) -> i32 {
         let settings = Settings::load();
-        return settings.search_groups.len() as i32;
+        settings.search_groups.len() as i32
     }
 
     pub fn data(&self, index: &QModelIndex, role: i32) -> QVariant {
@@ -90,20 +92,21 @@ impl qobject::QPlaylistsListModel {
         let role = QPlaylistsListRoles { repr: role };
         let sg = settings.search_groups.get(index.row() as usize);
         let sg_name = QString::from(&sg.expect("asdgasdfg").to_string());
-        return match role {
+        match role {
             QPlaylistsListRoles::Name => (&sg_name).into(),
             _ => QVariant::default(),
-        };
+        }
     }
 
-    pub fn get_active_group(&self) -> i32 {
-        self.active_group as i32
+    //fn set_queue(self: Pin<&mut QPlaylistsListModel>, value: QByteArray) {
+    //}
+
+    fn get_filter(self: &QPlaylistsListModel) -> QString {
+        QString::from(&self.filter)
     }
 
-    pub fn set_active_group(mut self: Pin<&mut Self>, value: i32) {
-        let value = SongField::from_i32(value).unwrap();
-        self.as_mut().rust_mut().active_group = value;
-        self.update();
+    fn set_filter(mut self: Pin<&mut QPlaylistsListModel>, value: QString) {
+        self.as_mut().rust_mut().filter = value.into();
     }
 }
 
@@ -136,8 +139,8 @@ impl Default for PlaylistsListModel {
                 val
             }
             None => Self {
-                active_group: SongField::Directory,
                 filter: String::default(),
+                //queue: Vec::default(),
             },
         }
     }

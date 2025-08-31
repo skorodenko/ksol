@@ -23,8 +23,4 @@ tokio = { version = "1.47.1", features = ["full"] }
 mpd_client = "1.4.1"
 
 [build-dependencies]
-# The link_qt_object_files feature is required for statically linking Qt 6.
-#cxx-qt-build = { path = "/home/rinkuro/Sandbox/cxx-qt/crates/cxx-qt-build", features = [
-#    "link_qt_object_files",
-#] }
 cxx-qt-build = { version = "0.7.2", features = ["link_qt_object_files"] }
