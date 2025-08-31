@@ -35,7 +35,7 @@ mod qobject {
 
         #[qsignal]
         #[cxx_name = "activeGroupChanged"]
-        fn active_group_changed(self: Pin<&mut QPlaylistsGroupModel>);
+        fn active_group_changed(self: Pin<&mut QPlaylistsGroupModel>, value: i32);
 
         #[cxx_override]
         #[cxx_name = "roleNames"]
@@ -103,9 +103,9 @@ impl qobject::QPlaylistsGroupModel {
     }
 
     pub fn set_active_group(mut self: Pin<&mut Self>, value: i32) {
-        let value = SongField::from_i32(value).unwrap();
-        self.as_mut().rust_mut().active_group = value;
-        self.active_group_changed();
+        let cvalue = SongField::from_i32(value).unwrap();
+        self.as_mut().rust_mut().active_group = cvalue;
+        self.active_group_changed(value);
     }
 }
 

@@ -92,6 +92,16 @@ Kirigami.ApplicationWindow {
     //        }
     //    }
     //
+
+    Connections {
+        target: drun.playlists_group
+
+        function onActiveGroupChanged(value) {
+            console.log(value);
+            mpd_connector.getPlaylists(value);
+        }
+    }
+
     Drun {
         id: drun
         implicitWidth: root.width * 0.8

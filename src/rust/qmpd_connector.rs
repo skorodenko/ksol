@@ -5,8 +5,8 @@ pub mod qobject {
         include!("cxx-qt-lib/qstring.h");
         type QString = cxx_qt_lib::QString;
 
-        //include!("cxx-qt-lib/qbytearray.h");
-        //type QByteArray = cxx_qt_lib::QByteArray;
+        include!("cxx-qt-lib/qbytearray.h");
+        type QByteArray = cxx_qt_lib::QByteArray;
     }
 
     extern "RustQt" {
@@ -19,6 +19,10 @@ pub mod qobject {
         fn connection_update(self: Pin<&mut QMPDConnector>, status: QString);
 
         #[qsignal]
+        #[cxx_name = "getPlaylistsResult"]
+        fn get_playlists_result(self: Pin<&mut QMPDConnector>, result: QByteArray);
+
+        #[qsignal]
         #[cxx_name = "dbUpdated"]
         fn db_updated(self: Pin<&mut QMPDConnector>, status: bool);
 
@@ -29,6 +33,10 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "updateDb"]
         fn update_db(self: Pin<&mut QMPDConnector>);
+
+        #[qinvokable]
+        #[cxx_name = "getPlaylists"]
+        fn get_playlists(self: Pin<&mut QMPDConnector>, value: i32);
     }
 
     impl cxx_qt::Threading for QMPDConnector {}
@@ -38,11 +46,13 @@ use qobject::*;
 
 use crate::rust::settings::{InternalSettings, Settings};
 
+use crate::rust::entities::SongField;
 use core::pin::Pin;
 use cxx_qt::Threading;
 use log;
 use mpd_client::client::{ConnectionEvent, ConnectionEvents, Subsystem};
-use mpd_client::{Client, commands::Update};
+use mpd_client::{Client, commands::Update, commands::List};
+use num_traits::FromPrimitive;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::net::TcpStream;
@@ -81,10 +91,18 @@ impl qobject::QMPDConnector {
         });
     }
 
-//    pub fn get_playlists(self: Pin<&mut QMPDConnector>, group: i32) -> QByteArray {
-//        let rt = tokio::runtime::Handle::current();
-//        let res = rt.block_on(spawn(async move {}));
-//    }
+    pub fn get_playlists(self: Pin<&mut QMPDConnector>, group: i32) {
+        let group = SongField::from_i32(group);
+        let mpd_client = self.client.clone();
+        tokio::spawn(async move {
+            let mpd_client = mpd_client.read().await;
+            let command = List::new(mpd_client::tag::Tag::Artist);
+            let res = mpd_client.as_ref().unwrap().command(command).await;
+            let res = Vec::from_iter(res.as_ref().unwrap().values());
+            println!("{:?}", res);
+        });
+        //QByteArray::from(bytes);
+    }
 
     pub fn update_db(self: Pin<&mut QMPDConnector>) {
         log::debug!("Updating MPD DB");
@@ -143,7 +161,7 @@ impl qobject::QMPDConnector {
                             break "disconnected";
                         }
                         log::warn!("Failed to connect: {}", e);
-                        tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
+                        tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
                     }
                 };
             };

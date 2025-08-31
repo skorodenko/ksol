@@ -13,8 +13,8 @@ mod qobject {
         include!("cxx-qt-lib/qstring.h");
         type QString = cxx_qt_lib::QString;
 
-        //include!("cxx-qt-lib/qbytearray.h");
-        //type QByteArray = cxx_qt_lib::QByteArray;
+        include!("cxx-qt-lib/qbytearray.h");
+        type QByteArray = cxx_qt_lib::QByteArray;
 
         include!("cxx-qt-lib/qhash.h");
         type QHash_i32_QByteArray = cxx_qt_lib::QHash<cxx_qt_lib::QHashPair_i32_QByteArray>;
@@ -72,7 +72,7 @@ use qobject::*;
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct PlaylistsListModel {
     pub filter: String,
-    //pub queue: Vec<QSong>,
+    pub queue: Vec<QSong>,
 }
 
 impl qobject::QPlaylistsListModel {
@@ -140,7 +140,7 @@ impl Default for PlaylistsListModel {
             }
             None => Self {
                 filter: String::default(),
-                //queue: Vec::default(),
+                queue: Vec::default(),
             },
         }
     }
