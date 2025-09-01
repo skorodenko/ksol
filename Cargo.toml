@@ -21,6 +21,7 @@ num-traits = "0.2"
 num-derive = "0.4"
 tokio = { version = "1.47.1", features = ["full"] }
 mpd_client = "1.4.1"
+regex = "1.11.2"
 
 [build-dependencies]
 cxx-qt-build = { version = "0.7.2", features = ["link_qt_object_files"] }

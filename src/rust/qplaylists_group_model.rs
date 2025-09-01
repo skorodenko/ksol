@@ -77,25 +77,25 @@ impl qobject::QPlaylistsGroupModel {
         let mut roles = QHash_i32_QByteArray::default();
         roles.insert(QPlaylistsGroupRoles::Name.repr, "name".into());
         roles.insert(QPlaylistsGroupRoles::Value.repr, "value".into());
-        return roles;
+        roles
     }
 
     pub fn row_count(&self, _index: &QModelIndex) -> i32 {
         let settings = Settings::load();
-        return settings.search_groups.len() as i32;
+        settings.search_groups.len() as i32
     }
 
     pub fn data(&self, index: &QModelIndex, role: i32) -> QVariant {
         let settings = Settings::load();
         let role = QPlaylistsGroupRoles { repr: role };
         let sg = settings.search_groups.get(index.row() as usize);
-        let sg_name = QString::from(&sg.expect("asdgasdfg").to_string());
+        let sg_name = sg.unwrap().to_string();
         let sg_value = *sg.unwrap() as i32;
-        return match role {
-            QPlaylistsGroupRoles::Name => (&sg_name).into(),
+        match role {
+            QPlaylistsGroupRoles::Name => (&QString::from(sg_name)).into(),
             QPlaylistsGroupRoles::Value => (&sg_value).into(),
             _ => QVariant::default(),
-        };
+        }
     }
 
     pub fn get_active_group(&self) -> i32 {

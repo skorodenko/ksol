@@ -57,7 +57,7 @@ impl Default for Settings {
                 SongField::Directory,
                 SongField::Artist,
                 SongField::Album,
-                SongField::Track,
+                SongField::Genre,
             ],
         }
     }

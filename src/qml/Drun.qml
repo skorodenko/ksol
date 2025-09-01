@@ -18,7 +18,7 @@ QQC2.Popup {
 
     signal stagePlaylist(var name, var group)
 
-    //property alias playlists_list: playlists_list
+    property alias playlists_list: playlists_list
     property alias playlists_group: playlists_group
 
     QPlaylistsGroupModel {
@@ -28,17 +28,17 @@ QQC2.Popup {
         //}
     }
 
-    //    QPlaylistsList {
-    //        id: playlists_list
-    //        filter: search.text
-    //
-    //        onLayoutChanged: function () {
-    //            if (playlists_list.rowCount() > 0) {
-    //                listView.currentIndex = 0;
-    //                listView.forceActiveFocus();
-    //            }
-    //        }
-    //    }
+    QPlaylistsListModel {
+        id: playlists_list
+        filter: search.text
+        //
+        //        onLayoutChanged: function () {
+        //            if (playlists_list.rowCount() > 0) {
+        //                listView.currentIndex = 0;
+        //                listView.forceActiveFocus();
+        //            }
+        //        }
+    }
 
     Shortcut {
         id: drun_open
@@ -170,7 +170,7 @@ QQC2.Popup {
         boundsBehavior: Flickable.StopAtBounds
         boundsMovement: Flickable.StopAtBounds
 
-        //        model: playlists_list
+        model: playlists_list
 
         implicitWidth: Math.min(Kirigami.Units.gridUnit * 20, parent.width)
 
@@ -180,56 +180,56 @@ QQC2.Popup {
             id: scrollbar
             policy: QQC2.ScrollBar.AlwaysOn
         }
-        //
-        //        delegate: Item {
-        //            id: delegateItem
-        //            height: 30
-        //            width: ListView.view.width - scrollbar.width
-        //
-        //            required property string name
-        //            required property int index
-        //
-        //            Keys.onReturnPressed: function () {
-        //                root.stagePlaylist(listView.currentItem.name, playlists_group.active);
-        //                root.visible = false;
-        //            }
-        //
-        //            MouseArea {
-        //                anchors.fill: parent
-        //                acceptedButtons: Qt.LeftButton
-        //
-        //                onClicked: function (mouse) {
-        //                    if (mouse.button == Qt.LeftButton) {
-        //                        listView.currentIndex = delegateItem.index;
-        //                    }
-        //                }
-        //
-        //                onDoubleClicked: function (mouse) {
-        //                    if (mouse.button == Qt.LeftButton) {
-        //                        root.stagePlaylist(delegateItem.name, playlists_group.active);
-        //                        root.visible = false;
-        //                    }
-        //                }
-        //            }
-        //
-        //            QQC2.Label {
-        //                text: parent.name
-        //                font.pixelSize: Kirigami.Theme.defaultFont.pixelSize
-        //                elide: Text.ElideRight
-        //                anchors.rightMargin: Kirigami.Units.largeSpacing
-        //                anchors.leftMargin: Kirigami.Units.largeSpacing
-        //                anchors.verticalCenter: parent.verticalCenter
-        //                anchors.left: parent.left
-        //                anchors.right: parent.right
-        //            }
-        //        }
-        //
-        //        highlight: Rectangle {
-        //            height: 30
-        //            width: ListView.view.width - scrollbar.width
-        //            color: Kirigami.Theme.neutralBackgroundColor
-        //            radius: Kirigami.Units.cornerRadius
-        //        }
+
+        delegate: Item {
+            id: delegateItem
+            height: 30
+            width: ListView.view.width - scrollbar.width
+
+            required property string name
+            required property int index
+
+            Keys.onReturnPressed: function () {
+                root.stagePlaylist(listView.currentItem.name, playlists_group.active);
+                root.visible = false;
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.LeftButton
+
+                onClicked: function (mouse) {
+                    if (mouse.button == Qt.LeftButton) {
+                        listView.currentIndex = delegateItem.index;
+                    }
+                }
+
+                onDoubleClicked: function (mouse) {
+                    if (mouse.button == Qt.LeftButton) {
+                        root.stagePlaylist(delegateItem.name, playlists_group.active);
+                        root.visible = false;
+                    }
+                }
+            }
+
+            QQC2.Label {
+                text: parent.name
+                font.pixelSize: Kirigami.Theme.defaultFont.pixelSize
+                elide: Text.ElideRight
+                anchors.rightMargin: Kirigami.Units.largeSpacing
+                anchors.leftMargin: Kirigami.Units.largeSpacing
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.left: parent.left
+                anchors.right: parent.right
+            }
+        }
+
+        highlight: Rectangle {
+            height: 30
+            width: ListView.view.width - scrollbar.width
+            color: Kirigami.Theme.neutralBackgroundColor
+            radius: Kirigami.Units.cornerRadius
+        }
     }
 
     background: Rectangle {

@@ -72,6 +72,27 @@ impl From<Song> for QSong {
     }
 }
 
+impl From<SongField> for Tag {
+    fn from(val: SongField) -> Self {
+        match val {
+            SongField::Track => Tag::Track,
+            SongField::Disc => Tag::Disc,
+            SongField::Title => Tag::Title,
+            SongField::Artist => Tag::Artist,
+            SongField::Album => Tag::Album,
+            SongField::Date => Tag::Date,
+            SongField::Genre => Tag::Genre,
+            SongField::Composer => Tag::Composer,
+            SongField::Albumartist => Tag::AlbumArtist,
+            SongField::File => Tag::Other("File".into()),
+            SongField::Format => Tag::Other("Format".into()),
+            SongField::Lastmodified => Tag::Other("Lastmodified".into()),
+            SongField::Duration => Tag::Other("Duration".into()),
+            SongField::Directory => Tag::Other("Directory".into()),
+        }
+    }
+}
+
 impl Display for SongField {
     fn fmt(&self, f: &mut Formatter) -> Result {
         match self {

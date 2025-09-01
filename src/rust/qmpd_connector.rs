@@ -47,13 +47,16 @@ use qobject::*;
 use crate::rust::settings::{InternalSettings, Settings};
 
 use crate::rust::entities::SongField;
+use bincode::config;
+use bincode::serde::{decode_from_slice, encode_to_vec};
 use core::pin::Pin;
 use cxx_qt::Threading;
 use log;
 use mpd_client::client::{ConnectionEvent, ConnectionEvents, Subsystem};
-use mpd_client::{Client, commands::Update, commands::List};
+use mpd_client::{Client, commands::List, commands::ListAllIn, commands::Update, tag::Tag};
 use num_traits::FromPrimitive;
-use std::path::PathBuf;
+use std::collections::HashSet;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::net::TcpStream;
 use tokio::process::Command;
@@ -92,16 +95,48 @@ impl qobject::QMPDConnector {
     }
 
     pub fn get_playlists(self: Pin<&mut QMPDConnector>, group: i32) {
-        let group = SongField::from_i32(group);
+        let group = Tag::from(SongField::from_i32(group).unwrap());
         let mpd_client = self.client.clone();
+        let qt_thread = self.qt_thread();
         tokio::spawn(async move {
             let mpd_client = mpd_client.read().await;
-            let command = List::new(mpd_client::tag::Tag::Artist);
-            let res = mpd_client.as_ref().unwrap().command(command).await;
-            let res = Vec::from_iter(res.as_ref().unwrap().values());
-            println!("{:?}", res);
+            let mut result: Vec<String> = match group {
+                Tag::Other(value) if value == "Directory".into() => {
+                    let command = ListAllIn::root();
+                    let res = mpd_client.as_ref().unwrap().command(command).await.unwrap();
+                    res.iter()
+                        .map(|x| {
+                            x.file_path()
+                                .parent()
+                                .unwrap_or(Path::new("Root"))
+                                .to_str()
+                                .unwrap()
+                                .to_string()
+                        })
+                        .collect::<HashSet<_>>()
+                        .into_iter()
+                        .collect()
+                }
+                _ => {
+                    let command = List::new(group);
+                    mpd_client
+                        .as_ref()
+                        .unwrap()
+                        .command(command)
+                        .await
+                        .unwrap()
+                        .values()
+                        .map(|x| x.to_string())
+                        .collect()
+                }
+            };
+            result.sort();
+            let bcode: &[u8] = &encode_to_vec(result, config::standard()).unwrap();
+            let bcode = QByteArray::from(bcode);
+            let _ = qt_thread.queue(|mut qobject| {
+                qobject.as_mut().get_playlists_result(bcode);
+            });
         });
-        //QByteArray::from(bytes);
     }
 
     pub fn update_db(self: Pin<&mut QMPDConnector>) {

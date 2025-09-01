@@ -52,6 +52,9 @@ Kirigami.ApplicationWindow {
                 root.message("DB Updating", Kirigami.MessageType.Warning, "dialog-warning");
             }
         }
+        onGetPlaylistsResult: function (value) {
+            drun.playlists_list.setQueue(value);
+        }
         //        onStatePlay: function (state) {
         //            switch (state) {
         //            case "stop":
@@ -97,7 +100,6 @@ Kirigami.ApplicationWindow {
         target: drun.playlists_group
 
         function onActiveGroupChanged(value) {
-            console.log(value);
             mpd_connector.getPlaylists(value);
         }
     }
