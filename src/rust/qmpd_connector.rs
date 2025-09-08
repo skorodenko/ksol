@@ -23,6 +23,10 @@ pub mod qobject {
         fn get_playlists_result(self: Pin<&mut QMPDConnector>, result: QByteArray);
 
         #[qsignal]
+        #[cxx_name = "stagePlaylistResult"]
+        fn stage_playlist_result(self: Pin<&mut QMPDConnector>, result: QByteArray);
+
+        #[qsignal]
         #[cxx_name = "dbUpdated"]
         fn db_updated(self: Pin<&mut QMPDConnector>, status: bool);
 
@@ -37,6 +41,10 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "getPlaylists"]
         fn get_playlists(self: Pin<&mut QMPDConnector>, value: i32);
+
+        #[qinvokable]
+        #[cxx_name = "stagePlaylist"]
+        fn stage_playlist(self: Pin<&mut QMPDConnector>, name: QString, group: i32);
     }
 
     impl cxx_qt::Threading for QMPDConnector {}
@@ -45,15 +53,17 @@ pub mod qobject {
 use qobject::*;
 
 use crate::rust::settings::{InternalSettings, Settings};
-
-use crate::rust::entities::SongField;
+use crate::rust::entities::{QSong, SongField};
 use bincode::config;
 use bincode::serde::{decode_from_slice, encode_to_vec};
 use core::pin::Pin;
 use cxx_qt::Threading;
 use log;
 use mpd_client::client::{ConnectionEvent, ConnectionEvents, Subsystem};
-use mpd_client::{Client, commands::List, commands::ListAllIn, commands::Update, tag::Tag};
+use mpd_client::{
+    Client, commands::Find, commands::List, commands::ListAllIn, commands::Update, filter::Filter,
+    responses::Song, tag::Tag,
+};
 use num_traits::FromPrimitive;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -86,10 +96,10 @@ impl qobject::QMPDConnector {
                     Some(e) => println!("Yay {:?}", e),
                     None => {
                         log::warn!("Connection lost");
-                        sleep(Duration::from_millis(300)).await;
+                        sleep(Duration::from_millis(500)).await;
                     }
                 }
-                sleep(Duration::from_millis(50)).await;
+                sleep(Duration::from_millis(100)).await;
             }
         });
     }
@@ -135,6 +145,43 @@ impl qobject::QMPDConnector {
             let bcode = QByteArray::from(bcode);
             let _ = qt_thread.queue(|mut qobject| {
                 qobject.as_mut().get_playlists_result(bcode);
+            });
+        });
+    }
+
+    fn stage_playlist(self: Pin<&mut QMPDConnector>, name: QString, group: i32) {
+        let tag = Tag::from(SongField::from_i32(group).unwrap());
+        let name = String::from(name);
+        let mpd_client = self.client.clone();
+        let qt_thread = self.qt_thread();
+        tokio::spawn(async move {
+            let mpd_client = mpd_client.read().await;
+            let result: Vec<Song> = match tag {
+                Tag::Other(value) if value == "Directory".into() => {
+                    let command = ListAllIn::directory(&name);
+                    mpd_client
+                        .as_ref()
+                        .unwrap()
+                        .command(command)
+                        .await
+                        .unwrap_or(Vec::default())
+                }
+                _ => {
+                    let filter = Filter::tag(tag, name);
+                    let command = Find::new(filter);
+                    mpd_client
+                        .as_ref()
+                        .unwrap()
+                        .command(command)
+                        .await
+                        .unwrap_or(Vec::default())
+                }
+            };
+            let result: Vec<QSong> = result.into_iter().map(QSong::from).collect();
+            let bcode: &[u8] = &encode_to_vec(result, config::standard()).unwrap();
+            let bcode = QByteArray::from(bcode);
+            let _ = qt_thread.queue(|mut qobject| {
+                qobject.as_mut().stage_playlist_result(bcode);
             });
         });
     }

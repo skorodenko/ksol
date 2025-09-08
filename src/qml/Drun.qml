@@ -12,32 +12,29 @@ QQC2.Popup {
 
     onVisibleChanged: {
         search.text = "";
-        //listView.currentIndex = 0;
+        listView.currentIndex = 0;
         listView.forceActiveFocus();
     }
 
-    signal stagePlaylist(var name, var group)
+    signal stagePlaylist(string name, int group)
 
     property alias playlists_list: playlists_list
     property alias playlists_group: playlists_group
 
     QPlaylistsGroupModel {
         id: playlists_group
-        //onGroupChanged: function () {
-        //    playlists_list.refresh(playlists_group.active);
-        //}
     }
 
     QPlaylistsListModel {
         id: playlists_list
         filter: search.text
-        //
-        //        onLayoutChanged: function () {
-        //            if (playlists_list.rowCount() > 0) {
-        //                listView.currentIndex = 0;
-        //                listView.forceActiveFocus();
-        //            }
-        //        }
+
+        onLayoutChanged: function () {
+            if (playlists_list.rowCount() > 0) {
+                listView.currentIndex = 0;
+                listView.forceActiveFocus();
+            }
+        }
     }
 
     Shortcut {
@@ -190,8 +187,8 @@ QQC2.Popup {
             required property int index
 
             Keys.onReturnPressed: function () {
-                root.stagePlaylist(listView.currentItem.name, playlists_group.active);
                 root.visible = false;
+                root.stagePlaylist(listView.currentItem.name, playlists_group.activeGroup);
             }
 
             MouseArea {
@@ -206,8 +203,8 @@ QQC2.Popup {
 
                 onDoubleClicked: function (mouse) {
                     if (mouse.button == Qt.LeftButton) {
-                        root.stagePlaylist(delegateItem.name, playlists_group.active);
                         root.visible = false;
+                        root.stagePlaylist(delegateItem.name, playlists_group.activeGroup);
                     }
                 }
             }

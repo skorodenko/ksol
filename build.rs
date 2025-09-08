@@ -8,6 +8,8 @@ fn main() {
                 "src/rust/qmpd_connector.rs",
                 "src/rust/qplaylists_group_model.rs",
                 "src/rust/qplaylists_list_model.rs",
+                "src/rust/qplaylist_model.rs",
+                "src/rust/qt.rs",
             ],
             qml_files: &[
                 "src/qml/Main.qml",

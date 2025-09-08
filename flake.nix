@@ -30,11 +30,13 @@
               clang
               qt6.full
               kdePackages.qtdeclarative
+              #              kdePackages.kirigami
               llvmPackages.bintools
               rust-analyzer
               rust-bin.beta.latest.default
             ];
             shellHook = ''
+              export QML_IMPORT_PATH=$NIXPKGS_QT6_QML_IMPORT_PATH
               export QMAKE=qmake6
               export RUST_LOG=DEBUG
             '';

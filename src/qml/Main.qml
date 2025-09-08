@@ -55,6 +55,9 @@ Kirigami.ApplicationWindow {
         onGetPlaylistsResult: function (value) {
             drun.playlists_list.setQueue(value);
         }
+        onStagePlaylistResult: function (value) {
+            qplaylist.setQueue(value);
+        }
         //        onStatePlay: function (state) {
         //            switch (state) {
         //            case "stop":
@@ -78,23 +81,19 @@ Kirigami.ApplicationWindow {
         //            var info = mpd_connector.getSongInfo(pl_uuid, sg_uuid);
         //            media_title.text = info.title + " | " + info.artist;
         //        }
-        //        onQueueStage: function (queue) {
-        //            qqueue.queue = queue;
-        //        }
     }
-    //
-    //    QQueue {
-    //        id: qqueue
-    //    }
-    //
-    //    Connections {
-    //        target: drun
-    //
-    //        function onStagePlaylist(name, group) {
-    //            mpd_connector.stageQueue(name, group);
-    //        }
-    //    }
-    //
+
+    QPlaylistModel {
+        id: qplaylist
+    }
+
+    Connections {
+        target: drun
+
+        function onStagePlaylist(name, group) {
+            mpd_connector.stagePlaylist(name, group);
+        }
+    }
 
     Connections {
         target: drun.playlists_group
@@ -246,79 +245,79 @@ Kirigami.ApplicationWindow {
                 }
             }
 
-            //            QQC2.HorizontalHeaderView {
-            //                id: queue_hheader
-            //
-            //                z: 1
-            //                Layout.fillWidth: true
-            //
-            //                syncView: queue_view
-            //
-            //                delegate: QQC2.TableViewDelegate {
-            //                    implicitWidth: columnWidth * queue_view.width
-            //
-            //                    required property real columnWidth
-            //                    required property string columnName
-            //
-            //                    Kirigami.Heading {
-            //                        anchors.fill: parent
-            //                        wrapMode: Text.Wrap
-            //                        horizontalAlignment: Text.AlignLeft
-            //                        text: parent.columnName
-            //                        level: 3
-            //                    }
-            //                }
-            //            }
-            //
-            //            TableView {
-            //                id: queue_view
-            //                Layout.fillWidth: true
-            //                Layout.fillHeight: true
-            //
-            //                rowSpacing: Kirigami.Units.smallSpacing
-            //
-            //                model: qqueue
-            //
-            //                //                                Connections {
-            //                //                                    target: control
-            //                //                                    function onSongChange(pl_uuid, sg_uuid) {
-            //                //                                        qplaylist.setActiveSong(sg_uuid);
-            //                //                                    }
-            //                //                                }
-            //
-            //                delegate: QQC2.TableViewDelegate {
-            //                    id: queue_delegate
-            //                    implicitWidth: columnWidth * queue_view.width
-            //
-            //                    //required property int column
-            //                    required property string cellValue
-            //                    required property bool songActive
-            //                    required property real columnWidth
-            //
-            //                    //                                    MouseArea {
-            //                    //                                        anchors.fill: parent
-            //                    //                                        onDoubleClicked: function () {
-            //                    //                                            control.stagePlaylist(itemDelegate.pl_uuid, pli_delegate.sgUuid);
-            //                    //                                        }
-            //                    //                                    }
-            //                    //
-            //
-            //                    function propagateWidthChange() {
-            //                        model.columnWidth = width / parent.width;
-            //                    }
-            //
-            //                    onWidthChanged: Qt.callLater(propagateWidthChange)
-            //
-            //                    Kirigami.Heading {
-            //                        id: song_play_text
-            //                        width: parent.width
-            //                        horizontalAlignment: Qt.AlignLeft
-            //                        text: queue_delegate.cellValue
-            //                        elide: Text.ElideRight
-            //                        level: 3
-            //                    }
-            //                }
-            //            }
+            QQC2.HorizontalHeaderView {
+                id: qplaylist_header
+
+                z: 1
+                Layout.fillWidth: true
+
+                syncView: qplaylist_view
+                textRole: "columnName"
+
+                delegate: QQC2.TableViewDelegate {
+                    implicitWidth: columnWidth * qplaylist_view.width
+
+                    required property real columnWidth
+                    required property string columnName
+
+                    Kirigami.Heading {
+                        anchors.fill: parent
+                        wrapMode: Text.Wrap
+                        horizontalAlignment: Text.AlignLeft
+                        text: parent.columnName
+                        level: 3
+                    }
+                }
+            }
+
+            TableView {
+                id: qplaylist_view
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+
+                rowSpacing: Kirigami.Units.smallSpacing
+
+                model: qplaylist
+
+                //                                Connections {
+                //                                    target: control
+                //                                    function onSongChange(pl_uuid, sg_uuid) {
+                //                                        qplaylist.setActiveSong(sg_uuid);
+                //                                    }
+                //                                }
+
+                delegate: QQC2.TableViewDelegate {
+                    id: queue_delegate
+                    implicitWidth: columnWidth * qplaylist_view.width
+
+                    //required property int column
+                    required property string songName
+                    required property real columnWidth
+
+                    //                                    MouseArea {
+                    //                                        anchors.fill: parent
+                    //                                        onDoubleClicked: function () {
+                    //                                            control.stagePlaylist(itemDelegate.pl_uuid, pli_delegate.sgUuid);
+                    //                                        }
+                    //                                    }
+                    //
+
+                    function propagateWidthChange() {
+                        model.columnWidth = width / parent.width;
+                    }
+
+                    onWidthChanged: Qt.callLater(propagateWidthChange)
+
+                    Kirigami.Heading {
+                        id: song_play_text
+                        width: parent.width
+                        horizontalAlignment: Qt.AlignLeft
+                        text: queue_delegate.songName
+                        elide: Text.ElideRight
+                        level: 3
+                    }
+                }
+            }
         }
     }
 }

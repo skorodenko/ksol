@@ -71,7 +71,7 @@ mod qobject {
         fn set_queue(self: Pin<&mut QPlaylistsListModel>, value: QByteArray);
     }
 
-    impl cxx_qt::Constructor<()> for QPlaylistsListModel {}
+    impl cxx_qt::Initialize for QPlaylistsListModel {}
 }
 
 use bincode::config;
@@ -174,8 +174,10 @@ impl cxx_qt::Initialize for qobject::QPlaylistsListModel {
                 .build()
                 .unwrap();
             qobject.as_mut().layout_about_to_be_changed();
-            qobject.as_mut().rust_mut().queue_proxy = queue.into_iter().filter(|x| pattern.is_match(x)).collect();
+            qobject.as_mut().rust_mut().queue_proxy =
+                queue.into_iter().filter(|x| pattern.is_match(x)).collect();
             qobject.as_mut().layout_changed();
-        }).release();
+        })
+        .release();
     }
 }

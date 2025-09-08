@@ -1,36 +1,38 @@
 use core::time::Duration;
+use imstr::ImString;
 use mpd_client::{responses::Song, tag::Tag};
 use num_derive::FromPrimitive;
 use serde;
 use std::fmt::{Display, Formatter, Result};
+use strum::EnumIter;
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Copy, Clone)]
 pub struct QSong {
     pub track: i32,
     pub disc: i32,
-    pub title: String,
-    pub artist: String,
-    pub album: String,
-    pub date: String,
-    pub genre: String,
-    pub composer: String,
-    pub file: String,
-    pub format: String,
-    pub lastmodified: String,
+    pub title: ImString,
+    pub artist: ImString,
+    pub album: ImString,
+    pub date: ImString,
+    pub genre: ImString,
+    pub composer: ImString,
+    pub file: ImString,
+    pub format: ImString,
+    pub lastmodified: ImString,
     pub duration: Duration,
-    pub directory: String,
+    pub directory: ImString,
 }
 
-#[derive(serde::Deserialize, serde::Serialize, FromPrimitive, Copy, Clone, Debug)]
+#[derive(serde::Deserialize, serde::Serialize, EnumIter, FromPrimitive, Copy, Clone, Debug)]
 #[repr(i32)]
 pub enum SongField {
     Track = 1,
-    Disc = 2,
-    Title = 3,
-    Artist = 4,
-    Album = 5,
-    Date = 6,
-    Genre = 7,
+    Title = 2,
+    Artist = 3,
+    Album = 4,
+    Date = 5,
+    Genre = 6,
+    Disc = 7,
     Composer = 8,
     Albumartist = 9,
     File = 10,
@@ -46,27 +48,27 @@ impl From<Song> for QSong {
             track: value
                 .tags
                 .get(&Tag::Track)
-                .unwrap()
+                .unwrap_or(&vec![])
                 .join(",")
                 .parse()
                 .unwrap_or(0),
             disc: value
                 .tags
                 .get(&Tag::Disc)
-                .unwrap()
+                .unwrap_or(&vec![])
                 .join(",")
                 .parse()
                 .unwrap_or(0),
-            title: value.tags.get(&Tag::Title).unwrap().join(","),
-            artist: value.tags.get(&Tag::Artist).unwrap().join(","),
-            album: value.tags.get(&Tag::Album).unwrap().join(","),
-            date: value.tags.get(&Tag::Date).unwrap().join(","),
-            genre: value.tags.get(&Tag::Genre).unwrap().join(","),
-            composer: value.tags.get(&Tag::Composer).unwrap().join(","),
+            title: value.tags.get(&Tag::Title).unwrap_or(&vec![]).join(","),
+            artist: value.tags.get(&Tag::Artist).unwrap_or(&vec![]).join(","),
+            album: value.tags.get(&Tag::Album).unwrap_or(&vec![]).join(","),
+            date: value.tags.get(&Tag::Date).unwrap_or(&vec![]).join(","),
+            genre: value.tags.get(&Tag::Genre).unwrap_or(&vec![]).join(","),
+            composer: value.tags.get(&Tag::Composer).unwrap_or(&vec![]).join(","),
             file: value.url,
             format: value.format.unwrap_or("".into()),
             lastmodified: "".into(),
-            duration: value.duration.unwrap(),
+            duration: value.duration.unwrap_or_default(),
             directory: "".into(),
         }
     }
