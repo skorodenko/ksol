@@ -27,10 +27,10 @@
           with pkgs;
           mkShell {
             buildInputs = [
+              mpd
               clang
               qt6.full
               kdePackages.qtdeclarative
-              #              kdePackages.kirigami
               llvmPackages.bintools
               rust-analyzer
               rust-bin.beta.latest.default

@@ -254,20 +254,20 @@ Kirigami.ApplicationWindow {
                 syncView: qplaylist_view
                 textRole: "columnName"
 
-                delegate: QQC2.TableViewDelegate {
-                    implicitWidth: columnWidth * qplaylist_view.width
-
-                    required property real columnWidth
-                    required property string columnName
-
-                    Kirigami.Heading {
-                        anchors.fill: parent
-                        wrapMode: Text.Wrap
-                        horizontalAlignment: Text.AlignLeft
-                        text: parent.columnName
-                        level: 3
-                    }
-                }
+//                delegate: QQC2.TableViewDelegate {
+//                    implicitWidth: 1/15 * qplaylist_view.width
+//
+//                    //required property real columnWidth
+//                    required property string columnName
+//
+//                    Kirigami.Heading {
+//                        anchors.fill: parent
+//                        wrapMode: Text.Wrap
+//                        horizontalAlignment: Text.AlignLeft
+//                        text: parent.columnName
+//                        level: 3
+//                    }
+//                }
             }
 
             TableView {
@@ -288,11 +288,10 @@ Kirigami.ApplicationWindow {
 
                 delegate: QQC2.TableViewDelegate {
                     id: queue_delegate
-                    implicitWidth: columnWidth * qplaylist_view.width
+                    implicitWidth: 1/15 * qplaylist_view.width
 
-                    //required property int column
-                    required property string songName
-                    required property real columnWidth
+                    required property string songDisplay
+                    //required property real columnWidth
 
                     //                                    MouseArea {
                     //                                        anchors.fill: parent
@@ -302,17 +301,17 @@ Kirigami.ApplicationWindow {
                     //                                    }
                     //
 
-                    function propagateWidthChange() {
-                        model.columnWidth = width / parent.width;
-                    }
+                    //function propagateWidthChange() {
+                    //    model.columnWidth = width / parent.width;
+                    //}
 
-                    onWidthChanged: Qt.callLater(propagateWidthChange)
+                    //onWidthChanged: Qt.callLater(propagateWidthChange)
 
                     Kirigami.Heading {
                         id: song_play_text
                         width: parent.width
                         horizontalAlignment: Qt.AlignLeft
-                        text: queue_delegate.songName
+                        text: queue_delegate.songDisplay
                         elide: Text.ElideRight
                         level: 3
                     }

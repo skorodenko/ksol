@@ -1,12 +1,9 @@
 #[cxx_qt::bridge]
 mod qobject {
-    extern "C++Qt" {
-        include!(<QAbstractListModel>);
-        #[qobject]
-        type QAbstractListModel;
-    }
-
     extern "C++" {
+        include!(<QAbstractListModel>);
+        type QAbstractListModel;
+
         include!("cxx-qt-lib/qvariant.h");
         type QVariant = cxx_qt_lib::QVariant;
 
@@ -46,7 +43,6 @@ mod qobject {
         type QPlaylistsListModel = super::PlaylistsListModel;
 
         #[qsignal]
-        #[cxx_name = "update"]
         fn update(self: Pin<&mut QPlaylistsListModel>);
 
         #[cxx_override]

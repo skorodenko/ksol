@@ -89,6 +89,7 @@ impl qobject::QMPDConnector {
                 let mut mpd_idle = mpd_idle.write().await;
                 match mpd_idle.as_mut().unwrap().next().await {
                     Some(ConnectionEvent::SubsystemChange(Subsystem::Database)) => {
+                        println!("Database");
                         let _ = qt_thread.queue(|mut qobject| {
                             qobject.as_mut().db_updated(true);
                         });
@@ -230,6 +231,7 @@ impl qobject::QMPDConnector {
                 let mut mpd_idle = mpd_idle.write().await;
                 match TcpStream::connect(&settings.mpd_socket).await {
                     Ok(connection) => {
+                        println!("{:?}", connection);
                         let mpd_connection = Client::connect(connection).await.unwrap();
                         mpd_client.replace(mpd_connection.0);
                         mpd_idle.replace(mpd_connection.1);
@@ -267,7 +269,7 @@ impl qobject::QMPDConnector {
                     self.as_mut()
                         .start_native_server(&v, &isettings.native_config);
                 }
-                Err(_) => panic!("Using native socket, but no mpd binary was found"),
+                Err(err) => panic!("Using native socket, but no mpd binary was found, {:?}", err),
             };
         }
         self.connect_client();

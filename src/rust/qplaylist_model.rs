@@ -1,12 +1,9 @@
 #[cxx_qt::bridge]
 mod qobject {
-    extern "C++Qt" {
-        include!(<QAbstractListModel>);
-        #[qobject]
-        type QAbstractListModel;
-    }
+    unsafe extern "C++" {
+        include!(<QAbstractTableModel>);
+        type QAbstractTableModel;
 
-    extern "C++" {
         include!("cxx-qt-lib/qvariant.h");
         type QVariant = cxx_qt_lib::QVariant;
 
@@ -24,38 +21,27 @@ mod qobject {
     }
 
     #[namespace = "Qt"]
-    extern "C++" {
+    unsafe extern "C++" {
         include!("cxx-qt-lib/qt.h");
         type Orientation = crate::rust::qt::Orientation;
     }
 
     #[qenum(QPlaylistModel)]
     enum QPlaylistRoles {
-        SongName,
+        SongDisplay,
         SongActive,
         ColumnWidth,
         ColumnName,
     }
 
     unsafe extern "RustQt" {
-        #[inherit]
-        #[cxx_name = "beginResetModel"]
-        fn begin_reset_model(self: Pin<&mut QPlaylistModel>);
-
-        #[inherit]
-        #[cxx_name = "endResetModel"]
-        fn end_reset_model(self: Pin<&mut QPlaylistModel>);
-    }
-
-    extern "RustQt" {
         #[qobject]
         #[qml_element]
-        #[base = QAbstractListModel]
+        #[base = QAbstractTableModel]
         #[qproperty(QString, filter, READ = get_filter, WRITE = set_filter, NOTIFY = update)]
         type QPlaylistModel = super::PlaylistModel;
 
         #[qsignal]
-        #[cxx_name = "update"]
         fn update(self: Pin<&mut QPlaylistModel>);
 
         #[cxx_override]
@@ -83,6 +69,7 @@ mod qobject {
         ) -> QVariant;
 
         #[qinvokable]
+        #[cxx_virtual]
         #[cxx_name = "setQueue"]
         fn set_queue(self: Pin<&mut QPlaylistModel>, value: QByteArray);
 
@@ -91,9 +78,26 @@ mod qobject {
 
         #[qinvokable]
         fn set_filter(self: Pin<&mut QPlaylistModel>, value: QString);
+
+        #[inherit]
+        #[cxx_name = "beginResetModel"]
+        fn begin_reset_model(self: Pin<&mut QPlaylistModel>);
+
+        #[inherit]
+        #[cxx_name = "endResetModel"]
+        fn end_reset_model(self: Pin<&mut QPlaylistModel>);
+
+        #[inherit]
+        #[cxx_name = "layoutAboutToBeChanged"]
+        fn layout_about_to_be_changed(self: Pin<&mut QPlaylistModel>);
+
+        #[inherit]
+        #[cxx_name = "layoutChanged"]
+        fn layout_changed(self: Pin<&mut QPlaylistModel>);
     }
 
     impl cxx_qt::Initialize for QPlaylistModel {}
+    impl cxx_qt::Threading for QPlaylistModel {}
 }
 
 use qobject::*;
@@ -103,6 +107,7 @@ use bincode::config;
 use bincode::serde::{decode_from_slice, encode_to_vec};
 use core::pin::Pin;
 use cxx_qt::CxxQtType;
+use cxx_qt::Threading;
 use num_traits::FromPrimitive;
 use regex::RegexBuilder;
 use strum::IntoEnumIterator;
@@ -118,7 +123,7 @@ pub struct PlaylistModel {
 impl qobject::QPlaylistModel {
     pub fn role_names(&self) -> QHash_i32_QByteArray {
         let mut roles = QHash_i32_QByteArray::default();
-        roles.insert(QPlaylistRoles::SongName.repr, "songName".into());
+        roles.insert(QPlaylistRoles::SongDisplay.repr, "songDisplay".into());
         roles.insert(QPlaylistRoles::SongActive.repr, "songActive".into());
         roles.insert(QPlaylistRoles::ColumnName.repr, "columnName".into());
         roles.insert(QPlaylistRoles::ColumnWidth.repr, "columnWidth".into());
@@ -130,34 +135,62 @@ impl qobject::QPlaylistModel {
     }
 
     pub fn column_count(&self, _index: &QModelIndex) -> i32 {
-        self.column_width
-            .clone()
-            .into_iter()
-            .filter(|x| *x != 0.0)
-            .count() as i32
+        self.column_width.len() as i32
     }
 
     pub fn data(&self, index: &QModelIndex, role: i32) -> QVariant {
         let role = QPlaylistRoles { repr: role };
-        //let name = self.queue_proxy.get(index.row() as usize).unwrap();
         match role {
-            _ => QVariant::from(&QString::from("TEST".to_string())),
+            QPlaylistRoles::SongDisplay => {
+                let row = index.row() as usize;
+                let column = index.column();
+                let sf = SongField::from_i32(column).unwrap();
+                let qsong: QSong = self.queue_proxy.get(row).unwrap().clone();
+                let field: String = match sf {
+                    SongField::Track => format!("{}", qsong.track),
+                    SongField::Title => qsong.title,
+                    SongField::Artist => qsong.artist,
+                    SongField::Album => qsong.album,
+                    SongField::Date => format!("{}", qsong.date),
+                    SongField::Genre => qsong.genre,
+                    SongField::Disc => format!("{}", qsong.disc),
+                    SongField::Composer => qsong.composer,
+                    SongField::Albumartist => String::default(),
+                    SongField::File => qsong.file,
+                    SongField::Format => qsong.format,
+                    SongField::Lastmodified => qsong.lastmodified,
+                    SongField::Duration => format!("{}", qsong.duration.as_secs_f32()),
+                    SongField::Directory => qsong.directory,
+                };
+                QVariant::from(&QString::from(field))
+            }
+            QPlaylistRoles::ColumnWidth => {
+                let column = index.column() as usize;
+                QVariant::from(&self.column_width[column])
+            }
+            _ => QVariant::default(),
         }
     }
 
     pub fn header_data(&self, section: i32, orientation: Orientation, role: i32) -> QVariant {
         let role = QPlaylistRoles { repr: role };
-        //let name = self.queue_proxy.get(index.row() as usize).unwrap();
         match role {
-            _ => QVariant::from(&QString::from("TEST".to_string())),
+            QPlaylistRoles::ColumnName if orientation == Orientation::Horizontal => {
+                let sf = SongField::from_i32(section).unwrap();
+                QVariant::from(&QString::from(format!("{}", sf)))
+            }
+            _ => QVariant::default(),
         }
     }
 
     pub fn set_queue(mut self: Pin<&mut QPlaylistModel>, value: QByteArray) {
         let (value, _): (Vec<QSong>, usize) =
             decode_from_slice(value.as_slice(), config::standard()).unwrap();
-        self.as_mut().rust_mut().queue = value;
-        //self.as_mut().update();
+        self.as_mut().begin_reset_model();
+        self.as_mut().rust_mut().queue = value.clone();
+        self.as_mut().rust_mut().queue_proxy = value;
+        self.as_mut().end_reset_model();
+        self.as_mut().update();
     }
 
     pub fn get_filter(self: &QPlaylistModel) -> QString {
@@ -202,7 +235,7 @@ impl Default for PlaylistModel {
                 filter: String::default(),
                 queue: Vec::default(),
                 queue_proxy: Vec::default(),
-                column_width: SongField::iter().map(|_| 1.0).collect(),
+                column_width: SongField::iter().map(|_| 1_f32 / 14_f32).collect(), //FIX calculated max enum
             },
         }
     }
@@ -217,12 +250,11 @@ impl cxx_qt::Initialize for qobject::QPlaylistModel {
             //    .case_insensitive(true)
             //    .build()
             //    .unwrap();
-            qobject.as_mut().begin_reset_model();
-            println!("{:?}", queue);
+            qobject.as_mut().layout_about_to_be_changed();
             qobject.as_mut().rust_mut().queue_proxy = queue;
             //qobject.as_mut().rust_mut().queue_proxy =
             //    queue.into_iter().filter(|x| pattern.is_match(x)).collect();
-            qobject.as_mut().end_reset_model();
+            qobject.as_mut().layout_changed();
         })
         .release();
     }

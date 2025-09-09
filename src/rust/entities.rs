@@ -1,45 +1,44 @@
 use core::time::Duration;
-use imstr::ImString;
 use mpd_client::{responses::Song, tag::Tag};
 use num_derive::FromPrimitive;
 use serde;
 use std::fmt::{Display, Formatter, Result};
 use strum::EnumIter;
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Copy, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct QSong {
     pub track: i32,
+    pub title: String,
+    pub artist: String,
+    pub album: String,
+    pub date: String,
+    pub genre: String,
     pub disc: i32,
-    pub title: ImString,
-    pub artist: ImString,
-    pub album: ImString,
-    pub date: ImString,
-    pub genre: ImString,
-    pub composer: ImString,
-    pub file: ImString,
-    pub format: ImString,
-    pub lastmodified: ImString,
+    pub composer: String,
+    pub file: String,
+    pub format: String,
+    pub lastmodified: String,
     pub duration: Duration,
-    pub directory: ImString,
+    pub directory: String,
 }
 
 #[derive(serde::Deserialize, serde::Serialize, EnumIter, FromPrimitive, Copy, Clone, Debug)]
 #[repr(i32)]
 pub enum SongField {
-    Track = 1,
-    Title = 2,
-    Artist = 3,
-    Album = 4,
-    Date = 5,
-    Genre = 6,
-    Disc = 7,
-    Composer = 8,
-    Albumartist = 9,
-    File = 10,
-    Format = 11,
-    Lastmodified = 12,
-    Duration = 13,
-    Directory = 14,
+    Track = 0,
+    Title = 1,
+    Artist = 2,
+    Album = 3,
+    Date = 4,
+    Genre = 5,
+    Disc = 6,
+    Composer = 7,
+    Albumartist = 8,
+    File = 9,
+    Format = 10,
+    Lastmodified = 11,
+    Duration = 12,
+    Directory = 13,
 }
 
 impl From<Song> for QSong {
