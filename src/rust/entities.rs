@@ -3,6 +3,7 @@ use mpd_client::{responses::Song, tag::Tag};
 use num_derive::FromPrimitive;
 use serde;
 use std::fmt::{Display, Formatter, Result};
+use std::path::Path;
 use strum::EnumIter;
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
@@ -64,11 +65,11 @@ impl From<Song> for QSong {
             date: value.tags.get(&Tag::Date).unwrap_or(&vec![]).join(","),
             genre: value.tags.get(&Tag::Genre).unwrap_or(&vec![]).join(","),
             composer: value.tags.get(&Tag::Composer).unwrap_or(&vec![]).join(","),
-            file: value.url,
+            file: value.url.clone(),
             format: value.format.unwrap_or("".into()),
             lastmodified: "".into(),
             duration: value.duration.unwrap_or_default(),
-            directory: "".into(),
+            directory: Path::new(&value.url).parent().unwrap_or(Path::new("Root")).to_str().unwrap().to_string(),
         }
     }
 }

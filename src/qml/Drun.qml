@@ -187,8 +187,7 @@ QQC2.Popup {
             required property int index
 
             Keys.onReturnPressed: function () {
-                root.close();
-                //root.visible = false;
+                root.visible = false;
                 root.stagePlaylist(listView.currentItem.name, playlists_group.activeGroup);
             }
 
@@ -204,8 +203,7 @@ QQC2.Popup {
 
                 onDoubleClicked: function (mouse) {
                     if (mouse.button == Qt.LeftButton) {
-                        root.close();
-                        //root.visible = false;
+                        root.visible = false;
                         root.stagePlaylist(delegateItem.name, playlists_group.activeGroup);
                     }
                 }

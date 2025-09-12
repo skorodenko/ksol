@@ -12,10 +12,6 @@ Kirigami.ApplicationWindow {
     pageStack.initialPage: mainPage
 
     Component.onCompleted: mpd_connector.connect()
-    //    Component.onDestruction: {
-    //        mpd_connector.disconnect();
-    //        qqueue.free();
-    //    }
 
     function message(message, type, iconName = null) {
         infoMessage.visible = false;
@@ -30,7 +26,7 @@ Kirigami.ApplicationWindow {
         onConnectionUpdate: function (state) {
             switch (state) {
             case "connected":
-                //drun.playlists_list.refresh(drun.playlists_group.active);
+                drun.playlists_list.update();
                 connectionStateLabel.text = "Connected";
                 connectionStateLabelBackground.color = Kirigami.Theme.positiveBackgroundColor;
                 break;
@@ -47,7 +43,7 @@ Kirigami.ApplicationWindow {
         onDbUpdated: function (state) {
             if (!!state) {
                 root.message("DB Updated", Kirigami.MessageType.Positive, "dialog-information");
-                //drun.playlists_list.refresh(drun.playlists_group.active);
+                drun.playlists_list.update();
             } else {
                 root.message("DB Updating", Kirigami.MessageType.Warning, "dialog-warning");
             }
@@ -85,6 +81,12 @@ Kirigami.ApplicationWindow {
 
     QPlaylistModel {
         id: qplaylist
+        onLayoutChanged: function () {
+            if (qplaylist.rowCount() > 0) {
+                qplaylist_view.currentIndex = 0;
+                qplaylist_view.forceActiveFocus();
+            }
+        }
     }
 
     Connections {
@@ -253,21 +255,6 @@ Kirigami.ApplicationWindow {
 
                 syncView: qplaylist_view
                 textRole: "columnName"
-
-//                delegate: QQC2.TableViewDelegate {
-//                    implicitWidth: 1/15 * qplaylist_view.width
-//
-//                    //required property real columnWidth
-//                    required property string columnName
-//
-//                    Kirigami.Heading {
-//                        anchors.fill: parent
-//                        wrapMode: Text.Wrap
-//                        horizontalAlignment: Text.AlignLeft
-//                        text: parent.columnName
-//                        level: 3
-//                    }
-//                }
             }
 
             TableView {
@@ -288,7 +275,7 @@ Kirigami.ApplicationWindow {
 
                 delegate: QQC2.TableViewDelegate {
                     id: queue_delegate
-                    implicitWidth: 1/15 * qplaylist_view.width
+                    implicitWidth: 1 / 15 * qplaylist_view.width
 
                     required property string songDisplay
                     //required property real columnWidth

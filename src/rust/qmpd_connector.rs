@@ -52,8 +52,8 @@ pub mod qobject {
 
 use qobject::*;
 
-use crate::rust::settings::{InternalSettings, Settings};
 use crate::rust::entities::{QSong, SongField};
+use crate::rust::settings::{InternalSettings, Settings};
 use bincode::config;
 use bincode::serde::{decode_from_slice, encode_to_vec};
 use core::pin::Pin;
@@ -61,8 +61,8 @@ use cxx_qt::Threading;
 use log;
 use mpd_client::client::{ConnectionEvent, ConnectionEvents, Subsystem};
 use mpd_client::{
-    Client, commands::Find, commands::List, commands::ListAllIn, commands::Update, filter::Filter,
-    responses::Song, tag::Tag,
+    Client, commands::Add, commands::ClearQueue, commands::Find, commands::List,
+    commands::ListAllIn, commands::Update, filter::Filter, responses::Song, tag::Tag,
 };
 use num_traits::FromPrimitive;
 use std::collections::HashSet;
@@ -97,6 +97,10 @@ impl qobject::QMPDConnector {
                     Some(e) => println!("Yay {:?}", e),
                     None => {
                         log::warn!("Connection lost");
+                        let _ = qt_thread.queue(|mut qobject| {
+                            qobject.as_mut().connection_update("disconnected".into());
+                            qobject.as_mut().idle();
+                        });
                         sleep(Duration::from_millis(500)).await;
                     }
                 }
@@ -150,35 +154,34 @@ impl qobject::QMPDConnector {
         });
     }
 
-    fn stage_playlist(self: Pin<&mut QMPDConnector>, name: QString, group: i32) {
+    pub fn stage_playlist(self: Pin<&mut QMPDConnector>, name: QString, group: i32) {
         let tag = Tag::from(SongField::from_i32(group).unwrap());
         let name = String::from(name);
         let mpd_client = self.client.clone();
         let qt_thread = self.qt_thread();
         tokio::spawn(async move {
-            let mpd_client = mpd_client.read().await;
+            let read = mpd_client.read().await;
+            let mpd_client = read.as_ref().unwrap();
+            // Query playlist
             let result: Vec<Song> = match tag {
                 Tag::Other(value) if value == "Directory".into() => {
                     let command = ListAllIn::directory(&name);
-                    mpd_client
-                        .as_ref()
-                        .unwrap()
-                        .command(command)
-                        .await
-                        .unwrap_or(Vec::default())
+                    mpd_client.command(command).await.unwrap_or(Vec::default())
                 }
                 _ => {
                     let filter = Filter::tag(tag, name);
                     let command = Find::new(filter);
-                    mpd_client
-                        .as_ref()
-                        .unwrap()
-                        .command(command)
-                        .await
-                        .unwrap_or(Vec::default())
+                    mpd_client.command(command).await.unwrap_or(Vec::default())
                 }
             };
             let result: Vec<QSong> = result.into_iter().map(QSong::from).collect();
+            // Clear current queue
+            let clear_command = ClearQueue;
+            let _ = mpd_client.command(clear_command).await;
+            // Populate new queue
+            let add_commands: Vec<Add> = result.iter().map(|x| Add::uri(x.file.as_str())).collect();
+            let _ = mpd_client.command_list(add_commands).await.unwrap();
+            // Propagate playlist to other components
             let bcode: &[u8] = &encode_to_vec(result, config::standard()).unwrap();
             let bcode = QByteArray::from(bcode);
             let _ = qt_thread.queue(|mut qobject| {
@@ -231,7 +234,6 @@ impl qobject::QMPDConnector {
                 let mut mpd_idle = mpd_idle.write().await;
                 match TcpStream::connect(&settings.mpd_socket).await {
                     Ok(connection) => {
-                        println!("{:?}", connection);
                         let mpd_connection = Client::connect(connection).await.unwrap();
                         mpd_client.replace(mpd_connection.0);
                         mpd_idle.replace(mpd_connection.1);
@@ -269,7 +271,10 @@ impl qobject::QMPDConnector {
                     self.as_mut()
                         .start_native_server(&v, &isettings.native_config);
                 }
-                Err(err) => panic!("Using native socket, but no mpd binary was found, {:?}", err),
+                Err(err) => panic!(
+                    "Using native socket, but no mpd binary was found, {:?}",
+                    err
+                ),
             };
         }
         self.connect_client();

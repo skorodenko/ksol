@@ -151,7 +151,7 @@ impl qobject::QPlaylistModel {
                     SongField::Title => qsong.title,
                     SongField::Artist => qsong.artist,
                     SongField::Album => qsong.album,
-                    SongField::Date => format!("{}", qsong.date),
+                    SongField::Date => qsong.date.to_string(),
                     SongField::Genre => qsong.genre,
                     SongField::Disc => format!("{}", qsong.disc),
                     SongField::Composer => qsong.composer,
