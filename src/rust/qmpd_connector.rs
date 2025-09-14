@@ -19,6 +19,14 @@ pub mod qobject {
         fn connection_update(self: Pin<&mut QMPDConnector>, status: QString);
 
         #[qsignal]
+        #[cxx_name = "playStateChanged"]
+        fn play_state_changed(self: Pin<&mut QMPDConnector>, status: QString);
+
+        #[qsignal]
+        #[cxx_name = "timelineUpdate"]
+        fn timeline_update(self: Pin<&mut QMPDConnector>, duration: u64, elapsed: u64);
+
+        #[qsignal]
         #[cxx_name = "getPlaylistsResult"]
         fn get_playlists_result(self: Pin<&mut QMPDConnector>, result: QByteArray);
 
@@ -33,6 +41,22 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "connect"]
         fn connect(self: Pin<&mut QMPDConnector>);
+
+        #[qinvokable]
+        #[cxx_name = "playSong"]
+        fn play_song(self: Pin<&mut QMPDConnector>, id: u64);
+
+        #[qinvokable]
+        #[cxx_name = "playToggle"]
+        fn play_toggle(self: Pin<&mut QMPDConnector>);
+
+        #[qinvokable]
+        #[cxx_name = "playNext"]
+        fn play_next(self: Pin<&mut QMPDConnector>);
+
+        #[qinvokable]
+        #[cxx_name = "playPrevious"]
+        fn play_previous(self: Pin<&mut QMPDConnector>);
 
         #[qinvokable]
         #[cxx_name = "updateDb"]
@@ -61,8 +85,7 @@ use cxx_qt::Threading;
 use log;
 use mpd_client::client::{ConnectionEvent, ConnectionEvents, Subsystem};
 use mpd_client::{
-    Client, commands::Add, commands::ClearQueue, commands::Find, commands::List,
-    commands::ListAllIn, commands::Update, filter::Filter, responses::Song, tag::Tag,
+    Client, commands, filter::Filter, responses::PlayState, responses::Song, tag::Tag,
 };
 use num_traits::FromPrimitive;
 use std::collections::HashSet;
@@ -83,15 +106,40 @@ pub struct MPDConnector {
 impl qobject::QMPDConnector {
     fn idle(self: Pin<&mut Self>) {
         let mpd_idle = self.idle.clone();
+        let mpd_client = self.client.clone();
         let qt_thread = self.qt_thread();
         tokio::spawn(async move {
             loop {
                 let mut mpd_idle = mpd_idle.write().await;
                 match mpd_idle.as_mut().unwrap().next().await {
                     Some(ConnectionEvent::SubsystemChange(Subsystem::Database)) => {
-                        println!("Database");
                         let _ = qt_thread.queue(|mut qobject| {
                             qobject.as_mut().db_updated(true);
+                        });
+                    }
+                    Some(ConnectionEvent::SubsystemChange(Subsystem::Queue)) => {
+                        log::debug!("Server queue changed");
+                        // Propagate playlist to other components
+                        let read = mpd_client.read().await;
+                        let mpd_client = read.as_ref().unwrap();
+                        let command = commands::Queue::all();
+                        let result = mpd_client.command(command).await.unwrap();
+                        let result: Vec<QSong> = result.into_iter().map(QSong::from).collect();
+                        let bcode: &[u8] = &encode_to_vec(result, config::standard()).unwrap();
+                        let bcode = QByteArray::from(bcode);
+                        let _ = qt_thread.queue(|mut qobject| {
+                            qobject.as_mut().stage_playlist_result(bcode);
+                        });
+                    }
+                    Some(ConnectionEvent::SubsystemChange(Subsystem::Player)) => {
+                        log::debug!("Server player changed");
+                        let read = mpd_client.read().await;
+                        let mpd_client = read.as_ref().unwrap();
+                        let command = commands::Status;
+                        let result = mpd_client.command(command).await.unwrap();
+                        let play_state = QString::from(format!("{:#?}", result.state));
+                        let _ = qt_thread.queue(|mut qobject| {
+                            qobject.as_mut().play_state_changed(play_state);
                         });
                     }
                     Some(e) => println!("Yay {:?}", e),
@@ -109,16 +157,54 @@ impl qobject::QMPDConnector {
         });
     }
 
+    fn init_ui(self: Pin<&mut Self>) {
+        let mpd_client = self.client.clone();
+        let qt_thread = self.qt_thread();
+        tokio::spawn(async move {
+            let read = mpd_client.read().await;
+            let mpd_client = read.as_ref().unwrap();
+            let command = commands::Status;
+            let result = mpd_client.command(command).await.unwrap();
+            let play_state = QString::from(format!("{:#?}", result.state));
+            let _ = qt_thread.queue(|mut qobject| {
+                qobject.as_mut().play_state_changed(play_state);
+                qobject.as_mut().start_timeline();
+            });
+        });
+    }
+
+    fn start_timeline(self: Pin<&mut Self>) {
+        let mpd_client = self.client.clone();
+        let qt_thread = self.qt_thread();
+        tokio::spawn(async move {
+            loop {
+                let read = mpd_client.read().await;
+                let mpd_client = read.as_ref().unwrap();
+                let command = commands::Status;
+                let status = mpd_client.command(command).await.unwrap();
+                let duration = status.duration.unwrap_or(Duration::new(0, 0));
+                let elapsed = status.elapsed.unwrap_or(Duration::new(0, 0));
+                let _ = qt_thread.queue(move |mut qobject| {
+                    qobject
+                        .as_mut()
+                        .timeline_update(duration.as_secs(), elapsed.as_secs());
+                });
+                sleep(Duration::from_millis(200)).await;
+            }
+        });
+    }
+
     pub fn get_playlists(self: Pin<&mut QMPDConnector>, group: i32) {
         let group = Tag::from(SongField::from_i32(group).unwrap());
         let mpd_client = self.client.clone();
         let qt_thread = self.qt_thread();
         tokio::spawn(async move {
-            let mpd_client = mpd_client.read().await;
+            let read = mpd_client.read().await;
+            let mpd_client = read.as_ref().unwrap();
             let mut result: Vec<String> = match group {
                 Tag::Other(value) if value == "Directory".into() => {
-                    let command = ListAllIn::root();
-                    let res = mpd_client.as_ref().unwrap().command(command).await.unwrap();
+                    let command = commands::ListAllIn::root();
+                    let res = mpd_client.command(command).await.unwrap();
                     res.iter()
                         .map(|x| {
                             x.file_path()
@@ -133,10 +219,8 @@ impl qobject::QMPDConnector {
                         .collect()
                 }
                 _ => {
-                    let command = List::new(group);
+                    let command = commands::List::new(group);
                     mpd_client
-                        .as_ref()
-                        .unwrap()
                         .command(command)
                         .await
                         .unwrap()
@@ -158,35 +242,30 @@ impl qobject::QMPDConnector {
         let tag = Tag::from(SongField::from_i32(group).unwrap());
         let name = String::from(name);
         let mpd_client = self.client.clone();
-        let qt_thread = self.qt_thread();
         tokio::spawn(async move {
             let read = mpd_client.read().await;
             let mpd_client = read.as_ref().unwrap();
             // Query playlist
             let result: Vec<Song> = match tag {
                 Tag::Other(value) if value == "Directory".into() => {
-                    let command = ListAllIn::directory(&name);
+                    let command = commands::ListAllIn::directory(&name);
                     mpd_client.command(command).await.unwrap_or(Vec::default())
                 }
                 _ => {
                     let filter = Filter::tag(tag, name);
-                    let command = Find::new(filter);
+                    let command = commands::Find::new(filter);
                     mpd_client.command(command).await.unwrap_or(Vec::default())
                 }
             };
-            let result: Vec<QSong> = result.into_iter().map(QSong::from).collect();
             // Clear current queue
-            let clear_command = ClearQueue;
+            let clear_command = commands::ClearQueue;
             let _ = mpd_client.command(clear_command).await;
             // Populate new queue
-            let add_commands: Vec<Add> = result.iter().map(|x| Add::uri(x.file.as_str())).collect();
+            let add_commands: Vec<commands::Add> = result
+                .iter()
+                .map(|x| commands::Add::uri(x.url.as_str()))
+                .collect();
             let _ = mpd_client.command_list(add_commands).await.unwrap();
-            // Propagate playlist to other components
-            let bcode: &[u8] = &encode_to_vec(result, config::standard()).unwrap();
-            let bcode = QByteArray::from(bcode);
-            let _ = qt_thread.queue(|mut qobject| {
-                qobject.as_mut().stage_playlist_result(bcode);
-            });
         });
     }
 
@@ -196,7 +275,7 @@ impl qobject::QMPDConnector {
         let qt_thread = self.qt_thread();
         tokio::spawn(async move {
             let mpd_client = mpd_client.read().await;
-            let command = Update::new();
+            let command = commands::Update::new();
             let _ = mpd_client.as_ref().unwrap().command(command).await;
             let _ = qt_thread.queue(|mut qobject| {
                 qobject.as_mut().db_updated(false);
@@ -254,6 +333,7 @@ impl qobject::QMPDConnector {
             let _ = qt_thread.queue(|mut qobject| {
                 qobject.as_mut().connection_update(state.into());
                 qobject.as_mut().idle();
+                qobject.as_mut().init_ui();
             });
         });
     }
@@ -278,5 +358,59 @@ impl qobject::QMPDConnector {
             };
         }
         self.connect_client();
+    }
+
+    pub fn play_toggle(self: Pin<&mut Self>) {
+        let mpd_client = self.client.clone();
+        tokio::spawn(async move {
+            let read = mpd_client.read().await;
+            let mpd_client = read.as_ref().unwrap();
+            let command = commands::Status;
+            let result = mpd_client.command(command).await.unwrap();
+            match result.state {
+                PlayState::Paused => {
+                    let command = commands::SetPause(false);
+                    mpd_client.command(command).await.unwrap();
+                }
+                PlayState::Playing => {
+                    let command = commands::SetPause(true);
+                    mpd_client.command(command).await.unwrap();
+                }
+                PlayState::Stopped => {
+                    let command = commands::Play::current();
+                    mpd_client.command(command).await.unwrap();
+                }
+            }
+        });
+    }
+
+    pub fn play_song(self: Pin<&mut Self>, id: u64) {
+        let mpd_client = self.client.clone();
+        tokio::spawn(async move {
+            let read = mpd_client.read().await;
+            let mpd_client = read.as_ref().unwrap();
+            let command = commands::Play::song(commands::SongId::from(id));
+            mpd_client.command(command).await.unwrap();
+        });
+    }
+
+    pub fn play_next(self: Pin<&mut Self>) {
+        let mpd_client = self.client.clone();
+        tokio::spawn(async move {
+            let read = mpd_client.read().await;
+            let mpd_client = read.as_ref().unwrap();
+            let command = commands::Next;
+            let _ = mpd_client.command(command).await;
+        });
+    }
+
+    pub fn play_previous(self: Pin<&mut Self>) {
+        let mpd_client = self.client.clone();
+        tokio::spawn(async move {
+            let read = mpd_client.read().await;
+            let mpd_client = read.as_ref().unwrap();
+            let command = commands::Previous;
+            let _ = mpd_client.command(command).await;
+        });
     }
 }

@@ -54,25 +54,35 @@ Kirigami.ApplicationWindow {
         onStagePlaylistResult: function (value) {
             qplaylist.setQueue(value);
         }
-        //        onStatePlay: function (state) {
-        //            switch (state) {
-        //            case "stop":
-        //                playback_play.icon.name = "media-playback-stop";
-        //                playback_previous.enabled = false;
-        //                playback_next.enabled = false;
-        //                break;
-        //            case "pause":
-        //                playback_play.icon.name = "media-playback-start";
-        //                playback_previous.enabled = true;
-        //                playback_next.enabled = true;
-        //                break;
-        //            case "play":
-        //                playback_play.icon.name = "media-playback-pause";
-        //                playback_previous.enabled = true;
-        //                playback_next.enabled = true;
-        //                break;
-        //            }
-        //        }
+        onPlayStateChanged: function (state) {
+            switch (state) {
+            case "":
+            case "Stopped":
+                playback_play.icon.name = "media-playback-stop";
+                playback_previous.enabled = false;
+                playback_next.enabled = false;
+                break;
+            case "Paused":
+                playback_play.icon.name = "media-playback-start";
+                playback_previous.enabled = true;
+                playback_next.enabled = true;
+                break;
+            case "Playing":
+                playback_play.icon.name = "media-playback-pause";
+                playback_previous.enabled = true;
+                playback_next.enabled = true;
+                break;
+            }
+        }
+        onTimelineUpdate: function (duration, elapsed) {
+            media_seeker.to = duration;
+            media_seeker.value = elapsed;
+            var efm = Math.trunc(elapsed / 60).toString().padStart(2, '0');
+            var efs = Math.floor(elapsed % 60).toString().padStart(2, '0');
+            var dfm = Math.trunc(duration / 60).toString().padStart(2, '0');
+            var dfs = Math.floor(duration % 60).toString().padStart(2, '0');
+            media_duration.text = `${efm}:${efs} / ${dfm}:${dfs}`;
+        }
         //        onSongChange: function (pl_uuid, sg_uuid) {
         //            var info = mpd_connector.getSongInfo(pl_uuid, sg_uuid);
         //            media_title.text = info.title + " | " + info.artist;
@@ -175,6 +185,7 @@ Kirigami.ApplicationWindow {
                     RowLayout {
                         QQC2.Slider {
                             id: media_seeker
+                            from: 0
                             Layout.fillWidth: true
                         }
                     }
@@ -275,18 +286,18 @@ Kirigami.ApplicationWindow {
 
                 delegate: QQC2.TableViewDelegate {
                     id: queue_delegate
-                    implicitWidth: 1 / 15 * qplaylist_view.width
+                    implicitWidth: 1 / 14 * qplaylist_view.width
 
                     required property string songDisplay
+                    required property string songId
                     //required property real columnWidth
 
-                    //                                    MouseArea {
-                    //                                        anchors.fill: parent
-                    //                                        onDoubleClicked: function () {
-                    //                                            control.stagePlaylist(itemDelegate.pl_uuid, pli_delegate.sgUuid);
-                    //                                        }
-                    //                                    }
-                    //
+                    MouseArea {
+                        anchors.fill: parent
+                        onDoubleClicked: function () {
+                            mpd_connector.playSong(parent.songId);
+                        }
+                    }
 
                     //function propagateWidthChange() {
                     //    model.columnWidth = width / parent.width;

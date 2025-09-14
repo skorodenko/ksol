@@ -1,5 +1,5 @@
 use core::time::Duration;
-use mpd_client::{responses::Song, tag::Tag};
+use mpd_client::{responses::SongInQueue, tag::Tag};
 use num_derive::FromPrimitive;
 use serde;
 use std::fmt::{Display, Formatter, Result};
@@ -8,6 +8,7 @@ use strum::EnumIter;
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct QSong {
+    pub id: u64,
     pub track: i32,
     pub title: String,
     pub artist: String,
@@ -42,34 +43,36 @@ pub enum SongField {
     Directory = 13,
 }
 
-impl From<Song> for QSong {
-    fn from(value: Song) -> Self {
+impl From<SongInQueue> for QSong {
+    fn from(value: SongInQueue) -> Self {
+        let song = value.song;
         Self {
-            track: value
+            id: value.id.0,
+            track: song
                 .tags
                 .get(&Tag::Track)
                 .unwrap_or(&vec![])
                 .join(",")
                 .parse()
                 .unwrap_or(0),
-            disc: value
+            disc: song
                 .tags
                 .get(&Tag::Disc)
                 .unwrap_or(&vec![])
                 .join(",")
                 .parse()
                 .unwrap_or(0),
-            title: value.tags.get(&Tag::Title).unwrap_or(&vec![]).join(","),
-            artist: value.tags.get(&Tag::Artist).unwrap_or(&vec![]).join(","),
-            album: value.tags.get(&Tag::Album).unwrap_or(&vec![]).join(","),
-            date: value.tags.get(&Tag::Date).unwrap_or(&vec![]).join(","),
-            genre: value.tags.get(&Tag::Genre).unwrap_or(&vec![]).join(","),
-            composer: value.tags.get(&Tag::Composer).unwrap_or(&vec![]).join(","),
-            file: value.url.clone(),
-            format: value.format.unwrap_or("".into()),
+            title: song.tags.get(&Tag::Title).unwrap_or(&vec![]).join(","),
+            artist: song.tags.get(&Tag::Artist).unwrap_or(&vec![]).join(","),
+            album: song.tags.get(&Tag::Album).unwrap_or(&vec![]).join(","),
+            date: song.tags.get(&Tag::Date).unwrap_or(&vec![]).join(","),
+            genre: song.tags.get(&Tag::Genre).unwrap_or(&vec![]).join(","),
+            composer: song.tags.get(&Tag::Composer).unwrap_or(&vec![]).join(","),
+            file: song.url.clone(),
+            format: song.format.unwrap_or("".into()),
             lastmodified: "".into(),
-            duration: value.duration.unwrap_or_default(),
-            directory: Path::new(&value.url).parent().unwrap_or(Path::new("Root")).to_str().unwrap().to_string(),
+            duration: song.duration.unwrap_or_default(),
+            directory: Path::new(&song.url).parent().unwrap_or(Path::new("Root")).to_str().unwrap().to_string(),
         }
     }
 }

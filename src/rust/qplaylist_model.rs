@@ -30,6 +30,7 @@ mod qobject {
     enum QPlaylistRoles {
         SongDisplay,
         SongActive,
+        SongId,
         ColumnWidth,
         ColumnName,
     }
@@ -125,6 +126,7 @@ impl qobject::QPlaylistModel {
         let mut roles = QHash_i32_QByteArray::default();
         roles.insert(QPlaylistRoles::SongDisplay.repr, "songDisplay".into());
         roles.insert(QPlaylistRoles::SongActive.repr, "songActive".into());
+        roles.insert(QPlaylistRoles::SongId.repr, "songId".into());
         roles.insert(QPlaylistRoles::ColumnName.repr, "columnName".into());
         roles.insert(QPlaylistRoles::ColumnWidth.repr, "columnWidth".into());
         roles
@@ -163,6 +165,11 @@ impl qobject::QPlaylistModel {
                     SongField::Directory => qsong.directory,
                 };
                 QVariant::from(&QString::from(field))
+            }
+            QPlaylistRoles::SongId => {
+                let row = index.row() as usize;
+                let qsong: QSong = self.queue_proxy.get(row).unwrap().clone();
+                QVariant::from(&qsong.id)
             }
             QPlaylistRoles::ColumnWidth => {
                 let column = index.column() as usize;
@@ -235,7 +242,7 @@ impl Default for PlaylistModel {
                 filter: String::default(),
                 queue: Vec::default(),
                 queue_proxy: Vec::default(),
-                column_width: SongField::iter().map(|_| 1_f32 / 14_f32).collect(), //FIX calculated max enum
+                column_width: SongField::iter().map(|_| 1_f32 / 13_f32).collect(), //FIX calculated max enum
             },
         }
     }
