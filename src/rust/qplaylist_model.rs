@@ -28,9 +28,9 @@ mod qobject {
 
     #[qenum(QPlaylistModel)]
     enum QPlaylistRoles {
+        SongId,
         SongDisplay,
         SongActive,
-        SongId,
         ColumnWidth,
         ColumnName,
     }
@@ -40,6 +40,7 @@ mod qobject {
         #[qml_element]
         #[base = QAbstractTableModel]
         #[qproperty(QString, filter, READ = get_filter, WRITE = set_filter, NOTIFY = update)]
+        #[qproperty(u64, active_song_id, cxx_name="activeSongId", READ, WRITE, NOTIFY = update)]
         type QPlaylistModel = super::PlaylistModel;
 
         #[qsignal]
@@ -119,14 +120,15 @@ pub struct PlaylistModel {
     pub queue: Vec<QSong>,
     queue_proxy: Vec<QSong>,
     pub column_width: Vec<f32>,
+    pub active_song_id: u64,
 }
 
 impl qobject::QPlaylistModel {
     pub fn role_names(&self) -> QHash_i32_QByteArray {
         let mut roles = QHash_i32_QByteArray::default();
+        roles.insert(QPlaylistRoles::SongId.repr, "songId".into());
         roles.insert(QPlaylistRoles::SongDisplay.repr, "songDisplay".into());
         roles.insert(QPlaylistRoles::SongActive.repr, "songActive".into());
-        roles.insert(QPlaylistRoles::SongId.repr, "songId".into());
         roles.insert(QPlaylistRoles::ColumnName.repr, "columnName".into());
         roles.insert(QPlaylistRoles::ColumnWidth.repr, "columnWidth".into());
         roles
@@ -171,10 +173,6 @@ impl qobject::QPlaylistModel {
                 let qsong: QSong = self.queue_proxy.get(row).unwrap().clone();
                 QVariant::from(&qsong.id)
             }
-            QPlaylistRoles::ColumnWidth => {
-                let column = index.column() as usize;
-                QVariant::from(&self.column_width[column])
-            }
             _ => QVariant::default(),
         }
     }
@@ -185,6 +183,10 @@ impl qobject::QPlaylistModel {
             QPlaylistRoles::ColumnName if orientation == Orientation::Horizontal => {
                 let sf = SongField::from_i32(section).unwrap();
                 QVariant::from(&QString::from(format!("{}", sf)))
+            }
+            QPlaylistRoles::ColumnWidth => {
+                let column = section as usize;
+                QVariant::from(&self.column_width[column])
             }
             _ => QVariant::default(),
         }
@@ -243,6 +245,7 @@ impl Default for PlaylistModel {
                 queue: Vec::default(),
                 queue_proxy: Vec::default(),
                 column_width: SongField::iter().map(|_| 1_f32 / 13_f32).collect(), //FIX calculated max enum
+                active_song_id: 0,
             },
         }
     }

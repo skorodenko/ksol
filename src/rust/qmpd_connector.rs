@@ -23,6 +23,10 @@ pub mod qobject {
         fn play_state_changed(self: Pin<&mut QMPDConnector>, status: QString);
 
         #[qsignal]
+        #[cxx_name = "activeSongChanged"]
+        fn active_song_changed(self: Pin<&mut QMPDConnector>, song_id: u64);
+
+        #[qsignal]
         #[cxx_name = "timelineUpdate"]
         fn timeline_update(self: Pin<&mut QMPDConnector>, duration: u64, elapsed: u64);
 
@@ -138,8 +142,10 @@ impl qobject::QMPDConnector {
                         let command = commands::Status;
                         let result = mpd_client.command(command).await.unwrap();
                         let play_state = QString::from(format!("{:#?}", result.state));
-                        let _ = qt_thread.queue(|mut qobject| {
+                        let song_id = result.current_song.unwrap().1.0;
+                        let _ = qt_thread.queue(move |mut qobject| {
                             qobject.as_mut().play_state_changed(play_state);
+                            qobject.as_mut().active_song_changed(song_id);
                         });
                     }
                     Some(e) => println!("Yay {:?}", e),
@@ -152,7 +158,7 @@ impl qobject::QMPDConnector {
                         sleep(Duration::from_millis(500)).await;
                     }
                 }
-                sleep(Duration::from_millis(100)).await;
+                //sleep(Duration::from_millis(100)).await;
             }
         });
     }
@@ -189,7 +195,7 @@ impl qobject::QMPDConnector {
                         .as_mut()
                         .timeline_update(duration.as_secs(), elapsed.as_secs());
                 });
-                sleep(Duration::from_millis(200)).await;
+                sleep(Duration::from_millis(750)).await;
             }
         });
     }

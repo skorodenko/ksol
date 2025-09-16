@@ -83,6 +83,9 @@ Kirigami.ApplicationWindow {
             var dfs = Math.floor(duration % 60).toString().padStart(2, '0');
             media_duration.text = `${efm}:${efs} / ${dfm}:${dfs}`;
         }
+        onActiveSongChanged: function (songId) {
+            qplaylist.activeSongId = songId;
+        }
         //        onSongChange: function (pl_uuid, sg_uuid) {
         //            var info = mpd_connector.getSongInfo(pl_uuid, sg_uuid);
         //            media_title.text = info.title + " | " + info.artist;
@@ -289,7 +292,7 @@ Kirigami.ApplicationWindow {
                     implicitWidth: 1 / 14 * qplaylist_view.width
 
                     required property string songDisplay
-                    required property string songId
+                    required property int songId
                     //required property real columnWidth
 
                     MouseArea {
@@ -299,19 +302,20 @@ Kirigami.ApplicationWindow {
                         }
                     }
 
-                    //function propagateWidthChange() {
-                    //    model.columnWidth = width / parent.width;
-                    //}
+                    Rectangle {
+                        anchors.fill: parent
+                        visible: qplaylist.activeSongId === parent.songId
+                        color: Kirigami.Theme.neutralBackgroundColor
+                    }
 
-                    //onWidthChanged: Qt.callLater(propagateWidthChange)
-
-                    Kirigami.Heading {
+                    Text {
                         id: song_play_text
                         width: parent.width
                         horizontalAlignment: Qt.AlignLeft
+                        color: Kirigami.Theme.textColor
+                        //text: qplaylist.activeSongId === parent.songId ? "Test" : queue_delegate.songDisplay
                         text: queue_delegate.songDisplay
                         elide: Text.ElideRight
-                        level: 3
                     }
                 }
             }
