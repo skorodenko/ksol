@@ -5,8 +5,7 @@ use cxx_qt_lib_extras::QApplication;
 use log::{LevelFilter, debug};
 use std::env;
 
-#[tokio::main]
-async fn main() {
+fn main() {
     env_logger::builder()
         .filter_level(LevelFilter::Debug)
         .init();
