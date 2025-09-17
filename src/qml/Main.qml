@@ -95,10 +95,10 @@ Kirigami.ApplicationWindow {
     QPlaylistModel {
         id: qplaylist
         onLayoutChanged: function () {
-            if (qplaylist.rowCount() > 0) {
-                qplaylist_view.currentIndex = 0;
-                qplaylist_view.forceActiveFocus();
-            }
+            //if (qplaylist.rowCount() > 0) {
+                //qplaylist_view.currentIndex = 0;
+                //qplaylist_view.forceActiveFocus();
+            //}
         }
     }
 
@@ -176,7 +176,7 @@ Kirigami.ApplicationWindow {
                     RowLayout {
                         QQC2.Label {
                             id: media_title
-                            text: "Title | Author"
+                            text: qplaylist.activeSongTitle + " | " + qplaylist.activeSongArtist
                             Layout.fillWidth: true
                         }
                         QQC2.Label {

@@ -41,6 +41,8 @@ mod qobject {
         #[base = QAbstractTableModel]
         #[qproperty(QString, filter, READ = get_filter, WRITE = set_filter, NOTIFY = update)]
         #[qproperty(u64, active_song_id, cxx_name="activeSongId", READ, WRITE, NOTIFY = update)]
+        #[qproperty(QString, activeSongTitle, READ = get_active_song_title, NOTIFY = update)]
+        #[qproperty(QString, activeSongArtist, READ = get_active_song_artist, NOTIFY = update)]
         type QPlaylistModel = super::PlaylistModel;
 
         #[qsignal]
@@ -80,6 +82,12 @@ mod qobject {
 
         #[qinvokable]
         fn set_filter(self: Pin<&mut QPlaylistModel>, value: QString);
+
+        #[qinvokable]
+        fn get_active_song_title(self: &QPlaylistModel) -> QString;
+
+        #[qinvokable]
+        fn get_active_song_artist(self: &QPlaylistModel) -> QString;
 
         #[inherit]
         #[cxx_name = "beginResetModel"]
@@ -209,6 +217,22 @@ impl qobject::QPlaylistModel {
     pub fn set_filter(mut self: Pin<&mut QPlaylistModel>, value: QString) {
         self.as_mut().rust_mut().filter = value.into();
         self.as_mut().update();
+    }
+
+    pub fn get_active_song_title(self: &QPlaylistModel) -> QString {
+        let song = &self.queue.iter().find(|x| x.id == self.active_song_id);
+        match song {
+            Some(v) => QString::from(&v.title),
+            None => QString::from("Title"),
+        }
+    }
+
+    pub fn get_active_song_artist(self: &QPlaylistModel) -> QString {
+        let song = &self.queue.iter().find(|x| x.id == self.active_song_id);
+        match song {
+            Some(v) => QString::from(&v.artist),
+            None => QString::from("Artist"),
+        }
     }
 }
 

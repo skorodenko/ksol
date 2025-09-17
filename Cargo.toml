@@ -29,3 +29,10 @@ imstr = { version = "0.2.0", features = ["serde"] }
 
 [build-dependencies]
 cxx-qt-build = { version = "0.7.2", features = ["link_qt_object_files"] }
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = "debuginfo"

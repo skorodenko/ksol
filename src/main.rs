@@ -1,6 +1,5 @@
 extern crate ksol;
 
-use tokio;
 use cxx_qt_lib::{QQmlApplicationEngine, QQuickStyle, QString, QUrl};
 use cxx_qt_lib_extras::QApplication;
 use log::{LevelFilter, debug};
