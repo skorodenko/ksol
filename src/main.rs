@@ -33,5 +33,5 @@ fn main() {
         app.exec();
     }
 
-    debug!("Application closed")
+    debug!("Application closing")
 }

@@ -24,6 +24,17 @@ pub struct QSong {
     pub directory: String,
 }
 
+#[derive(Debug)]
+pub enum MPSCCommand {
+    Next,
+    Previous,
+    PlaySong(u64),
+    PlayToggle,
+    UpdateDb,
+    GetPlaylists(i32),
+    StagePlaylist(String, i32),
+}
+
 #[derive(serde::Deserialize, serde::Serialize, EnumIter, FromPrimitive, Copy, Clone, Debug)]
 #[repr(i32)]
 pub enum SongField {
@@ -72,7 +83,12 @@ impl From<SongInQueue> for QSong {
             format: song.format.unwrap_or("".into()),
             lastmodified: "".into(),
             duration: song.duration.unwrap_or_default(),
-            directory: Path::new(&song.url).parent().unwrap_or(Path::new("Root")).to_str().unwrap().to_string(),
+            directory: Path::new(&song.url)
+                .parent()
+                .unwrap_or(Path::new("Root"))
+                .to_str()
+                .unwrap()
+                .to_string(),
         }
     }
 }

@@ -80,7 +80,7 @@ pub mod qobject {
 
 use qobject::*;
 
-use crate::rust::entities::{QSong, SongField};
+use crate::rust::entities::{MPSCCommand, QSong, SongField};
 use crate::rust::settings::{InternalSettings, Settings};
 use bincode::config;
 use bincode::serde::encode_to_vec;
@@ -97,6 +97,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
 use tokio::net::{TcpStream, UnixStream};
 use tokio::runtime::{Builder, Runtime};
+use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::time::{Duration, sleep};
 use which::which;
 
@@ -107,6 +108,8 @@ pub struct MPDConnector {
     pub rt_idle: Runtime,
     pub rt_timeline: Runtime,
     pub rt_action: Runtime,
+    pub tx_actions: Sender<MPSCCommand>,
+    pub rx_actions: Option<Receiver<MPSCCommand>>,
 }
 
 impl qobject::QMPDConnector {
@@ -169,13 +172,14 @@ impl qobject::QMPDConnector {
             let result = mpd_client.unwrap().command(command).await.unwrap();
             let play_state = QString::from(format!("{:#?}", result.state));
             let _ = qt_thread.queue(|mut qobject| {
+                qobject.as_mut().init_actions();
                 qobject.as_mut().play_state_changed(play_state);
-                qobject.as_mut().start_timeline();
+                qobject.as_mut().init_timeline();
             });
         });
     }
 
-    fn start_timeline(self: Pin<&mut Self>) {
+    fn init_timeline(self: Pin<&mut Self>) {
         let mpd_client = self.client.clone().unwrap();
         let qt_thread = self.qt_thread();
         let rt_timeline = &self.rt_timeline;
@@ -196,91 +200,153 @@ impl qobject::QMPDConnector {
         });
     }
 
-    pub fn get_playlists(self: Pin<&mut QMPDConnector>, group: i32) {
-        let group = Tag::from(SongField::from_i32(group).unwrap());
+    fn init_actions(mut self: Pin<&mut Self>) {
+        let mut rx_actions = self.as_mut().rust_mut().rx_actions.take();
         let mpd_client = self.client.clone().unwrap();
         let qt_thread = self.qt_thread();
         let rt_action = &self.rt_action;
         rt_action.spawn(async move {
-            let mut result: Vec<String> = match group {
-                Tag::Other(value) if value == "Directory".into() => {
-                    let command = commands::ListAllIn::root();
-                    let res = mpd_client.command(command).await.unwrap();
-                    res.iter()
-                        .map(|x| {
-                            x.file_path()
-                                .parent()
-                                .unwrap_or(Path::new("Root"))
-                                .to_str()
-                                .unwrap()
-                                .to_string()
-                        })
-                        .collect::<HashSet<_>>()
-                        .into_iter()
-                        .collect()
+            loop {
+                match rx_actions.as_mut().unwrap().recv().await {
+                    Some(MPSCCommand::Next) => {
+                        let command = commands::Next;
+                        let _ = mpd_client.command(command).await;
+                    }
+                    Some(MPSCCommand::Previous) => {
+                        let command = commands::Previous;
+                        let _ = mpd_client.command(command).await;
+                    }
+                    Some(MPSCCommand::PlaySong(id)) => {
+                        let command = commands::Play::song(commands::SongId::from(id));
+                        let _ = mpd_client.command(command).await;
+                    }
+                    Some(MPSCCommand::PlayToggle) => {
+                        let command = commands::Status;
+                        let result = mpd_client.command(command).await.unwrap();
+                        match result.state {
+                            PlayState::Paused => {
+                                let command = commands::SetPause(false);
+                                mpd_client.command(command).await.unwrap();
+                            }
+                            PlayState::Playing => {
+                                let command = commands::SetPause(true);
+                                mpd_client.command(command).await.unwrap();
+                            }
+                            PlayState::Stopped => {
+                                let command = commands::Play::current();
+                                mpd_client.command(command).await.unwrap();
+                            }
+                        }
+                    }
+                    Some(MPSCCommand::UpdateDb) => {
+                        let command = commands::Update::new();
+                        let _ = mpd_client.command(command).await;
+                        let _ = qt_thread.queue(|mut qobject| {
+                            qobject.as_mut().db_updated(false);
+                        });
+                    }
+                    Some(MPSCCommand::GetPlaylists(group)) => {
+                        let group = Tag::from(SongField::from_i32(group).unwrap());
+                        let mut result: Vec<String> = match group {
+                            Tag::Other(value) if value == "Directory".into() => {
+                                let command = commands::ListAllIn::root();
+                                let res = mpd_client.command(command).await.unwrap();
+                                res.iter()
+                                    .map(|x| {
+                                        x.file_path()
+                                            .parent()
+                                            .unwrap_or(Path::new("Root"))
+                                            .to_str()
+                                            .unwrap()
+                                            .to_string()
+                                    })
+                                    .collect::<HashSet<_>>()
+                                    .into_iter()
+                                    .collect()
+                            }
+                            _ => {
+                                let command = commands::List::new(group);
+                                mpd_client
+                                    .command(command)
+                                    .await
+                                    .unwrap()
+                                    .values()
+                                    .map(|x| x.to_string())
+                                    .collect()
+                            }
+                        };
+                        result.sort();
+                        let bcode: &[u8] = &encode_to_vec(result, config::standard()).unwrap();
+                        let bcode = QByteArray::from(bcode);
+                        let _ = qt_thread.queue(|mut qobject| {
+                            qobject.as_mut().get_playlists_result(bcode);
+                        });
+                    }
+                    Some(MPSCCommand::StagePlaylist(name, group)) => {
+                        let tag = Tag::from(SongField::from_i32(group).unwrap());
+                        // Query playlist
+                        let result: Vec<Song> = match tag {
+                            Tag::Other(value) if value == "Directory".into() => {
+                                let command = commands::ListAllIn::directory(&name);
+                                mpd_client.command(command).await.unwrap_or(Vec::default())
+                            }
+                            _ => {
+                                let filter = Filter::tag(tag, name);
+                                let command = commands::Find::new(filter);
+                                mpd_client.command(command).await.unwrap_or(Vec::default())
+                            }
+                        };
+                        // Clear current queue
+                        let clear_command = commands::ClearQueue;
+                        let _ = mpd_client.command(clear_command).await;
+                        // Populate new queue
+                        let add_commands: Vec<commands::Add> = result
+                            .iter()
+                            .map(|x| commands::Add::uri(x.url.as_str()))
+                            .collect();
+                        let _ = mpd_client.command_list(add_commands).await.unwrap();
+                    }
+                    None => {}
                 }
-                _ => {
-                    let command = commands::List::new(group);
-                    mpd_client
-                        .command(command)
-                        .await
-                        .unwrap()
-                        .values()
-                        .map(|x| x.to_string())
-                        .collect()
-                }
-            };
-            result.sort();
-            let bcode: &[u8] = &encode_to_vec(result, config::standard()).unwrap();
-            let bcode = QByteArray::from(bcode);
-            let _ = qt_thread.queue(|mut qobject| {
-                qobject.as_mut().get_playlists_result(bcode);
-            });
+            }
         });
     }
 
-    pub fn stage_playlist(self: Pin<&mut QMPDConnector>, name: QString, group: i32) {
-        let tag = Tag::from(SongField::from_i32(group).unwrap());
-        let name = String::from(name);
-        let mpd_client = self.client.clone().unwrap();
-        let rt_action = &self.rt_action;
-        rt_action.spawn(async move {
-            // Query playlist
-            let result: Vec<Song> = match tag {
-                Tag::Other(value) if value == "Directory".into() => {
-                    let command = commands::ListAllIn::directory(&name);
-                    mpd_client.command(command).await.unwrap_or(Vec::default())
-                }
-                _ => {
-                    let filter = Filter::tag(tag, name);
-                    let command = commands::Find::new(filter);
-                    mpd_client.command(command).await.unwrap_or(Vec::default())
-                }
-            };
-            // Clear current queue
-            let clear_command = commands::ClearQueue;
-            let _ = mpd_client.command(clear_command).await;
-            // Populate new queue
-            let add_commands: Vec<commands::Add> = result
-                .iter()
-                .map(|x| commands::Add::uri(x.url.as_str()))
-                .collect();
-            let _ = mpd_client.command_list(add_commands).await.unwrap();
-        });
+    pub fn play_toggle(self: Pin<&mut Self>) {
+        let tx_actions = self.tx_actions.clone();
+        let _ = tx_actions.blocking_send(MPSCCommand::PlayToggle);
+    }
+
+    pub fn play_song(self: Pin<&mut Self>, id: u64) {
+        let tx_actions = self.tx_actions.clone();
+        let _ = tx_actions.blocking_send(MPSCCommand::PlaySong(id));
+    }
+
+    pub fn play_next(self: Pin<&mut Self>) {
+        let tx_actions = self.tx_actions.clone();
+        let _ = tx_actions.blocking_send(MPSCCommand::Next);
+    }
+
+    pub fn play_previous(self: Pin<&mut Self>) {
+        let tx_actions = self.tx_actions.clone();
+        let _ = tx_actions.blocking_send(MPSCCommand::Previous);
     }
 
     pub fn update_db(self: Pin<&mut QMPDConnector>) {
         log::debug!("Updating MPD DB");
-        let mpd_client = self.client.clone().unwrap();
-        let qt_thread = self.qt_thread();
-        let rt_action = &self.rt_action;
-        rt_action.spawn(async move {
-            let command = commands::Update::new();
-            let _ = mpd_client.command(command).await;
-            let _ = qt_thread.queue(|mut qobject| {
-                qobject.as_mut().db_updated(false);
-            });
-        });
+        let tx_actions = self.tx_actions.clone();
+        let _ = tx_actions.blocking_send(MPSCCommand::UpdateDb);
+    }
+
+    pub fn get_playlists(self: Pin<&mut QMPDConnector>, group: i32) {
+        let tx_actions = self.tx_actions.clone();
+        let _ = tx_actions.blocking_send(MPSCCommand::GetPlaylists(group));
+    }
+
+    pub fn stage_playlist(self: Pin<&mut QMPDConnector>, name: QString, group: i32) {
+        let name = String::from(name);
+        let tx_actions = self.tx_actions.clone();
+        let _ = tx_actions.blocking_send(MPSCCommand::StagePlaylist(name, group));
     }
 
     fn start_native_server(self: Pin<&mut Self>, mpd_binary: &PathBuf, native_config: &String) {
@@ -363,56 +429,6 @@ impl qobject::QMPDConnector {
         }
         self.connect_client();
     }
-
-    pub fn play_toggle(self: Pin<&mut Self>) {
-        let mpd_client = self.client.clone().unwrap();
-        let rt_action = &self.rt_action;
-        rt_action.spawn(async move {
-            let command = commands::Status;
-            let result = mpd_client.command(command).await.unwrap();
-            match result.state {
-                PlayState::Paused => {
-                    let command = commands::SetPause(false);
-                    mpd_client.command(command).await.unwrap();
-                }
-                PlayState::Playing => {
-                    let command = commands::SetPause(true);
-                    mpd_client.command(command).await.unwrap();
-                }
-                PlayState::Stopped => {
-                    let command = commands::Play::current();
-                    mpd_client.command(command).await.unwrap();
-                }
-            }
-        });
-    }
-
-    pub fn play_song(self: Pin<&mut Self>, id: u64) {
-        let mpd_client = self.client.clone().unwrap();
-        let rt_action = &self.rt_action;
-        rt_action.spawn(async move {
-            let command = commands::Play::song(commands::SongId::from(id));
-            mpd_client.command(command).await.unwrap();
-        });
-    }
-
-    pub fn play_next(self: Pin<&mut Self>) {
-        let mpd_client = self.client.clone().unwrap();
-        let rt_action = &self.rt_action;
-        rt_action.spawn(async move {
-            let command = commands::Next;
-            let _ = mpd_client.command(command).await;
-        });
-    }
-
-    pub fn play_previous(self: Pin<&mut Self>) {
-        let mpd_client = self.client.clone().unwrap();
-        let rt_action = &self.rt_action;
-        rt_action.spawn(async move {
-            let command = commands::Previous;
-            let _ = mpd_client.command(command).await;
-        });
-    }
 }
 
 impl Default for MPDConnector {
@@ -421,6 +437,7 @@ impl Default for MPDConnector {
             .worker_threads(2)
             .enable_io()
             .enable_time()
+            .event_interval(8)
             .build()
             .unwrap();
         let rt_timeline = Builder::new_multi_thread()
@@ -430,8 +447,10 @@ impl Default for MPDConnector {
             .unwrap();
         let rt_action = Builder::new_multi_thread()
             .worker_threads(2)
+            .global_queue_interval(256)
             .build()
             .unwrap();
+        let (tx_actions, rx_actions) = tokio::sync::mpsc::channel(128);
         Self {
             client: None,
             idle: None,
@@ -439,13 +458,14 @@ impl Default for MPDConnector {
             rt_idle,
             rt_timeline,
             rt_action,
+            tx_actions,
+            rx_actions: Some(rx_actions),
         }
     }
 }
 
 impl Drop for MPDConnector {
     fn drop(&mut self) {
-        //(&self.rt_idle).shutdown_timeout(Duration::from_millis(500));
         if let Some(server) = self.server.as_mut() {
             server.kill().unwrap()
         }
