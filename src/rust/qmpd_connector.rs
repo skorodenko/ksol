@@ -95,7 +95,7 @@ use num_traits::FromPrimitive;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
-use tokio::net::TcpStream;
+use tokio::net::{TcpStream, UnixStream};
 use tokio::runtime::{Builder, Runtime};
 use tokio::time::{Duration, sleep};
 use which::which;
@@ -134,7 +134,6 @@ impl qobject::QMPDConnector {
                         let _ = qt_thread.queue(|mut qobject| {
                             qobject.as_mut().stage_playlist_result(bcode);
                         });
-                        tokio::task::yield_now().await;
                     }
                     Some(ConnectionEvent::SubsystemChange(Subsystem::Player)) => {
                         log::debug!("Server player changed");
@@ -146,7 +145,6 @@ impl qobject::QMPDConnector {
                             qobject.as_mut().play_state_changed(play_state);
                             qobject.as_mut().active_song_changed(song_id);
                         });
-                        tokio::task::yield_now().await;
                     }
                     Some(e) => println!("Yay {:?}", e),
                     None => {
@@ -285,15 +283,15 @@ impl qobject::QMPDConnector {
         });
     }
 
-    fn start_native_server(self: Pin<&mut Self>, mpd_binary: &PathBuf, _native_config: &String) {
+    fn start_native_server(self: Pin<&mut Self>, mpd_binary: &PathBuf, native_config: &String) {
         log::debug!("Starting native mpd server");
         let qt_thread = self.qt_thread();
         let cmpd_binary = mpd_binary.clone();
-        //let cnative_config = native_config.clone();
+        let cnative_config = native_config.clone();
         std::thread::spawn(move || {
             let mut command = Command::new(cmpd_binary);
             command.arg("--no-daemon");
-            //command.arg(cnative_config);
+            command.arg(cnative_config);
             let handle = command.spawn().expect("Failed to start mpd server");
             let _ = qt_thread.queue(move |mut qobject| {
                 qobject.as_mut().rust_mut().server.replace(handle);
@@ -310,7 +308,8 @@ impl qobject::QMPDConnector {
                 let settings = Settings::load();
                 let mut mpd_client: Option<Client> = Option::None;
                 let mut mpd_idle: Option<ConnectionEvents> = Option::None;
-                match TcpStream::connect(&settings.mpd_socket).await {
+                //match TcpStream::connect(&settings.mpd_socket).await {
+                match UnixStream::connect(&settings.mpd_socket).await {
                     Ok(connection) => {
                         let mpd_connection = Client::connect(connection).await.unwrap();
                         mpd_client.replace(mpd_connection.0);

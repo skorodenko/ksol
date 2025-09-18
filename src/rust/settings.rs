@@ -27,7 +27,7 @@ impl Settings {
         let xdg_dirs = BaseDirectories::with_prefix("ksol");
         let app_config = xdg_dirs.get_config_home().unwrap();
         let app_data = xdg_dirs.get_data_home().unwrap();
-        let mpd_config = app_data.join("mpd");
+        let mpd_config = app_config.join("mpd");
 
         let _ = create_dir(app_config);
         let _ = create_dir(app_data);
@@ -49,10 +49,10 @@ impl Default for Settings {
         let xdg_dirs = BaseDirectories::with_prefix("ksol");
         let app_config = xdg_dirs.get_config_home().unwrap();
         let app_data = xdg_dirs.get_data_home().unwrap();
-        let mpd_config = app_data.join("mpd");
+        let mpd_config = app_config.join("mpd");
 
         Self {
-            mpd_socket: "localhost:6600".to_string(),
+            mpd_socket: "/home/rinkuro/.local/share/cantata/mpd/socket".to_string(),
             search_groups: vec![
                 SongField::Directory,
                 SongField::Artist,
@@ -68,10 +68,10 @@ impl Default for InternalSettings {
         let xdg_dirs = BaseDirectories::with_prefix("ksol");
         let app_config = xdg_dirs.get_config_home().unwrap();
         let app_data = xdg_dirs.get_data_home().unwrap();
-        let mpd_config = app_data.join("mpd");
+        let mpd_config = app_config.join("mpd");
 
         Self {
-            native_socket: "localhost:6600".to_string(),
+            native_socket: "/home/rinkuro/.local/share/cantata/mpd/socket".to_string(),
             native_config: mpd_config.join("mpd.conf").to_str().unwrap().to_string(),
         }
     }
