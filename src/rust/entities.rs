@@ -33,6 +33,8 @@ pub enum MPSCCommand {
     UpdateDb,
     GetPlaylists(i32),
     StagePlaylist(String, i32),
+    IdlePlayer,
+    IdleQueue,
 }
 
 #[derive(serde::Deserialize, serde::Serialize, EnumIter, FromPrimitive, Copy, Clone, Debug)]

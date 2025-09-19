@@ -103,6 +103,7 @@ use which::which;
 
 pub struct MPDConnector {
     pub client: Option<Client>,
+    idle_client: Option<Client>,
     pub idle: Option<ConnectionEvents>,
     pub server: Option<Child>,
     pub rt_idle: Runtime,
@@ -115,8 +116,8 @@ pub struct MPDConnector {
 impl qobject::QMPDConnector {
     fn idle(mut self: Pin<&mut QMPDConnector>) {
         let mut mpd_idle = self.as_mut().rust_mut().idle.take();
-        let mpd_client = self.client.clone().unwrap();
         let qt_thread = self.qt_thread();
+        let tx_actions = self.tx_actions.clone();
         let rt_idle = &self.rt_idle;
         rt_idle.spawn(async move {
             loop {
@@ -128,26 +129,11 @@ impl qobject::QMPDConnector {
                     }
                     Some(ConnectionEvent::SubsystemChange(Subsystem::Queue)) => {
                         log::debug!("Server queue changed");
-                        // Propagate playlist to other components
-                        let command = commands::Queue::all();
-                        let result = mpd_client.command(command).await.unwrap();
-                        let result: Vec<QSong> = result.into_iter().map(QSong::from).collect();
-                        let bcode: &[u8] = &encode_to_vec(result, config::standard()).unwrap();
-                        let bcode = QByteArray::from(bcode);
-                        let _ = qt_thread.queue(|mut qobject| {
-                            qobject.as_mut().stage_playlist_result(bcode);
-                        });
+                        let _ = tx_actions.send(MPSCCommand::IdleQueue).await;
                     }
                     Some(ConnectionEvent::SubsystemChange(Subsystem::Player)) => {
                         log::debug!("Server player changed");
-                        let command = commands::Status;
-                        let result = mpd_client.command(command).await.unwrap();
-                        let play_state = QString::from(format!("{:#?}", result.state));
-                        let song_id = result.current_song.unwrap().1.0;
-                        let _ = qt_thread.queue(move |mut qobject| {
-                            qobject.as_mut().play_state_changed(play_state);
-                            qobject.as_mut().active_song_changed(song_id);
-                        });
+                        let _ = tx_actions.send(MPSCCommand::IdlePlayer).await;
                     }
                     Some(e) => println!("Yay {:?}", e),
                     None => {
@@ -306,6 +292,27 @@ impl qobject::QMPDConnector {
                             .collect();
                         let _ = mpd_client.command_list(add_commands).await.unwrap();
                     }
+                    Some(MPSCCommand::IdlePlayer) => {
+                        let command = commands::Status;
+                        let result = mpd_client.command(command).await.unwrap();
+                        let play_state = QString::from(format!("{:#?}", result.state));
+                        let song_id = result.current_song.unwrap().1.0;
+                        let _ = qt_thread.queue(move |mut qobject| {
+                            qobject.as_mut().play_state_changed(play_state);
+                            qobject.as_mut().active_song_changed(song_id);
+                        });
+                    }
+                    Some(MPSCCommand::IdleQueue) => {
+                        // Propagate playlist to other components
+                        let command = commands::Queue::all();
+                        let result = mpd_client.command(command).await.unwrap();
+                        let result: Vec<QSong> = result.into_iter().map(QSong::from).collect();
+                        let bcode: &[u8] = &encode_to_vec(result, config::standard()).unwrap();
+                        let bcode = QByteArray::from(bcode);
+                        let _ = qt_thread.queue(|mut qobject| {
+                            qobject.as_mut().stage_playlist_result(bcode);
+                        });
+                    }
                     None => {}
                 }
             }
@@ -370,24 +377,31 @@ impl qobject::QMPDConnector {
         let mut retcount = 5;
         let rt_idle = &self.rt_idle;
         rt_idle.spawn(async move {
-            let (state, mpd_client, mpd_idle) = loop {
+            let (state, mpd_client, mpd_idle_client, mpd_idle) = loop {
                 let settings = Settings::load();
                 let mut mpd_client: Option<Client> = Option::None;
+                let mut mpd_idle_client: Option<Client> = Option::None;
                 let mut mpd_idle: Option<ConnectionEvents> = Option::None;
                 //match TcpStream::connect(&settings.mpd_socket).await {
                 match UnixStream::connect(&settings.mpd_socket).await {
                     Ok(connection) => {
-                        let mpd_connection = Client::connect(connection).await.unwrap();
-                        mpd_client.replace(mpd_connection.0);
-                        mpd_idle.replace(mpd_connection.1);
+                        let (client, _) = Client::connect(connection).await.unwrap();
+                        let (idle_client, idle) = Client::connect(
+                            UnixStream::connect(&settings.mpd_socket).await.unwrap(),
+                        )
+                        .await
+                        .unwrap();
+                        mpd_client.replace(client);
+                        mpd_idle_client.replace(idle_client);
+                        mpd_idle.replace(idle);
                         log::debug!("Succesfully connected to MPD server");
-                        break ("connected", mpd_client, mpd_idle);
+                        break ("connected", mpd_client, mpd_idle_client, mpd_idle);
                     }
                     Err(e) => {
                         retcount -= 1;
                         if retcount <= 0 {
                             log::error!("Failed to connect to MPD server");
-                            break ("disconnected", Option::None, Option::None);
+                            break ("disconnected", None, None, None);
                         }
                         log::warn!("Failed to connect: {}", e);
                         tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
@@ -400,6 +414,11 @@ impl qobject::QMPDConnector {
                     .rust_mut()
                     .client
                     .replace(mpd_client.unwrap());
+                qobject
+                    .as_mut()
+                    .rust_mut()
+                    .idle_client
+                    .replace(mpd_idle_client.unwrap());
                 qobject.as_mut().rust_mut().idle.replace(mpd_idle.unwrap());
                 qobject.as_mut().connection_update(state.into());
                 qobject.as_mut().idle();
@@ -434,10 +453,9 @@ impl qobject::QMPDConnector {
 impl Default for MPDConnector {
     fn default() -> Self {
         let rt_idle = Builder::new_multi_thread()
-            .worker_threads(2)
+            .worker_threads(1)
             .enable_io()
             .enable_time()
-            .event_interval(8)
             .build()
             .unwrap();
         let rt_timeline = Builder::new_multi_thread()
@@ -446,13 +464,13 @@ impl Default for MPDConnector {
             .build()
             .unwrap();
         let rt_action = Builder::new_multi_thread()
-            .worker_threads(2)
-            .global_queue_interval(256)
+            .worker_threads(1)
             .build()
             .unwrap();
         let (tx_actions, rx_actions) = tokio::sync::mpsc::channel(128);
         Self {
             client: None,
+            idle_client: None,
             idle: None,
             server: None,
             rt_idle,
