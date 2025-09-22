@@ -28,7 +28,7 @@ pub struct QSong {
 pub enum MPSCCommand {
     Next,
     Previous,
-    PlaySong(u64),
+    PlaySong(usize),
     PlayToggle,
     UpdateDb,
     GetPlaylists(i32),

@@ -40,13 +40,17 @@ mod qobject {
         #[qml_element]
         #[base = QAbstractTableModel]
         #[qproperty(QString, filter, READ = get_filter, WRITE = set_filter, NOTIFY = update)]
-        #[qproperty(u64, active_song_id, cxx_name="activeSongId", READ, WRITE, NOTIFY = update)]
-        #[qproperty(QString, activeSongTitle, READ = get_active_song_title, NOTIFY = update)]
-        #[qproperty(QString, activeSongArtist, READ = get_active_song_artist, NOTIFY = update)]
+        #[qproperty(usize, active_song_pos, cxx_name="activeSongPos", READ, WRITE, NOTIFY = update_info)]
+        #[qproperty(QString, activeSongTitle, READ = get_active_song_title, NOTIFY = update_info)]
+        #[qproperty(QString, activeSongArtist, READ = get_active_song_artist, NOTIFY = update_info)]
         type QPlaylistModel = super::PlaylistModel;
 
         #[qsignal]
         fn update(self: Pin<&mut QPlaylistModel>);
+
+        #[qsignal]
+        #[cxx_name = "updateInfo"]
+        fn update_info(self: Pin<&mut QPlaylistModel>);
 
         #[cxx_override]
         #[cxx_name = "roleNames"]
@@ -128,7 +132,7 @@ pub struct PlaylistModel {
     pub queue: Vec<QSong>,
     queue_proxy: Vec<QSong>,
     pub column_width: Vec<f32>,
-    pub active_song_id: u64,
+    pub active_song_pos: usize,
 }
 
 impl qobject::QPlaylistModel {
@@ -220,7 +224,7 @@ impl qobject::QPlaylistModel {
     }
 
     pub fn get_active_song_title(self: &QPlaylistModel) -> QString {
-        let song = &self.queue.iter().find(|x| x.id == self.active_song_id);
+        let song = &self.queue.get(self.active_song_pos);
         match song {
             Some(v) => QString::from(&v.title),
             None => QString::from("Title"),
@@ -228,7 +232,7 @@ impl qobject::QPlaylistModel {
     }
 
     pub fn get_active_song_artist(self: &QPlaylistModel) -> QString {
-        let song = &self.queue.iter().find(|x| x.id == self.active_song_id);
+        let song = &self.queue.get(self.active_song_pos);
         match song {
             Some(v) => QString::from(&v.artist),
             None => QString::from("Artist"),
@@ -268,8 +272,8 @@ impl Default for PlaylistModel {
                 filter: String::default(),
                 queue: Vec::default(),
                 queue_proxy: Vec::default(),
-                column_width: SongField::iter().map(|_| 1_f32 / 13_f32).collect(), //FIX calculated max enum
-                active_song_id: 0,
+                column_width: SongField::iter().map(|_| 1_f32 / 14_f32).collect(), //FIX calculated max enum
+                active_song_pos: 0,
             },
         }
     }

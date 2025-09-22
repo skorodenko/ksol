@@ -83,8 +83,9 @@ Kirigami.ApplicationWindow {
             var dfs = Math.floor(duration % 60).toString().padStart(2, '0');
             media_duration.text = `${efm}:${efs} / ${dfm}:${dfs}`;
         }
-        onActiveSongChanged: function (songId) {
-            qplaylist.activeSongId = songId;
+        onActiveSongChanged: function (songPos) {
+            qplaylist.activeSongPos = songPos;
+        //qplaylist_view.positionViewAtRow(songPos, Qt.AlignVertical_Mask, 0.0, activeSongHighlight);
         }
         //        onSongChange: function (pl_uuid, sg_uuid) {
         //            var info = mpd_connector.getSongInfo(pl_uuid, sg_uuid);
@@ -95,10 +96,10 @@ Kirigami.ApplicationWindow {
     QPlaylistModel {
         id: qplaylist
         onLayoutChanged: function () {
-            //if (qplaylist.rowCount() > 0) {
-                //qplaylist_view.currentIndex = 0;
-                //qplaylist_view.forceActiveFocus();
-            //}
+        //if (qplaylist.rowCount() > 0) {
+        //qplaylist_view.currentIndex = 0;
+        //qplaylist_view.forceActiveFocus();
+        //}
         }
     }
 
@@ -271,51 +272,55 @@ Kirigami.ApplicationWindow {
                 textRole: "columnName"
             }
 
-            TableView {
-                id: qplaylist_view
+            QQC2.ScrollView {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                TableView {
+                    id: qplaylist_view
 
-                rowSpacing: Kirigami.Units.smallSpacing
+                    rowSpacing: Kirigami.Units.smallSpacing
 
-                model: qplaylist
+                    model: qplaylist
 
-                //                                Connections {
-                //                                    target: control
-                //                                    function onSongChange(pl_uuid, sg_uuid) {
-                //                                        qplaylist.setActiveSong(sg_uuid);
-                //                                    }
-                //                                }
+                    //                                Connections {
+                    //                                    target: control
+                    //                                    function onSongChange(pl_uuid, sg_uuid) {
+                    //                                        qplaylist.setActiveSong(sg_uuid);
+                    //                                    }
+                    //                                }
 
-                delegate: QQC2.TableViewDelegate {
-                    id: queue_delegate
-                    implicitWidth: 1 / 14 * qplaylist_view.width
+                    columnWidthProvider: function (column) {
+                        return 1 / 14 * qplaylist_view.width;
+                    }
 
-                    required property string songDisplay
-                    required property int songId
-                    //required property real columnWidth
+                    delegate: QQC2.TableViewDelegate {
+                        id: queue_delegate
 
-                    MouseArea {
-                        anchors.fill: parent
-                        onDoubleClicked: function () {
-                            mpd_connector.playSong(parent.songId);
+                        required property string songDisplay
+                        //required property real columnWidth
+
+                        MouseArea {
+                            anchors.fill: parent
+                            onDoubleClicked: function () {
+                                mpd_connector.playSong(parent.row);
+                            }
                         }
-                    }
 
-                    Rectangle {
-                        anchors.fill: parent
-                        visible: qplaylist.activeSongId === parent.songId
-                        color: Kirigami.Theme.neutralBackgroundColor
-                    }
+                        Rectangle {
+                            anchors.fill: parent
+                            visible: qplaylist.activeSongPos === parent.row
+                            color: Kirigami.Theme.neutralBackgroundColor
+                        }
 
-                    Text {
-                        id: song_play_text
-                        width: parent.width
-                        horizontalAlignment: Qt.AlignLeft
-                        color: Kirigami.Theme.textColor
-                        //text: qplaylist.activeSongId === parent.songId ? "Test" : queue_delegate.songDisplay
-                        text: queue_delegate.songDisplay
-                        elide: Text.ElideRight
+                        Text {
+                            id: song_play_text
+                            width: parent.width
+                            horizontalAlignment: Qt.AlignLeft
+                            color: Kirigami.Theme.textColor
+                            //text: qplaylist.activeSongId === parent.songId ? "Test" : queue_delegate.songDisplay
+                            text: queue_delegate.songDisplay
+                            elide: Text.ElideRight
+                        }
                     }
                 }
             }

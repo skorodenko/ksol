@@ -24,7 +24,7 @@ pub mod qobject {
 
         #[qsignal]
         #[cxx_name = "activeSongChanged"]
-        fn active_song_changed(self: Pin<&mut QMPDConnector>, song_id: u64);
+        fn active_song_changed(self: Pin<&mut QMPDConnector>, song_id: usize);
 
         #[qsignal]
         #[cxx_name = "timelineUpdate"]
@@ -48,7 +48,7 @@ pub mod qobject {
 
         #[qinvokable]
         #[cxx_name = "playSong"]
-        fn play_song(self: Pin<&mut QMPDConnector>, id: u64);
+        fn play_song(self: Pin<&mut QMPDConnector>, pos: usize);
 
         #[qinvokable]
         #[cxx_name = "playToggle"]
@@ -202,8 +202,8 @@ impl qobject::QMPDConnector {
                         let command = commands::Previous;
                         let _ = mpd_client.command(command).await;
                     }
-                    Some(MPSCCommand::PlaySong(id)) => {
-                        let command = commands::Play::song(commands::SongId::from(id));
+                    Some(MPSCCommand::PlaySong(pos)) => {
+                        let command = commands::Play::song(commands::SongPosition::from(pos));
                         let _ = mpd_client.command(command).await;
                     }
                     Some(MPSCCommand::PlayToggle) => {
@@ -296,10 +296,10 @@ impl qobject::QMPDConnector {
                         let command = commands::Status;
                         let result = mpd_client.command(command).await.unwrap();
                         let play_state = QString::from(format!("{:#?}", result.state));
-                        let song_id = result.current_song.unwrap().1.0;
+                        let song_pos = result.current_song.unwrap().0.0;
                         let _ = qt_thread.queue(move |mut qobject| {
                             qobject.as_mut().play_state_changed(play_state);
-                            qobject.as_mut().active_song_changed(song_id);
+                            qobject.as_mut().active_song_changed(song_pos);
                         });
                     }
                     Some(MPSCCommand::IdleQueue) => {
@@ -324,9 +324,9 @@ impl qobject::QMPDConnector {
         let _ = tx_actions.blocking_send(MPSCCommand::PlayToggle);
     }
 
-    pub fn play_song(self: Pin<&mut Self>, id: u64) {
+    pub fn play_song(self: Pin<&mut Self>, pos: usize) {
         let tx_actions = self.tx_actions.clone();
-        let _ = tx_actions.blocking_send(MPSCCommand::PlaySong(id));
+        let _ = tx_actions.blocking_send(MPSCCommand::PlaySong(pos));
     }
 
     pub fn play_next(self: Pin<&mut Self>) {
@@ -467,7 +467,7 @@ impl Default for MPDConnector {
             .worker_threads(1)
             .build()
             .unwrap();
-        let (tx_actions, rx_actions) = tokio::sync::mpsc::channel(128);
+        let (tx_actions, rx_actions) = tokio::sync::mpsc::channel(64);
         Self {
             client: None,
             idle_client: None,
