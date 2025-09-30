@@ -125,7 +125,7 @@ Kirigami.ApplicationWindow {
         id: mainPage
         globalToolBarStyle: Kirigami.ApplicationHeaderStyle.None
 
-        padding: Kirigami.Units.smallSpacing
+        padding: 0
 
         header: QQC2.ToolBar {
             implicitHeight: 48
@@ -242,7 +242,6 @@ Kirigami.ApplicationWindow {
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: 0
 
             Kirigami.InlineMessage {
                 id: infoMessage
@@ -258,19 +257,25 @@ Kirigami.ApplicationWindow {
                 }
             }
 
-            QQC2.HorizontalHeaderView {
+            PlaylistHeader {
                 id: qplaylist_header
 
-                z: 1
                 Layout.fillWidth: true
 
-                syncView: qplaylist_view
-                textRole: "columnName"
+                model: qplaylist
+                columnCount: qplaylist.columnCount()
+                tableOffset: qplaylist_view.contentX
+                tableWidth: mainPage.availableWidth
+
+                onColumnWidthUpdate: function(column, width) {
+                    qplaylist_view.setColumnWidth(column, width);
+                }
             }
 
             QQC2.ScrollView {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+
                 TableView {
                     id: qplaylist_view
 
@@ -278,23 +283,16 @@ Kirigami.ApplicationWindow {
 
                     model: qplaylist
 
-                    //                                Connections {
-                    //                                    target: control
-                    //                                    function onSongChange(pl_uuid, sg_uuid) {
-                    //                                        qplaylist.setActiveSong(sg_uuid);
-                    //                                    }
-                    //                                }
-
-                    columnWidthProvider: function (column) {
-                        return 1 / 14 * qplaylist_view.width;
-                    }
+                    //columnWidthProvider: function (column) {
+                    //    return 1 / 14 * qplaylist_view.width;
+                    //}
 
                     delegate: Item {
                         id: queue_delegate
-                        implicitHeight: 25
+                        implicitHeight: 18
 
-                        required property string songDisplay
                         required property int row
+                        required property string songDisplay
                         //required property real columnWidth
 
                         MouseArea {

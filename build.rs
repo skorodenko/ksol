@@ -15,6 +15,7 @@ fn main() {
                 "src/qml/Main.qml",
                 "src/qml/Drun.qml",
                 "src/qml/Shortcuts.qml",
+                "src/qml/PlaylistHeader.qml",
             ],
             ..Default::default()
         })
