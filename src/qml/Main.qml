@@ -85,7 +85,7 @@ Kirigami.ApplicationWindow {
         }
         onActiveSongChanged: function (songPos) {
             qplaylist.activeSongPos = songPos;
-        //qplaylist_view.positionViewAtRow(songPos, Qt.AlignVertical_Mask, 0.0, activeSongHighlight);
+            //qplaylist_view.positionViewAtRow(songPos, Qt.AlignVertical_Mask, 0.0, activeSongHighlight);
         }
         //        onSongChange: function (pl_uuid, sg_uuid) {
         //            var info = mpd_connector.getSongInfo(pl_uuid, sg_uuid);
@@ -95,12 +95,7 @@ Kirigami.ApplicationWindow {
 
     QPlaylistModel {
         id: qplaylist
-        onLayoutChanged: function () {
-        //if (qplaylist.rowCount() > 0) {
-        //qplaylist_view.currentIndex = 0;
-        //qplaylist_view.forceActiveFocus();
-        //}
-        }
+        onLayoutChanged: function () {}
     }
 
     Connections {
@@ -247,6 +242,7 @@ Kirigami.ApplicationWindow {
 
         ColumnLayout {
             anchors.fill: parent
+            anchors.margins: 0
 
             Kirigami.InlineMessage {
                 id: infoMessage
@@ -293,10 +289,12 @@ Kirigami.ApplicationWindow {
                         return 1 / 14 * qplaylist_view.width;
                     }
 
-                    delegate: QQC2.TableViewDelegate {
+                    delegate: Item {
                         id: queue_delegate
+                        implicitHeight: 25
 
                         required property string songDisplay
+                        required property int row
                         //required property real columnWidth
 
                         MouseArea {
@@ -315,6 +313,7 @@ Kirigami.ApplicationWindow {
                         Text {
                             id: song_play_text
                             width: parent.width
+                            anchors.centerIn: parent
                             horizontalAlignment: Qt.AlignLeft
                             color: Kirigami.Theme.textColor
                             //text: qplaylist.activeSongId === parent.songId ? "Test" : queue_delegate.songDisplay
