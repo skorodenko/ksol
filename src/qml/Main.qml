@@ -121,203 +121,222 @@ Kirigami.ApplicationWindow {
         anchors.centerIn: parent
     }
 
-    Kirigami.Page {
-        id: mainPage
-        globalToolBarStyle: Kirigami.ApplicationHeaderStyle.None
+    header: QQC2.ToolBar {
+        implicitHeight: 48
 
-        padding: 0
-
-        header: QQC2.ToolBar {
-            implicitHeight: 48
-
-            RowLayout {
-                spacing: 8
-                anchors.fill: parent
-
-                RowLayout {
-                    id: media_playback_controls
-                    spacing: 0
-
-                    QQC2.Button {
-                        id: playback_previous
-                        flat: true
-                        enabled: false
-                        icon.name: "media-skip-backward"
-                        onClicked: function () {
-                            mpd_connector.playPrevious();
-                        }
-                    }
-                    QQC2.Button {
-                        id: playback_play
-                        flat: true
-                        icon.name: "media-playback-stop"
-                        onClicked: function () {
-                            mpd_connector.playToggle();
-                        }
-                    }
-                    QQC2.Button {
-                        id: playback_next
-                        flat: true
-                        enabled: false
-                        icon.name: "media-skip-forward"
-                        onClicked: function () {
-                            mpd_connector.playNext();
-                        }
-                    }
-                }
-
-                ColumnLayout {
-                    spacing: 0
-
-                    RowLayout {
-                        QQC2.Label {
-                            id: media_title
-                            text: qplaylist.activeSongTitle + " | " + qplaylist.activeSongArtist
-                            Layout.fillWidth: true
-                        }
-                        QQC2.Label {
-                            id: media_duration
-                            text: "0:00 / 0:00"
-                        }
-                    }
-
-                    RowLayout {
-                        QQC2.Slider {
-                            id: media_seeker
-                            from: 0
-                            Layout.fillWidth: true
-                        }
-                    }
-                }
-
-                QQC2.ToolButton {
-                    icon.name: "application-menu"
-                    visible: true
-
-                    onClicked: {
-                        globalMenu.popup();
-                    }
-
-                    QQC2.Menu {
-                        id: globalMenu
-                        QQC2.MenuItem {
-                            text: qsTr("Refresh DB")
-                            icon.name: "server-database"
-                            onClicked: {
-                                mpd_connector.updateDb();
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        footer: QQC2.ToolBar {
-            id: footer
-            implicitHeight: 20
-            background: Rectangle {
-                height: parent.height
-                Kirigami.Theme.inherit: false
-                Kirigami.Theme.colorSet: Kirigami.Theme.Header
-                color: Kirigami.Theme.backgroundColor
-                RowLayout {
-                    anchors.fill: parent
-                    QQC2.Label {
-                        id: connectionStateLabel
-                        Layout.fillHeight: true
-                        Layout.leftMargin: 2 * Kirigami.Units.largeSpacing
-                        text: "Disconnected"
-                        leftPadding: Kirigami.Units.smallSpacing
-                        rightPadding: Kirigami.Units.smallSpacing
-                        background: Rectangle {
-                            id: connectionStateLabelBackground
-                            Kirigami.Theme.inherit: false
-                            Kirigami.Theme.colorSet: Kirigami.Theme.Window
-                            color: Kirigami.Theme.negativeBackgroundColor
-                        }
-                    }
-                }
-            }
-        }
-
-        ColumnLayout {
+        RowLayout {
+            spacing: 8
             anchors.fill: parent
 
-            Kirigami.InlineMessage {
-                id: infoMessage
-                visible: false
-                onVisibleChanged: tmr.restart()
+            RowLayout {
+                id: media_playback_controls
+                spacing: 0
 
-                Layout.fillWidth: true
-
-                Timer {
-                    id: tmr
-                    interval: Kirigami.Units.humanMoment / 2
-                    onTriggered: infoMessage.visible = false
+                QQC2.Button {
+                    id: playback_previous
+                    flat: true
+                    enabled: false
+                    icon.name: "media-skip-backward"
+                    onClicked: function () {
+                        mpd_connector.playPrevious();
+                    }
+                }
+                QQC2.Button {
+                    id: playback_play
+                    flat: true
+                    icon.name: "media-playback-stop"
+                    onClicked: function () {
+                        mpd_connector.playToggle();
+                    }
+                }
+                QQC2.Button {
+                    id: playback_next
+                    flat: true
+                    enabled: false
+                    icon.name: "media-skip-forward"
+                    onClicked: function () {
+                        mpd_connector.playNext();
+                    }
                 }
             }
 
-            PlaylistHeader {
-                id: qplaylist_header
+            ColumnLayout {
+                spacing: 0
 
-                Layout.fillWidth: true
+                RowLayout {
+                    QQC2.Label {
+                        id: media_title
+                        text: qplaylist.activeSongTitle + " | " + qplaylist.activeSongArtist
+                        Layout.fillWidth: true
+                    }
+                    QQC2.Label {
+                        id: media_duration
+                        text: "0:00 / 0:00"
+                    }
+                }
 
+                RowLayout {
+                    QQC2.Slider {
+                        id: media_seeker
+                        from: 0
+                        Layout.fillWidth: true
+                    }
+                }
+            }
+
+            QQC2.ToolButton {
+                icon.name: "application-menu"
+                visible: true
+
+                onClicked: {
+                    globalMenu.popup();
+                }
+
+                QQC2.Menu {
+                    id: globalMenu
+                    QQC2.MenuItem {
+                        text: qsTr("Refresh DB")
+                        icon.name: "server-database"
+                        onClicked: {
+                            mpd_connector.updateDb();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    footer: QQC2.ToolBar {
+        id: footer
+        implicitHeight: 20
+        background: Rectangle {
+            height: parent.height
+            Kirigami.Theme.inherit: false
+            Kirigami.Theme.colorSet: Kirigami.Theme.Header
+            color: Kirigami.Theme.backgroundColor
+            RowLayout {
+                anchors.fill: parent
+                QQC2.Label {
+                    id: connectionStateLabel
+                    Layout.fillHeight: true
+                    Layout.leftMargin: 2 * Kirigami.Units.largeSpacing
+                    text: "Disconnected"
+                    leftPadding: Kirigami.Units.smallSpacing
+                    rightPadding: Kirigami.Units.smallSpacing
+                    background: Rectangle {
+                        id: connectionStateLabelBackground
+                        Kirigami.Theme.inherit: false
+                        Kirigami.Theme.colorSet: Kirigami.Theme.Window
+                        color: Kirigami.Theme.negativeBackgroundColor
+                    }
+                }
+            }
+        }
+    }
+
+    Kirigami.Page {
+        id: mainPage
+
+        padding: 0
+        globalToolBarStyle: Kirigami.ApplicationHeaderStyle.None
+
+        Kirigami.InlineMessage {
+            id: infoMessage
+
+            visible: false
+            //implicitHeight: 30
+            anchors.left: parent.left
+            anchors.right: parent.right
+            onVisibleChanged: tmr.restart()
+
+            Timer {
+                id: tmr
+                interval: Kirigami.Units.humanMoment / 2
+                onTriggered: infoMessage.visible = false
+            }
+        }
+
+        PlaylistHeader {
+            id: qplaylist_header
+
+            anchors.top: infoMessage.bottom
+            implicitHeight: 18
+            x: -qplaylist_view.contentX
+            z: 1
+
+            model: qplaylist
+            color: "#4f4f4f"
+            columnCount: qplaylist.columnCount()
+            tableWidth: parent.width - verticalScroll.width
+        }
+
+        QQC2.ScrollView {
+            id: tableView
+            anchors.top: qplaylist_header.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+
+            topPadding: qplaylist_header.height
+            contentWidth: qplaylist_header - verticalScroll.width
+
+            QQC2.ScrollBar.vertical: QQC2.ScrollBar {
+                id: verticalScroll
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                policy: QQC2.ScrollBar.AlwaysOn
+
+                Keys.onUpPressed: verticalScroll.decrease()
+                Keys.onDownPressed: verticalScroll.increase()
+            }
+
+            QQC2.ScrollBar.horizontal: QQC2.ScrollBar {
+                id: horizontalScroll
+                anchors.right: verticalScroll.left
+                anchors.left: parent.left
+                anchors.bottom: parent.bottom
+                policy: QQC2.ScrollBar.AlwaysOff
+            }
+
+            TableView {
+                id: qplaylist_view
+
+                rowSpacing: Kirigami.Units.smallSpacing
                 model: qplaylist
-                columnCount: qplaylist.columnCount()
-                tableOffset: qplaylist_view.contentX
-                tableWidth: mainPage.availableWidth
 
-                onColumnWidthUpdate: function(column, width) {
-                    qplaylist_view.setColumnWidth(column, width);
+                columnWidthProvider: function (column) {
+                    return qplaylist_header.repeater.itemAt(column).width;
                 }
-            }
 
-            QQC2.ScrollView {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
+                delegate: Item {
+                    id: queue_delegate
+                    implicitHeight: 18
 
-                TableView {
-                    id: qplaylist_view
+                    required property int row
+                    required property string songDisplay
 
-                    rowSpacing: Kirigami.Units.smallSpacing
-
-                    model: qplaylist
-
-                    //columnWidthProvider: function (column) {
-                    //    return 1 / 14 * qplaylist_view.width;
-                    //}
-
-                    delegate: Item {
-                        id: queue_delegate
-                        implicitHeight: 18
-
-                        required property int row
-                        required property string songDisplay
-                        //required property real columnWidth
-
-                        MouseArea {
-                            anchors.fill: parent
-                            onDoubleClicked: function () {
-                                mpd_connector.playSong(parent.row);
-                            }
+                    MouseArea {
+                        anchors.fill: parent
+                        onDoubleClicked: function () {
+                            mpd_connector.playSong(parent.row);
                         }
+                    }
 
-                        Rectangle {
-                            anchors.fill: parent
-                            visible: qplaylist.activeSongPos === parent.row
-                            color: Kirigami.Theme.neutralBackgroundColor
-                        }
+                    Rectangle {
+                        anchors.fill: parent
+                        visible: qplaylist.activeSongPos === parent.row
+                        color: Kirigami.Theme.neutralBackgroundColor
+                    }
 
-                        Text {
-                            id: song_play_text
-                            width: parent.width
-                            anchors.centerIn: parent
-                            horizontalAlignment: Qt.AlignLeft
-                            color: Kirigami.Theme.textColor
-                            //text: qplaylist.activeSongId === parent.songId ? "Test" : queue_delegate.songDisplay
-                            text: queue_delegate.songDisplay
-                            elide: Text.ElideRight
-                        }
+                    Text {
+                        id: song_play_text
+                        width: parent.width / 2
+                        anchors.centerIn: parent
+                        horizontalAlignment: Qt.AlignLeft
+                        color: Kirigami.Theme.textColor
+                        text: queue_delegate.songDisplay
+                        elide: Text.ElideRight
                     }
                 }
             }
