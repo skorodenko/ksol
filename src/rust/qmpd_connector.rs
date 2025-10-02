@@ -89,7 +89,8 @@ use cxx_qt::{CxxQtType, Threading};
 use log;
 use mpd_client::client::{ConnectionEvent, ConnectionEvents, Subsystem};
 use mpd_client::{
-    Client, commands, filter::Filter, responses::PlayState, responses::Song, tag::Tag,
+    ClientController, ClientIdler, commands, filter::Filter, responses::PlayState, responses::Song,
+    tag::Tag,
 };
 use num_traits::FromPrimitive;
 use std::collections::HashSet;
@@ -102,9 +103,8 @@ use tokio::time::{Duration, sleep};
 use which::which;
 
 pub struct MPDConnector {
-    pub client: Option<Client>,
-    idle_client: Option<Client>,
-    pub idle: Option<ConnectionEvents>,
+    pub client: Option<ClientController>,
+    pub idle_client: Option<ClientIdler>,
     pub server: Option<Child>,
     pub rt_idle: Runtime,
     pub rt_timeline: Runtime,
@@ -115,7 +115,7 @@ pub struct MPDConnector {
 
 impl qobject::QMPDConnector {
     fn idle(mut self: Pin<&mut QMPDConnector>) {
-        let mut mpd_idle = self.as_mut().rust_mut().idle.take();
+        let mut mpd_idle = self.as_mut().rust_mut().idle_client.take();
         let qt_thread = self.qt_thread();
         let tx_actions = self.tx_actions.clone();
         let rt_idle = &self.rt_idle;
@@ -377,31 +377,25 @@ impl qobject::QMPDConnector {
         let mut retcount = 5;
         let rt_idle = &self.rt_idle;
         rt_idle.spawn(async move {
-            let (state, mpd_client, mpd_idle_client, mpd_idle) = loop {
+            let (state, mpd_client, mpd_idle) = loop {
                 let settings = Settings::load();
-                let mut mpd_client: Option<Client> = Option::None;
-                let mut mpd_idle_client: Option<Client> = Option::None;
-                let mut mpd_idle: Option<ConnectionEvents> = Option::None;
                 //match TcpStream::connect(&settings.mpd_socket).await {
                 match UnixStream::connect(&settings.mpd_socket).await {
                     Ok(connection) => {
-                        let (client, _) = Client::connect(connection).await.unwrap();
-                        let (idle_client, idle) = Client::connect(
+                        let client = ClientController::connect(connection).await.unwrap();
+                        let idle = ClientIdler::connect(
                             UnixStream::connect(&settings.mpd_socket).await.unwrap(),
                         )
                         .await
                         .unwrap();
-                        mpd_client.replace(client);
-                        mpd_idle_client.replace(idle_client);
-                        mpd_idle.replace(idle);
                         log::debug!("Succesfully connected to MPD server");
-                        break ("connected", mpd_client, mpd_idle_client, mpd_idle);
+                        break ("connected", Some(client), Some(idle));
                     }
                     Err(e) => {
                         retcount -= 1;
                         if retcount <= 0 {
                             log::error!("Failed to connect to MPD server");
-                            break ("disconnected", None, None, None);
+                            break ("disconnected", None, None);
                         }
                         log::warn!("Failed to connect: {}", e);
                         tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
@@ -409,17 +403,8 @@ impl qobject::QMPDConnector {
                 };
             };
             let _ = qt_thread.queue(|mut qobject| {
-                qobject
-                    .as_mut()
-                    .rust_mut()
-                    .client
-                    .replace(mpd_client.unwrap());
-                qobject
-                    .as_mut()
-                    .rust_mut()
-                    .idle_client
-                    .replace(mpd_idle_client.unwrap());
-                qobject.as_mut().rust_mut().idle.replace(mpd_idle.unwrap());
+                qobject.as_mut().rust_mut().client = mpd_client;
+                qobject.as_mut().rust_mut().idle_client = mpd_idle;
                 qobject.as_mut().connection_update(state.into());
                 qobject.as_mut().idle();
                 qobject.as_mut().init_ui();
@@ -471,7 +456,6 @@ impl Default for MPDConnector {
         Self {
             client: None,
             idle_client: None,
-            idle: None,
             server: None,
             rt_idle,
             rt_timeline,

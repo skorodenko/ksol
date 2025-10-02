@@ -20,7 +20,7 @@ xdg = "3.0.0"
 num-traits = "0.2"
 num-derive = "0.4"
 tokio = { version = "1.47.1", features = ["full"] }
-mpd_client = "1.4.1"
+mpd_client = { git = "https://github.com/skorodenko/mpd_client", branch = "refactoring" }
 regex = "1.11.2"
 strum = { version = "0.27", features = ["derive"] }
 strum_macros = "0.27"
