@@ -2,7 +2,7 @@
   description = "Rust devshell";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
     flake-utils.url = "github:numtide/flake-utils";
     rust-overlay.url = "github:oxalica/rust-overlay";
   };
@@ -46,7 +46,6 @@
               export QML_IMPORT_PATH=$NIXPKGS_QT6_QML_IMPORT_PATH
               export QMAKE=qmake6
               export RUST_LOG=DEBUG
-              alias pbuild="cmake --build build/ && wrapQtApp ./build/debug/ksol"
             '';
           };
       }

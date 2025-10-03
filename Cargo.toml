@@ -6,9 +6,9 @@ edition = "2024"
 [dependencies]
 bincode = { version = "2.0.1", features = ["serde"] }
 cxx = "=1.0.168"
-cxx-qt = "0.7.2"
-cxx-qt-lib = { version = "0.7.2", features = ["qt_full"] }
-cxx-qt-lib-extras = "0.7.2"
+cxx-qt = "0.7.3"
+cxx-qt-lib = { version = "0.7.3", features = ["qt_full"] }
+cxx-qt-lib-extras = "0.7.3"
 env_logger = "0.11.8"
 log = "0.4.27"
 once_cell = "1.21.3"
@@ -28,7 +28,7 @@ serde_json = "1.0.143"
 imstr = { version = "0.2.0", features = ["serde"] }
 
 [build-dependencies]
-cxx-qt-build = { version = "0.7.2", features = ["link_qt_object_files"] }
+cxx-qt-build = { version = "0.7.3", features = ["link_qt_object_files"] }
 
 [profile.release]
 opt-level = 3
