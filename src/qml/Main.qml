@@ -85,12 +85,7 @@ Kirigami.ApplicationWindow {
         }
         onActiveSongChanged: function (songPos) {
             qplaylist.activeSongPos = songPos;
-            //qplaylist_view.positionViewAtRow(songPos, Qt.AlignVertical_Mask, 0.0, activeSongHighlight);
         }
-        //        onSongChange: function (pl_uuid, sg_uuid) {
-        //            var info = mpd_connector.getSongInfo(pl_uuid, sg_uuid);
-        //            media_title.text = info.title + " | " + info.artist;
-        //        }
     }
 
     QPlaylistModel {
@@ -244,7 +239,6 @@ Kirigami.ApplicationWindow {
             id: infoMessage
 
             visible: false
-            //implicitHeight: 30
             anchors.left: parent.left
             anchors.right: parent.right
             onVisibleChanged: tmr.restart()
@@ -260,14 +254,19 @@ Kirigami.ApplicationWindow {
             id: qplaylist_header
 
             anchors.top: infoMessage.bottom
+            anchors.left: parent.left
             implicitHeight: 18
             x: -qplaylist_view.contentX
             z: 1
 
             model: qplaylist
-            color: "#4f4f4f"
+            color: "#32363b"
             columnCount: qplaylist.columnCount()
-            tableWidth: parent.width - verticalScroll.width
+            tableWidth: parent.width
+
+            onColumnWidthChanged: {
+                qplaylist_view.forceLayout();
+            }
         }
 
         QQC2.ScrollView {
@@ -278,26 +277,23 @@ Kirigami.ApplicationWindow {
             anchors.bottom: parent.bottom
 
             topPadding: qplaylist_header.height
-            contentWidth: qplaylist_header - verticalScroll.width
+            contentWidth: qplaylist_header.tableWidth - 6
 
-            QQC2.ScrollBar.vertical: QQC2.ScrollBar {
-                id: verticalScroll
-                anchors.right: parent.right
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                policy: QQC2.ScrollBar.AlwaysOn
-
-                Keys.onUpPressed: verticalScroll.decrease()
-                Keys.onDownPressed: verticalScroll.increase()
-            }
-
-            QQC2.ScrollBar.horizontal: QQC2.ScrollBar {
-                id: horizontalScroll
-                anchors.right: verticalScroll.left
-                anchors.left: parent.left
-                anchors.bottom: parent.bottom
-                policy: QQC2.ScrollBar.AlwaysOff
-            }
+//            QQC2.ScrollBar.vertical: QQC2.ScrollBar {
+//                id: verticalScroll
+//                anchors.right: parent.right
+//                anchors.top: parent.top
+//                anchors.bottom: parent.bottom
+//                policy: QQC2.ScrollBar.AsNeeded
+//            }
+//
+//            QQC2.ScrollBar.horizontal: QQC2.ScrollBar {
+//                id: horizontalScroll
+//                //anchors.right: verticalScroll.left
+//                //anchors.left: parent.left
+//                //anchors.bottom: parent.bottom
+//                policy: QQC2.ScrollBar.AsNeeded
+//            }
 
             TableView {
                 id: qplaylist_view

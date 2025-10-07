@@ -11,11 +11,12 @@ QQC2.Control {
     implicitHeight: 18
 
     property alias repeater: repeater
+    signal columnWidthChanged
 
     required property var model
     required property int columnCount
     required property real tableWidth
-    property var color: "#4f4f4f"
+    property var color: "#32363b"
 
     Row {
         Repeater {
@@ -25,33 +26,49 @@ QQC2.Control {
 
             delegate: Rectangle {
                 id: delegate
-                width: root.tableWidth * root.model.headerData(index, Qt.Horizontal, QPlaylistModel.ColumnWidth)
+                width: splitter.x + 6
                 height: root.height
                 color: root.color
 
                 required property int index
 
+                onWidthChanged: {
+                    root.columnWidthChanged();
+                }
+
                 Text {
+                    color: "wheat"
                     text: root.model.headerData(parent.index, Qt.Horizontal, QPlaylistModel.ColumnName)
-                    color: "white"
                     anchors.centerIn: parent
                 }
 
-                Rectangle {
-                    id: dragHandle
-                    visible: false
-                    anchors.right: parent.right
-                    anchors.top: parent.top
-                    anchors.bottom: parent.bottom
-                    width: 2
-                    color: "#8d8d8d"
-                }
+                Item {
+                    id: splitter
+                    x: root.tableWidth * root.model.headerData(parent.index, Qt.Horizontal, QPlaylistModel.ColumnWidth) - 6
+                    width: 6
+                    height: delegate.height
 
-                MouseArea {
-                    hoverEnabled: true
-                    anchors.fill: parent
-                    onEntered: dragHandle.visible = true
-                    onExited: dragHandle.visible = false
+                    DragHandler {
+                        id: dragHandler
+                        target: splitter
+                        yAxis.enabled: false
+                        onActiveChanged: {
+                            if (!active) {
+                                if (splitter.x <= 36) {
+                                    splitter.x = 36;
+                                }
+                            }
+                        }
+                    }
+                    
+                    Rectangle {
+                        id: splitterRect
+                        width: 2
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        color: "#595d61"
+                    }
                 }
             }
         }
