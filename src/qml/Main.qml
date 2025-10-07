@@ -250,53 +250,44 @@ Kirigami.ApplicationWindow {
             }
         }
 
-        PlaylistHeader {
-            id: qplaylist_header
-
-            anchors.top: infoMessage.bottom
-            anchors.left: parent.left
-            implicitHeight: 18
-            x: -qplaylist_view.contentX
-            z: 1
-
-            model: qplaylist
-            color: "#32363b"
-            columnCount: qplaylist.columnCount()
-            tableWidth: parent.width
-
-            onColumnWidthChanged: {
-                qplaylist_view.forceLayout();
-            }
-        }
-
         QQC2.ScrollView {
             id: tableView
-            anchors.top: qplaylist_header.top
+            anchors.top: infoMessage.bottom
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.bottom: parent.bottom
 
-            topPadding: qplaylist_header.height
-            contentWidth: qplaylist_header.tableWidth - 6
+            contentWidth: qplaylist_view.contentWidth
+            contentHeight: qplaylist_view.contentHeight
+            
+            PlaylistHeader {
+                id: qplaylist_header
 
-//            QQC2.ScrollBar.vertical: QQC2.ScrollBar {
-//                id: verticalScroll
-//                anchors.right: parent.right
-//                anchors.top: parent.top
-//                anchors.bottom: parent.bottom
-//                policy: QQC2.ScrollBar.AsNeeded
-//            }
-//
-//            QQC2.ScrollBar.horizontal: QQC2.ScrollBar {
-//                id: horizontalScroll
-//                //anchors.right: verticalScroll.left
-//                //anchors.left: parent.left
-//                //anchors.bottom: parent.bottom
-//                policy: QQC2.ScrollBar.AsNeeded
-//            }
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.right: parent.right
+
+                implicitHeight: 18
+                x: -qplaylist_view.contentX
+                z: 1
+
+                model: qplaylist
+                color: "#32363b"
+                columnCount: qplaylist.columnCount()
+                tableWidth: tableView.availableWidth
+
+                onColumnWidthChanged: {
+                    qplaylist_view.forceLayout();
+                }
+            }
 
             TableView {
                 id: qplaylist_view
+
+                anchors.top: qplaylist_header.bottom
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
 
                 rowSpacing: Kirigami.Units.smallSpacing
                 model: qplaylist
