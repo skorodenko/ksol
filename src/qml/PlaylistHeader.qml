@@ -6,11 +6,11 @@ import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
 import github.skorodenko.ksol 1.0
 
-QQC2.Control {
+Flickable {
     id: root
-    implicitHeight: 18
 
     property alias repeater: repeater
+    property alias contentWidth: row.width
     signal columnWidthChanged
 
     required property var model
@@ -19,6 +19,7 @@ QQC2.Control {
     property var color: "#32363b"
 
     Row {
+        id: row
         Repeater {
             id: repeater
 
@@ -37,9 +38,12 @@ QQC2.Control {
                 }
 
                 Text {
-                    color: "wheat"
+                    width: parent.width
+                    elide: Text.ElideRight
+                    color: Kirigami.Theme.textColor
+                    horizontalAlignment: Qt.AlignLeft
+                    anchors.verticalCenter: parent.verticalCenter
                     text: root.model.headerData(parent.index, Qt.Horizontal, QPlaylistModel.ColumnName)
-                    anchors.centerIn: parent
                 }
 
                 Item {
@@ -60,7 +64,7 @@ QQC2.Control {
                             }
                         }
                     }
-                    
+
                     Rectangle {
                         id: splitterRect
                         width: 2
