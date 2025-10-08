@@ -61,6 +61,9 @@ Flickable {
                                 if (splitter.x <= 36) {
                                     splitter.x = 36;
                                 }
+
+                                var scale = (delegate.width - 6) / root.tableWidth;
+                                root.model.updateColumnWidth(delegate.index, scale);
                             }
                         }
                     }

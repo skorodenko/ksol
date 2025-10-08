@@ -18,6 +18,9 @@ mod qobject {
 
         include!("cxx-qt-lib/qmodelindex.h");
         type QModelIndex = cxx_qt_lib::QModelIndex;
+
+        include!("cxx-qt-lib/qlist.h");
+        type QList_i32 = cxx_qt_lib::QList<i32>;
     }
 
     #[namespace = "Qt"]
@@ -92,6 +95,19 @@ mod qobject {
 
         #[qinvokable]
         fn get_active_song_artist(self: &QPlaylistModel) -> QString;
+
+        #[qinvokable]
+        #[cxx_name = "updateColumnWidth"]
+        fn update_column_width(self: Pin<&mut QPlaylistModel>, section: i32, width: f32);
+
+        #[inherit]
+        #[cxx_name = "headerDataChanged"]
+        fn header_data_changed(
+            self: Pin<&mut QPlaylistModel>,
+            orientation: Orientation,
+            start: i32,
+            end: i32,
+        );
 
         #[inherit]
         #[cxx_name = "beginResetModel"]
@@ -229,6 +245,11 @@ impl qobject::QPlaylistModel {
             Some(v) => QString::from(&v.title),
             None => QString::from("Title"),
         }
+    }
+
+    pub fn update_column_width(mut self: Pin<&mut QPlaylistModel>, section: i32, width: f32) {
+        self.as_mut().rust_mut().column_width[section as usize] = width;
+        self.header_data_changed(Orientation::Horizontal, section, section + 1);
     }
 
     pub fn get_active_song_artist(self: &QPlaylistModel) -> QString {
