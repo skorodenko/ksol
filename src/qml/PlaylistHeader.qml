@@ -6,11 +6,10 @@ import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
 import github.skorodenko.ksol 1.0
 
-Flickable {
+Item {
     id: root
 
     property alias repeater: repeater
-    property alias contentWidth: row.width
     signal columnWidthChanged
 
     required property var model
@@ -18,8 +17,15 @@ Flickable {
     required property real tableWidth
     property var color: "#32363b"
 
-    Row {
+    Rectangle {
+        anchors.fill: parent
+        color: parent.color
+    }
+
+    RowLayout {
         id: row
+        anchors.fill: parent
+
         Repeater {
             id: repeater
 
@@ -27,9 +33,11 @@ Flickable {
 
             delegate: Rectangle {
                 id: delegate
-                width: splitter.x + 6
-                height: root.height
                 color: root.color
+
+                Layout.fillWidth: true
+                Layout.preferredWidth: root.width * root.model.headerData(delegate.index, Qt.Horizontal, QPlaylistModel.ColumnWidth)
+                Layout.preferredHeight: root.height
 
                 required property int index
 
@@ -38,43 +46,53 @@ Flickable {
                 }
 
                 Text {
-                    width: parent.width
                     elide: Text.ElideRight
                     color: Kirigami.Theme.textColor
                     horizontalAlignment: Qt.AlignLeft
-                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.left: delegate.left
+                    anchors.right: splitter.left
                     text: root.model.headerData(parent.index, Qt.Horizontal, QPlaylistModel.ColumnName)
+                }
+
+                MouseArea {
+                    anchors.fill: splitter
+
+                    property int oldMouseX
+
+                    onPressed: {
+                        oldMouseX = mouseX;
+                    }
+                    onPositionChanged: {
+                        if (pressed) {
+                            var widthDelta = (mouseX - oldMouseX);
+                            var newWidth = delegate.Layout.preferredWidth + widthDelta;
+                            if (newWidth >= 36) {
+                                delegate.Layout.preferredWidth = newWidth;
+                            } else {
+                                delegate.Layout.preferredWidth = 36;
+                            }
+                        }
+                    }
                 }
 
                 Item {
                     id: splitter
-                    x: root.tableWidth * root.model.headerData(parent.index, Qt.Horizontal, QPlaylistModel.ColumnWidth) - 6
-                    width: 6
-                    height: delegate.height
-
-                    DragHandler {
-                        id: dragHandler
-                        target: splitter
-                        yAxis.enabled: false
-                        onActiveChanged: {
-                            if (!active) {
-                                if (splitter.x <= 36) {
-                                    splitter.x = 36;
-                                }
-
-                                var scale = (delegate.width - 6) / root.tableWidth;
-                                root.model.updateColumnWidth(delegate.index, scale);
-                            }
-                        }
-                    }
+                    implicitWidth: 6
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    anchors.right: parent.right
+                    visible: delegate.index != root.model.lastVisibleColumn
 
                     Rectangle {
                         id: splitterRect
                         width: 2
-                        anchors.top: parent.top
-                        anchors.bottom: parent.bottom
-                        anchors.horizontalCenter: parent.horizontalCenter
                         color: "#595d61"
+
+                        anchors {
+                            top: parent.top
+                            bottom: parent.bottom
+                            horizontalCenter: parent.horizontalCenter
+                        }
                     }
                 }
             }

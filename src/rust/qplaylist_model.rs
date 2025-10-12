@@ -18,9 +18,6 @@ mod qobject {
 
         include!("cxx-qt-lib/qmodelindex.h");
         type QModelIndex = cxx_qt_lib::QModelIndex;
-
-        include!("cxx-qt-lib/qlist.h");
-        type QList_i32 = cxx_qt_lib::QList<i32>;
     }
 
     #[namespace = "Qt"]
@@ -44,6 +41,7 @@ mod qobject {
         #[base = QAbstractTableModel]
         #[qproperty(QString, filter, READ = get_filter, WRITE = set_filter, NOTIFY = update)]
         #[qproperty(usize, active_song_pos, cxx_name="activeSongPos", READ, WRITE, NOTIFY = update_info)]
+        #[qproperty(usize, last_visible_column, cxx_name="lastVisibleColumn", READ = get_last_visible_column, NOTIFY = update_header)]
         #[qproperty(QString, activeSongTitle, READ = get_active_song_title, NOTIFY = update_info)]
         #[qproperty(QString, activeSongArtist, READ = get_active_song_artist, NOTIFY = update_info)]
         type QPlaylistModel = super::PlaylistModel;
@@ -54,6 +52,10 @@ mod qobject {
         #[qsignal]
         #[cxx_name = "updateInfo"]
         fn update_info(self: Pin<&mut QPlaylistModel>);
+
+        #[qsignal]
+        #[cxx_name = "updateHeader"]
+        fn update_header(self: Pin<&mut QPlaylistModel>);
 
         #[cxx_override]
         #[cxx_name = "roleNames"]
@@ -97,8 +99,11 @@ mod qobject {
         fn get_active_song_artist(self: &QPlaylistModel) -> QString;
 
         #[qinvokable]
+        fn get_last_visible_column(self: &QPlaylistModel) -> usize;
+
+        #[qinvokable]
         #[cxx_name = "updateColumnWidth"]
-        fn update_column_width(self: Pin<&mut QPlaylistModel>, section: i32, width: f32);
+        pub fn update_column_width(self: Pin<&mut QPlaylistModel>, section: i32, width: f64);
 
         #[inherit]
         #[cxx_name = "headerDataChanged"]
@@ -147,7 +152,7 @@ pub struct PlaylistModel {
     pub filter: String,
     pub queue: Vec<QSong>,
     queue_proxy: Vec<QSong>,
-    pub column_width: Vec<f32>,
+    pub column_width: Vec<f64>,
     pub active_song_pos: usize,
 }
 
@@ -191,7 +196,7 @@ impl qobject::QPlaylistModel {
                     SongField::File => qsong.file,
                     SongField::Format => qsong.format,
                     SongField::Lastmodified => qsong.lastmodified,
-                    SongField::Duration => format!("{}", qsong.duration.as_secs_f32()),
+                    SongField::Duration => format!("{}", qsong.duration.as_secs_f64()),
                     SongField::Directory => qsong.directory,
                 };
                 QVariant::from(&QString::from(field))
@@ -220,7 +225,12 @@ impl qobject::QPlaylistModel {
         }
     }
 
-    pub fn set_queue(mut self: Pin<&mut QPlaylistModel>, value: QByteArray) {
+    pub fn update_column_width(mut self: Pin<&mut QPlaylistModel>, section: i32, width: f64) {
+        self.as_mut().rust_mut().column_width[section as usize] = width;
+        self.header_data_changed(Orientation::Horizontal, section, section + 1);
+    }
+
+    fn set_queue(mut self: Pin<&mut QPlaylistModel>, value: QByteArray) {
         let (value, _): (Vec<QSong>, usize) =
             decode_from_slice(value.as_slice(), config::standard()).unwrap();
         self.as_mut().begin_reset_model();
@@ -230,16 +240,16 @@ impl qobject::QPlaylistModel {
         self.as_mut().update();
     }
 
-    pub fn get_filter(self: &QPlaylistModel) -> QString {
+    fn get_filter(self: &QPlaylistModel) -> QString {
         QString::from(&self.filter)
     }
 
-    pub fn set_filter(mut self: Pin<&mut QPlaylistModel>, value: QString) {
+    fn set_filter(mut self: Pin<&mut QPlaylistModel>, value: QString) {
         self.as_mut().rust_mut().filter = value.into();
         self.as_mut().update();
     }
 
-    pub fn get_active_song_title(self: &QPlaylistModel) -> QString {
+    fn get_active_song_title(self: &QPlaylistModel) -> QString {
         let song = &self.queue.get(self.active_song_pos);
         match song {
             Some(v) => QString::from(&v.title),
@@ -247,17 +257,16 @@ impl qobject::QPlaylistModel {
         }
     }
 
-    pub fn update_column_width(mut self: Pin<&mut QPlaylistModel>, section: i32, width: f32) {
-        self.as_mut().rust_mut().column_width[section as usize] = width;
-        self.header_data_changed(Orientation::Horizontal, section, section + 1);
-    }
-
-    pub fn get_active_song_artist(self: &QPlaylistModel) -> QString {
+    fn get_active_song_artist(self: &QPlaylistModel) -> QString {
         let song = &self.queue.get(self.active_song_pos);
         match song {
             Some(v) => QString::from(&v.artist),
             None => QString::from("Artist"),
         }
+    }
+
+    fn get_last_visible_column(self: &QPlaylistModel) -> usize {
+        self.column_width.iter().rposition(|&x| x != 0.0).unwrap_or(0)
     }
 }
 
@@ -293,7 +302,7 @@ impl Default for PlaylistModel {
                 filter: String::default(),
                 queue: Vec::default(),
                 queue_proxy: Vec::default(),
-                column_width: SongField::iter().map(|_| 1_f32 / 14_f32).collect(), //FIX calculated max enum
+                column_width: SongField::iter().map(|_| 1_f64 / 14_f64).collect(), //FIX calculated max enum
                 active_song_pos: 0,
             },
         }

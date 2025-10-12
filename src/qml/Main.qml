@@ -258,7 +258,6 @@ Kirigami.ApplicationWindow {
             anchors.right: parent.right
 
             implicitHeight: 18
-            contentX: qplaylist_view.contentX
             z: 1
 
             model: qplaylist
