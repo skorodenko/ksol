@@ -24,6 +24,7 @@ Item {
 
     RowLayout {
         id: row
+        spacing: 0
         anchors.fill: parent
 
         Repeater {
@@ -51,7 +52,7 @@ Item {
                     horizontalAlignment: Qt.AlignLeft
                     anchors.left: delegate.left
                     anchors.right: splitter.left
-                    text: root.model.headerData(parent.index, Qt.Horizontal, QPlaylistModel.ColumnName)
+                    text: root.model.headerData(delegate.index, Qt.Horizontal, QPlaylistModel.ColumnName)
                 }
 
                 MouseArea {
@@ -78,9 +79,9 @@ Item {
                 Item {
                     id: splitter
                     implicitWidth: 6
-                    anchors.top: parent.top
-                    anchors.bottom: parent.bottom
-                    anchors.right: parent.right
+                    anchors.top: delegate.top
+                    anchors.bottom: delegate.bottom
+                    anchors.right: delegate.right
                     visible: delegate.index != root.model.lastVisibleColumn
 
                     Rectangle {
@@ -89,9 +90,9 @@ Item {
                         color: "#595d61"
 
                         anchors {
-                            top: parent.top
-                            bottom: parent.bottom
-                            horizontalCenter: parent.horizontalCenter
+                            top: splitter.top
+                            bottom: splitter.bottom
+                            horizontalCenter: splitter.horizontalCenter
                         }
                     }
                 }
