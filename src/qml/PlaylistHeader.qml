@@ -39,6 +39,7 @@ Item {
             var item = repeater.itemAt(i);
             if (item.width != 0.0) {
                 item.Layout.preferredWidth = root.tableWidth / visibleCols;
+                root.model.updateColumnWidth(i, 1/visibleCols);
             }
         }
     }
@@ -93,6 +94,7 @@ Item {
                             } else {
                                 delegate.Layout.preferredWidth = 36;
                             }
+                            root.model.updateColumnWidth(delegate.index, delegate.width / root.tableWidth);
                         }
                     }
                 }
