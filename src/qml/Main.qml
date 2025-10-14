@@ -270,7 +270,7 @@ Kirigami.ApplicationWindow {
                 QQC2.MenuItem {
                     text: qsTr("Reset width")
                     onTriggered: {
-                        qplaylist_header.tableWidth = qplaylist_view.width;
+                        qplaylist_header.resetColumnWidth();
                     }
                 }
             }

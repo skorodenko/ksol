@@ -22,6 +22,27 @@ Item {
         color: parent.color
     }
 
+    function visibleColumnCount() {
+        var k = 0;
+        for(var i = 0; i < repeater.count; i++) {
+            var item = repeater.itemAt(i);
+            if (item.width != 0.0) {
+                k++;
+            }
+        }
+        return k
+    }
+
+    function resetColumnWidth() {
+        var visibleCols = root.visibleColumnCount();
+        for(var i = 0; i < repeater.count; i++) {
+            var item = repeater.itemAt(i);
+            if (item.width != 0.0) {
+                item.Layout.preferredWidth = root.tableWidth / visibleCols;
+            }
+        }
+    }
+
     RowLayout {
         id: row
         spacing: 0
