@@ -265,16 +265,6 @@ Kirigami.ApplicationWindow {
             columnCount: qplaylist.columnCount()
             tableWidth: qplaylist_view.width
 
-            QQC2.ContextMenu.menu: QQC2.Menu {
-                id: playlistHeaderMenu
-                QQC2.MenuItem {
-                    text: qsTr("Reset width")
-                    onTriggered: {
-                        qplaylist_header.resetColumnWidth();
-                    }
-                }
-            }
-
             onColumnWidthChanged: {
                 qplaylist_view.forceLayout();
             }

@@ -17,29 +17,67 @@ Item {
     required property real tableWidth
     property var color: "#32363b"
 
+    QQC2.ContextMenu.menu: QQC2.Menu {
+        id: playlistHeaderMenu
+
+        Repeater {
+            model: root.columnCount
+            delegate: QQC2.CheckBox {
+                required property int index
+                text: root.model.headerData(index, Qt.Horizontal, QPlaylistModel.ColumnName)
+                checked: root.model.headerData(index, Qt.Horizontal, QPlaylistModel.ColumnWidth) != 0.0
+                nextCheckState: function () {
+                    root.toggleColumn(index, !checked);
+                    return checked ? Qt.Unchecked : Qt.Checked;
+                }
+            }
+        }
+
+        QQC2.MenuItem {
+            text: qsTr("Reset width")
+            onTriggered: {
+                root.resetColumnWidth();
+            }
+        }
+    }
+
     Rectangle {
         anchors.fill: parent
         color: parent.color
     }
 
+    function toggleColumn(column, state) {
+        var item = repeater.itemAt(column);
+        if (state == true) {
+            item.visible = true;
+            item.enabled = true;
+            item.Layout.preferredWidth = 45;
+            root.model.updateColumnWidth(column, item.width / root.tableWidth);
+        } else {
+            item.visible = false;
+            item.enabled = false;
+            root.model.updateColumnWidth(column, 0.0);
+        }
+    }
+
     function visibleColumnCount() {
         var k = 0;
-        for(var i = 0; i < repeater.count; i++) {
+        for (var i = 0; i < repeater.count; i++) {
             var item = repeater.itemAt(i);
             if (item.width != 0.0) {
                 k++;
             }
         }
-        return k
+        return k;
     }
 
     function resetColumnWidth() {
         var visibleCols = root.visibleColumnCount();
-        for(var i = 0; i < repeater.count; i++) {
+        for (var i = 0; i < repeater.count; i++) {
             var item = repeater.itemAt(i);
             if (item.width != 0.0) {
                 item.Layout.preferredWidth = root.tableWidth / visibleCols;
-                root.model.updateColumnWidth(i, 1/visibleCols);
+                root.model.updateColumnWidth(i, 1 / visibleCols);
             }
         }
     }
@@ -79,20 +117,21 @@ Item {
 
                 MouseArea {
                     anchors.fill: splitter
-
+                    enabled: delegate.width > 0.0 
+                    
                     property int oldMouseX
 
                     onPressed: {
                         oldMouseX = mouseX;
                     }
                     onPositionChanged: {
-                        if (pressed) {
+                        if (pressed && width != 0.0) {
                             var widthDelta = (mouseX - oldMouseX);
                             var newWidth = delegate.Layout.preferredWidth + widthDelta;
-                            if (newWidth >= 36) {
+                            if (newWidth >= 45) {
                                 delegate.Layout.preferredWidth = newWidth;
                             } else {
-                                delegate.Layout.preferredWidth = 36;
+                                delegate.Layout.preferredWidth = 45;
                             }
                             root.model.updateColumnWidth(delegate.index, delegate.width / root.tableWidth);
                         }
