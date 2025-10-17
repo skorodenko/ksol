@@ -49,15 +49,12 @@ Item {
     function toggleColumn(column, state) {
         var item = repeater.itemAt(column);
         if (state == true) {
-            item.visible = true;
-            item.enabled = true;
-            item.Layout.preferredWidth = 45;
-            root.model.updateColumnWidth(column, item.width / root.tableWidth);
+            item.Layout.preferredWidth = 100;
+            root.model.updateColumnWidth(column, 100 / root.tableWidth);
         } else {
-            item.visible = false;
-            item.enabled = false;
             root.model.updateColumnWidth(column, 0.0);
         }
+        root.syncColumnWidth();
     }
 
     function visibleColumnCount() {
@@ -79,6 +76,13 @@ Item {
                 item.Layout.preferredWidth = root.tableWidth / visibleCols;
                 root.model.updateColumnWidth(i, 1 / visibleCols);
             }
+        }
+    }
+
+    function syncColumnWidth() {
+        for (var i = 0; i < repeater.count; i++) {
+            var item = repeater.itemAt(i);
+            item.Layout.preferredWidth = root.width * root.model.headerData(i, Qt.Horizontal, QPlaylistModel.ColumnWidth);
         }
     }
 
@@ -111,7 +115,7 @@ Item {
                     color: Kirigami.Theme.textColor
                     horizontalAlignment: Qt.AlignLeft
                     anchors.left: delegate.left
-                    anchors.right: splitter.left
+                    anchors.right: sortIndicator.left
                     text: root.model.headerData(delegate.index, Qt.Horizontal, QPlaylistModel.ColumnName)
                 }
 
@@ -125,7 +129,7 @@ Item {
                         oldMouseX = mouseX;
                     }
                     onPositionChanged: {
-                        if (pressed && width != 0.0) {
+                        if (pressed) {
                             var widthDelta = (mouseX - oldMouseX);
                             var newWidth = delegate.Layout.preferredWidth + widthDelta;
                             if (newWidth >= 45) {
@@ -135,6 +139,20 @@ Item {
                             }
                             root.model.updateColumnWidth(delegate.index, delegate.width / root.tableWidth);
                         }
+                    }
+                }
+
+                Item {
+                    id: sortIndicator
+                    implicitWidth: 8
+                    anchors.top: delegate.top
+                    anchors.bottom: delegate.bottom
+                    anchors.right: splitter.left
+
+                    Text {
+                        text: "-"
+                        color: Kirigami.Theme.textColor
+                        anchors.centerIn: parent
                     }
                 }
 

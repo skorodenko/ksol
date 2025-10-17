@@ -227,7 +227,20 @@ impl qobject::QPlaylistModel {
 
     pub fn update_column_width(mut self: Pin<&mut QPlaylistModel>, section: i32, width: f64) {
         self.as_mut().rust_mut().column_width[section as usize] = width;
-        self.header_data_changed(Orientation::Horizontal, section, section + 1);
+        let norm = self
+            .as_mut()
+            .rust_mut()
+            .column_width
+            .iter()
+            .fold(0., |sum, &x| sum + x.powf(2.0))
+            .sqrt();
+        self.as_mut()
+            .rust_mut()
+            .column_width
+            .iter_mut()
+            .for_each(|x| *x /= norm);
+        let column_count = self.as_mut().rust_mut().column_width.len() as i32;
+        self.header_data_changed(Orientation::Horizontal, 0, column_count);
     }
 
     fn set_queue(mut self: Pin<&mut QPlaylistModel>, value: QByteArray) {
@@ -266,7 +279,10 @@ impl qobject::QPlaylistModel {
     }
 
     fn get_last_visible_column(self: &QPlaylistModel) -> usize {
-        self.column_width.iter().rposition(|&x| x != 0.0).unwrap_or(0)
+        self.column_width
+            .iter()
+            .rposition(|&x| x != 0.0)
+            .unwrap_or(0)
     }
 }
 
