@@ -193,7 +193,7 @@ Item {
                     anchors.top: delegate.top
                     anchors.bottom: delegate.bottom
                     anchors.right: delegate.right
-                    visible: delegate.index != root.model.lastVisibleColumn || delegate.width > 0
+                    visible: delegate.index != root.model.lastVisibleColumn && delegate.width > 0
 
                     Rectangle {
                         id: splitterRect
