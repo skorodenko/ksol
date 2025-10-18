@@ -44,6 +44,8 @@ mod qobject {
         #[qproperty(usize, last_visible_column, cxx_name="lastVisibleColumn", READ = get_last_visible_column, NOTIFY = update_header)]
         #[qproperty(QString, activeSongTitle, READ = get_active_song_title, NOTIFY = update_info)]
         #[qproperty(QString, activeSongArtist, READ = get_active_song_artist, NOTIFY = update_info)]
+        #[qproperty(i32, sortOrder, READ = get_sort_order, NOTIFY = update_sort)]
+        #[qproperty(i32, sortColumn, READ = get_sort_column, NOTIFY = update_sort)]
         type QPlaylistModel = super::PlaylistModel;
 
         #[qsignal]
@@ -56,6 +58,10 @@ mod qobject {
         #[qsignal]
         #[cxx_name = "updateHeader"]
         fn update_header(self: Pin<&mut QPlaylistModel>);
+
+        #[qsignal]
+        #[cxx_name = "updateSort"]
+        fn update_sort(self: Pin<&mut QPlaylistModel>);
 
         #[cxx_override]
         #[cxx_name = "roleNames"]
@@ -83,6 +89,10 @@ mod qobject {
 
         #[qinvokable]
         #[cxx_virtual]
+        fn sort(self: Pin<&mut QPlaylistModel>, column: i32);
+
+        #[qinvokable]
+        #[cxx_virtual]
         #[cxx_name = "setQueue"]
         fn set_queue(self: Pin<&mut QPlaylistModel>, value: QByteArray);
 
@@ -97,6 +107,12 @@ mod qobject {
 
         #[qinvokable]
         fn get_active_song_artist(self: &QPlaylistModel) -> QString;
+
+        #[qinvokable]
+        fn get_sort_order(self: &QPlaylistModel) -> i32;
+
+        #[qinvokable]
+        fn get_sort_column(self: &QPlaylistModel) -> i32;
 
         #[qinvokable]
         fn get_last_visible_column(self: &QPlaylistModel) -> usize;
@@ -137,14 +153,12 @@ mod qobject {
 
 use qobject::*;
 
-use crate::rust::entities::{QSong, SongField};
+use crate::rust::entities::{ColumnSort, QSong, SongField};
 use bincode::config;
 use bincode::serde::{decode_from_slice, encode_to_vec};
 use core::pin::Pin;
 use cxx_qt::CxxQtType;
-use cxx_qt::Threading;
-use num_traits::FromPrimitive;
-use regex::RegexBuilder;
+use num_traits::{FromPrimitive, ToPrimitive};
 use strum::IntoEnumIterator;
 
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -154,6 +168,7 @@ pub struct PlaylistModel {
     queue_proxy: Vec<QSong>,
     pub column_width: Vec<f64>,
     pub active_song_pos: usize,
+    pub column_sort: ColumnSort,
 }
 
 impl qobject::QPlaylistModel {
@@ -196,7 +211,11 @@ impl qobject::QPlaylistModel {
                     SongField::File => qsong.file,
                     SongField::Format => qsong.format,
                     SongField::Lastmodified => qsong.lastmodified,
-                    SongField::Duration => format!("{}", qsong.duration.as_secs_f64()),
+                    SongField::Duration => format!(
+                        "{:0>2}:{:0>2}",
+                        qsong.duration.as_secs() / 60,
+                        qsong.duration.as_secs() % 60
+                    ),
                     SongField::Directory => qsong.directory,
                 };
                 QVariant::from(&QString::from(field))
@@ -223,6 +242,26 @@ impl qobject::QPlaylistModel {
             }
             _ => QVariant::default(),
         }
+    }
+
+    pub fn sort(mut self: Pin<&mut QPlaylistModel>, column: i32) {
+        let column = SongField::from_i32(column).unwrap();
+        match self.column_sort {
+            ColumnSort::Inactive => {
+                self.as_mut().rust_mut().column_sort = ColumnSort::Ascending(column);
+            }
+            ColumnSort::Ascending(old_column) => {
+                if old_column != column {
+                    self.as_mut().rust_mut().column_sort = ColumnSort::Ascending(column);
+                } else {
+                    self.as_mut().rust_mut().column_sort = ColumnSort::Descending(column);
+                }
+            }
+            ColumnSort::Descending(_) => {
+                self.as_mut().rust_mut().column_sort = ColumnSort::Ascending(column);
+            }
+        };
+        self.update_sort();
     }
 
     pub fn update_column_width(mut self: Pin<&mut QPlaylistModel>, section: i32, width: f64) {
@@ -278,6 +317,22 @@ impl qobject::QPlaylistModel {
         }
     }
 
+    fn get_sort_order(self: &QPlaylistModel) -> i32 {
+        match self.column_sort {
+            ColumnSort::Inactive => 0,
+            ColumnSort::Ascending(_) => 1,
+            ColumnSort::Descending(_) => -1,
+        }
+    }
+
+    fn get_sort_column(self: &QPlaylistModel) -> i32 {
+        match self.column_sort {
+            ColumnSort::Inactive => -1,
+            ColumnSort::Ascending(col) => col.to_i32().unwrap_or(-1),
+            ColumnSort::Descending(col) => col.to_i32().unwrap_or(-1),
+        }
+    }
+
     fn get_last_visible_column(self: &QPlaylistModel) -> usize {
         self.column_width
             .iter()
@@ -320,6 +375,7 @@ impl Default for PlaylistModel {
                 queue_proxy: Vec::default(),
                 column_width: SongField::iter().map(|_| 1_f64 / 14_f64).collect(), //FIX calculated max enum
                 active_song_pos: 0,
+                column_sort: ColumnSort::Ascending(SongField::Track),
             },
         }
     }

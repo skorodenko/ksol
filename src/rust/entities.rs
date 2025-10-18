@@ -1,6 +1,6 @@
 use core::time::Duration;
 use mpd_client::{responses::SongInQueue, tag::Tag};
-use num_derive::FromPrimitive;
+use num_derive::{FromPrimitive, ToPrimitive};
 use serde;
 use std::fmt::{Display, Formatter, Result};
 use std::path::Path;
@@ -37,7 +37,17 @@ pub enum MPSCCommand {
     IdleQueue,
 }
 
-#[derive(serde::Deserialize, serde::Serialize, EnumIter, FromPrimitive, Copy, Clone, Debug)]
+#[derive(
+    serde::Deserialize,
+    serde::Serialize,
+    PartialEq,
+    EnumIter,
+    FromPrimitive,
+    ToPrimitive,
+    Copy,
+    Clone,
+    Debug,
+)]
 #[repr(i32)]
 pub enum SongField {
     Track = 0,
@@ -54,6 +64,14 @@ pub enum SongField {
     Lastmodified = 11,
     Duration = 12,
     Directory = 13,
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug)]
+#[repr(i32)]
+pub enum ColumnSort {
+    Inactive,
+    Ascending(SongField),
+    Descending(SongField),
 }
 
 impl From<SongInQueue> for QSong {
@@ -91,6 +109,16 @@ impl From<SongInQueue> for QSong {
                 .to_str()
                 .unwrap()
                 .to_string(),
+        }
+    }
+}
+
+impl From<(i32, SongField)> for ColumnSort {
+    fn from(value: (i32, SongField)) -> Self {
+        match value.0 {
+            -1 => ColumnSort::Descending(value.1),
+            1 => ColumnSort::Ascending(value.1),
+            _ => ColumnSort::Inactive,
         }
     }
 }

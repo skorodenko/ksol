@@ -121,8 +121,8 @@ Item {
 
                 MouseArea {
                     anchors.fill: splitter
-                    enabled: delegate.width > 0.0 
-                    
+                    enabled: delegate.width > 0.0
+
                     property int oldMouseX
 
                     onPressed: {
@@ -148,12 +148,43 @@ Item {
                     anchors.top: delegate.top
                     anchors.bottom: delegate.bottom
                     anchors.right: splitter.left
+                    
+                    visible: delegate.width > 0
+                    state: root.model.sortColumn == delegate.index ? root.model.sortOrder : "0"
+
+                    MouseArea {
+                        anchors.fill: sortIndicator
+                        onClicked: {
+                            root.model.sort(delegate.index);
+                        }
+                    }
 
                     Text {
-                        text: "-"
+                        id: sortIndicatorText
                         color: Kirigami.Theme.textColor
                         anchors.centerIn: parent
                     }
+
+                    states: [
+                        State {
+                            name: "1"
+                            PropertyChanges {
+                                sortIndicatorText.text: "v"
+                            }
+                        },
+                        State {
+                            name: "0"
+                            PropertyChanges {
+                                sortIndicatorText.text: "-"
+                            }
+                        },
+                        State {
+                            name: "-1"
+                            PropertyChanges {
+                                sortIndicatorText.text: "^"
+                            }
+                        }
+                    ]
                 }
 
                 Item {
@@ -162,11 +193,11 @@ Item {
                     anchors.top: delegate.top
                     anchors.bottom: delegate.bottom
                     anchors.right: delegate.right
-                    visible: delegate.index != root.model.lastVisibleColumn
+                    visible: delegate.index != root.model.lastVisibleColumn || delegate.width > 0
 
                     Rectangle {
                         id: splitterRect
-                        width: 2
+                        implicitWidth: 2
                         color: "#595d61"
 
                         anchors {
