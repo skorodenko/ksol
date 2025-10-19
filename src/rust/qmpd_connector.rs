@@ -73,6 +73,10 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "stagePlaylist"]
         fn stage_playlist(self: Pin<&mut QMPDConnector>, name: QString, group: i32);
+
+        #[qinvokable]
+        #[cxx_name = "sortPlaylist"]
+        fn sort_playlist(self: Pin<&mut QMPDConnector>, sort_column: i32, sort_order: i32);
     }
 
     impl cxx_qt::Threading for QMPDConnector {}
@@ -80,7 +84,7 @@ pub mod qobject {
 
 use qobject::*;
 
-use crate::rust::entities::{MPSCCommand, QSong, SongField};
+use crate::rust::entities::{ColumnSort, MPSCCommand, QSong, SongField};
 use crate::rust::settings::{InternalSettings, Settings};
 use bincode::config;
 use bincode::serde::encode_to_vec;
@@ -93,6 +97,7 @@ use mpd_client::{
     tag::Tag,
 };
 use num_traits::FromPrimitive;
+use std::cmp::Reverse;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
@@ -232,7 +237,7 @@ impl qobject::QMPDConnector {
                         });
                     }
                     Some(MPSCCommand::GetPlaylists(group)) => {
-                        let group = Tag::from(SongField::from_i32(group).unwrap());
+                        let group = Tag::from(group);
                         let mut result: Vec<String> = match group {
                             Tag::Other(value) if value == "Directory".into() => {
                                 let command = commands::ListAllIn::root();
@@ -268,8 +273,70 @@ impl qobject::QMPDConnector {
                             qobject.as_mut().get_playlists_result(bcode);
                         });
                     }
+                    Some(MPSCCommand::SortPlaylist(sort_order)) => {
+                        let command = commands::Queue::all();
+                        let songs = mpd_client.command(command).await.unwrap();
+                        let mut songs: Vec<QSong> = songs.into_iter().map(QSong::from).collect();
+                        match sort_order {
+                            ColumnSort::Inactive => (),
+                            ColumnSort::Ascending(col) => match col {
+                                SongField::Track => songs.sort_by_key(|k| k.clone().track),
+                                SongField::Title => songs.sort_by_key(|k| k.clone().title),
+                                SongField::Artist => songs.sort_by_key(|k| k.clone().artist),
+                                SongField::Album => songs.sort_by_key(|k| k.clone().album),
+                                SongField::Date => songs.sort_by_key(|k| k.clone().date),
+                                SongField::Genre => songs.sort_by_key(|k| k.clone().genre),
+                                SongField::Disc => songs.sort_by_key(|k| k.clone().disc),
+                                SongField::Composer => songs.sort_by_key(|k| k.clone().composer),
+                                SongField::Albumartist => songs.sort_by_key(|k| k.clone().artist),
+                                SongField::File => songs.sort_by_key(|k| k.clone().file),
+                                SongField::Format => songs.sort_by_key(|k| k.clone().format),
+                                SongField::Lastmodified => {
+                                    songs.sort_by_key(|k| k.clone().lastmodified)
+                                }
+                                SongField::Duration => songs.sort_by_key(|k| k.clone().duration),
+                                SongField::Directory => songs.sort_by_key(|k| k.clone().directory),
+                            },
+                            ColumnSort::Descending(col) => match col {
+                                SongField::Track => songs.sort_by_key(|k| Reverse(k.clone().track)),
+                                SongField::Title => songs.sort_by_key(|k| Reverse(k.clone().title)),
+                                SongField::Artist => {
+                                    songs.sort_by_key(|k| Reverse(k.clone().artist))
+                                }
+                                SongField::Album => songs.sort_by_key(|k| Reverse(k.clone().album)),
+                                SongField::Date => songs.sort_by_key(|k| Reverse(k.clone().date)),
+                                SongField::Genre => songs.sort_by_key(|k| Reverse(k.clone().genre)),
+                                SongField::Disc => songs.sort_by_key(|k| Reverse(k.clone().disc)),
+                                SongField::Composer => {
+                                    songs.sort_by_key(|k| Reverse(k.clone().composer))
+                                }
+                                SongField::Albumartist => {
+                                    songs.sort_by_key(|k| Reverse(k.clone().artist))
+                                }
+                                SongField::File => songs.sort_by_key(|k| Reverse(k.clone().file)),
+                                SongField::Format => {
+                                    songs.sort_by_key(|k| Reverse(k.clone().format))
+                                }
+                                SongField::Lastmodified => {
+                                    songs.sort_by_key(|k| Reverse(k.clone().lastmodified))
+                                }
+                                SongField::Duration => {
+                                    songs.sort_by_key(|k| Reverse(k.clone().duration))
+                                }
+                                SongField::Directory => {
+                                    songs.sort_by_key(|k| Reverse(k.clone().directory))
+                                }
+                            },
+                        };
+                        let move_commands: Vec<commands::Move> = songs
+                            .iter()
+                            .enumerate()
+                            .map(|(i, x)| commands::Move::id(x.id.into()).to_position(i.into()))
+                            .collect();
+                        let _ = mpd_client.command_list(move_commands).await.unwrap();
+                    }
                     Some(MPSCCommand::StagePlaylist(name, group)) => {
-                        let tag = Tag::from(SongField::from_i32(group).unwrap());
+                        let tag = Tag::from(group);
                         // Query playlist
                         let songs: Vec<Song> = match tag {
                             Tag::Other(value) if value == "Directory".into() => {
@@ -346,14 +413,23 @@ impl qobject::QMPDConnector {
     }
 
     pub fn get_playlists(self: Pin<&mut QMPDConnector>, group: i32) {
+        let group = SongField::from_i32(group).unwrap();
         let tx_actions = self.tx_actions.clone();
         let _ = tx_actions.blocking_send(MPSCCommand::GetPlaylists(group));
     }
 
     pub fn stage_playlist(self: Pin<&mut QMPDConnector>, name: QString, group: i32) {
         let name = String::from(name);
+        let group = SongField::from_i32(group).unwrap();
         let tx_actions = self.tx_actions.clone();
         let _ = tx_actions.blocking_send(MPSCCommand::StagePlaylist(name, group));
+    }
+
+    pub fn sort_playlist(self: Pin<&mut QMPDConnector>, sort_column: i32, sort_order: i32) {
+        let sort_column = SongField::from_i32(sort_column).unwrap();
+        let sort_order = ColumnSort::from((sort_order, sort_column));
+        let tx_actions = self.tx_actions.clone();
+        let _ = tx_actions.blocking_send(MPSCCommand::SortPlaylist(sort_order));
     }
 
     fn start_native_server(self: Pin<&mut Self>, mpd_binary: &PathBuf, native_config: &String) {

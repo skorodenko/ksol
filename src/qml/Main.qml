@@ -90,7 +90,10 @@ Kirigami.ApplicationWindow {
 
     QPlaylistModel {
         id: qplaylist
-        onLayoutChanged: function () {}
+
+        onUpdateSort: {
+            mpd_connector.sortPlaylist(qplaylist.sortColumn, qplaylist.sortOrder);
+        }
     }
 
     Connections {

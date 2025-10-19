@@ -31,8 +31,9 @@ pub enum MPSCCommand {
     PlaySong(usize),
     PlayToggle,
     UpdateDb,
-    GetPlaylists(i32),
-    StagePlaylist(String, i32),
+    GetPlaylists(SongField),
+    StagePlaylist(String, SongField),
+    SortPlaylist(ColumnSort),
     IdlePlayer,
     IdleQueue,
 }
