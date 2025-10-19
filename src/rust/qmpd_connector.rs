@@ -87,7 +87,7 @@ use bincode::serde::encode_to_vec;
 use core::pin::Pin;
 use cxx_qt::{CxxQtType, Threading};
 use log;
-use mpd_client::client::{ConnectionEvent, ConnectionEvents, Subsystem};
+use mpd_client::client::{ConnectionEvent, Subsystem};
 use mpd_client::{
     ClientController, ClientIdler, commands, filter::Filter, responses::PlayState, responses::Song,
     tag::Tag,
@@ -271,7 +271,7 @@ impl qobject::QMPDConnector {
                     Some(MPSCCommand::StagePlaylist(name, group)) => {
                         let tag = Tag::from(SongField::from_i32(group).unwrap());
                         // Query playlist
-                        let result: Vec<Song> = match tag {
+                        let songs: Vec<Song> = match tag {
                             Tag::Other(value) if value == "Directory".into() => {
                                 let command = commands::ListAllIn::directory(&name);
                                 mpd_client.command(command).await.unwrap_or(Vec::default())
@@ -286,7 +286,7 @@ impl qobject::QMPDConnector {
                         let clear_command = commands::ClearQueue;
                         let _ = mpd_client.command(clear_command).await;
                         // Populate new queue
-                        let add_commands: Vec<commands::Add> = result
+                        let add_commands: Vec<commands::Add> = songs
                             .iter()
                             .map(|x| commands::Add::uri(x.url.as_str()))
                             .collect();
