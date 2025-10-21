@@ -24,7 +24,7 @@ pub mod qobject {
 
         #[qsignal]
         #[cxx_name = "activeSongChanged"]
-        fn active_song_changed(self: Pin<&mut QMPDConnector>, song_id: usize);
+        fn active_song_changed(self: Pin<&mut QMPDConnector>, song_id: u64);
 
         #[qsignal]
         #[cxx_name = "timelineUpdate"]
@@ -45,6 +45,10 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "connect"]
         fn connect(self: Pin<&mut QMPDConnector>);
+
+        #[qinvokable]
+        #[cxx_name = "syncQueue"]
+        fn sync_queue(self: Pin<&mut QMPDConnector>);
 
         #[qinvokable]
         #[cxx_name = "playSong"]
@@ -363,10 +367,10 @@ impl qobject::QMPDConnector {
                         let command = commands::Status;
                         let result = mpd_client.command(command).await.unwrap();
                         let play_state = QString::from(format!("{:#?}", result.state));
-                        let song_pos = result.current_song.unwrap().0.0;
+                        let song_id = result.current_song.unwrap().1.0;
                         let _ = qt_thread.queue(move |mut qobject| {
                             qobject.as_mut().play_state_changed(play_state);
-                            qobject.as_mut().active_song_changed(song_pos);
+                            qobject.as_mut().active_song_changed(song_id);
                         });
                     }
                     Some(MPSCCommand::IdleQueue) => {
@@ -430,6 +434,11 @@ impl qobject::QMPDConnector {
         let sort_order = ColumnSort::from((sort_order, sort_column));
         let tx_actions = self.tx_actions.clone();
         let _ = tx_actions.blocking_send(MPSCCommand::SortPlaylist(sort_order));
+    }
+
+    pub fn sync_queue(self: Pin<&mut QMPDConnector>) {
+        let tx_actions = self.tx_actions.clone();
+        let _ = tx_actions.blocking_send(MPSCCommand::IdleQueue);
     }
 
     fn start_native_server(self: Pin<&mut Self>, mpd_binary: &PathBuf, native_config: &String) {

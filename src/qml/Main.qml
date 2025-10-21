@@ -11,7 +11,10 @@ Kirigami.ApplicationWindow {
     title: qsTr("Ksol")
     pageStack.initialPage: mainPage
 
-    Component.onCompleted: mpd_connector.connect()
+    Component.onCompleted: {
+        mpd_connector.connect();
+        mpd_connector.syncQueue();
+    }
 
     function message(message, type, iconName = null) {
         infoMessage.visible = false;
@@ -83,8 +86,8 @@ Kirigami.ApplicationWindow {
             var dfs = Math.floor(duration % 60).toString().padStart(2, '0');
             media_duration.text = `${efm}:${efs} / ${dfm}:${dfs}`;
         }
-        onActiveSongChanged: function (songPos) {
-            qplaylist.activeSongPos = songPos;
+        onActiveSongChanged: function (songId) {
+            qplaylist.activeSongId = songId;
         }
     }
 
@@ -101,6 +104,7 @@ Kirigami.ApplicationWindow {
 
         function onStagePlaylist(name, group) {
             mpd_connector.stagePlaylist(name, group);
+            mpd_connector.sortPlaylist(qplaylist.sortColumn, qplaylist.sortOrder);
         }
     }
 
@@ -300,6 +304,7 @@ Kirigami.ApplicationWindow {
                 implicitHeight: 18
 
                 required property int row
+                required property var songId
                 required property string songDisplay
 
                 MouseArea {
@@ -311,7 +316,7 @@ Kirigami.ApplicationWindow {
 
                 Rectangle {
                     anchors.fill: parent
-                    visible: qplaylist.activeSongPos === parent.row
+                    visible: qplaylist.activeSongId === parent.songId
                     color: Kirigami.Theme.neutralBackgroundColor
                 }
 

@@ -40,7 +40,7 @@ mod qobject {
         #[qml_element]
         #[base = QAbstractTableModel]
         #[qproperty(QString, filter, READ = get_filter, WRITE = set_filter, NOTIFY = update)]
-        #[qproperty(usize, active_song_pos, cxx_name="activeSongPos", READ, WRITE, NOTIFY = update_info)]
+        #[qproperty(u64, active_song_id, cxx_name="activeSongId", READ, WRITE, NOTIFY = update_info)]
         #[qproperty(usize, last_visible_column, cxx_name="lastVisibleColumn", READ = get_last_visible_column, NOTIFY = update_header)]
         #[qproperty(QString, activeSongTitle, READ = get_active_song_title, NOTIFY = update_info)]
         #[qproperty(QString, activeSongArtist, READ = get_active_song_artist, NOTIFY = update_info)]
@@ -167,7 +167,7 @@ pub struct PlaylistModel {
     pub queue: Vec<QSong>,
     queue_proxy: Vec<QSong>,
     pub column_width: Vec<f64>,
-    pub active_song_pos: usize,
+    pub active_song_id: u64,
     pub column_sort: ColumnSort,
 }
 
@@ -302,7 +302,7 @@ impl qobject::QPlaylistModel {
     }
 
     fn get_active_song_title(self: &QPlaylistModel) -> QString {
-        let song = &self.queue.get(self.active_song_pos);
+        let song = &self.queue.iter().find(|&x| x.id == self.active_song_id);
         match song {
             Some(v) => QString::from(&v.title),
             None => QString::from("Title"),
@@ -310,7 +310,7 @@ impl qobject::QPlaylistModel {
     }
 
     fn get_active_song_artist(self: &QPlaylistModel) -> QString {
-        let song = &self.queue.get(self.active_song_pos);
+        let song = &self.queue.iter().find(|&x| x.id == self.active_song_id);
         match song {
             Some(v) => QString::from(&v.artist),
             None => QString::from("Artist"),
@@ -374,7 +374,7 @@ impl Default for PlaylistModel {
                 queue: Vec::default(),
                 queue_proxy: Vec::default(),
                 column_width: SongField::iter().map(|_| 1_f64 / 14_f64).collect(), //FIX calculated max enum
-                active_song_pos: 0,
+                active_song_id: 0,
                 column_sort: ColumnSort::Ascending(SongField::Track),
             },
         }
