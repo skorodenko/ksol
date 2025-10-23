@@ -110,6 +110,16 @@ Item {
                     root.columnWidthChanged();
                 }
 
+                function applyWidthDelta(delta) {
+                    var newWidth = delegate.Layout.preferredWidth + delta;
+                    if (newWidth >= 45) {
+                        delegate.Layout.preferredWidth = newWidth;
+                    } else {
+                        delegate.Layout.preferredWidth = 45;
+                    }
+                    root.model.updateColumnWidth(delegate.index, delegate.width / root.tableWidth);
+                }
+
                 Text {
                     elide: Text.ElideRight
                     color: Kirigami.Theme.textColor
@@ -131,13 +141,14 @@ Item {
                     onPositionChanged: {
                         if (pressed) {
                             var widthDelta = (mouseX - oldMouseX);
-                            var newWidth = delegate.Layout.preferredWidth + widthDelta;
-                            if (newWidth >= 45) {
-                                delegate.Layout.preferredWidth = newWidth;
-                            } else {
-                                delegate.Layout.preferredWidth = 45;
-                            }
-                            root.model.updateColumnWidth(delegate.index, delegate.width / root.tableWidth);
+                            delegate.applyWidthDelta(widthDelta);
+                            for (var i = delegate.index + 1; i < root.model.lastVisibleColumn; i++) {
+                                var itemDelegate = repeater.itemAt(i);
+                                if (itemDelegate.width > 0.0) {
+                                    itemDelegate.applyWidthDelta(-widthDelta);
+                                    break;
+                                }
+                            };
                         }
                     }
                 }
@@ -148,7 +159,7 @@ Item {
                     anchors.top: delegate.top
                     anchors.bottom: delegate.bottom
                     anchors.right: splitter.left
-                    
+
                     visible: delegate.width > 0
                     state: root.model.sortColumn == delegate.index ? root.model.sortOrder : "0"
 
