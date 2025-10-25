@@ -35,8 +35,11 @@ pub enum MPSCCommand {
     StagePlaylist(String, SongField),
     SortPlaylist(ColumnSort),
     Seek(Duration),
+    ShuffleToggle(bool),
+    RepeatToggle(bool, bool),
     IdlePlayer,
     IdleQueue,
+    IdleOptions,
 }
 
 #[derive(

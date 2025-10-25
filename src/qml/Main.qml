@@ -13,7 +13,7 @@ Kirigami.ApplicationWindow {
 
     Component.onCompleted: {
         mpd_connector.connect();
-        mpd_connector.syncQueue();
+        mpd_connector.syncState();
     }
 
     function message(message, type, iconName = null) {
@@ -114,6 +114,23 @@ Kirigami.ApplicationWindow {
         }
         onActiveSongChanged: function (songId) {
             qplaylist.activeSongId = songId;
+        }
+        onUpdateOptions: function () {
+            var shuffle = mpd_connector.shuffle;
+            var repeat = mpd_connector.repeat;
+            var single = mpd_connector.single;
+            if (shuffle) {
+                shuffleButton.icon.name = "media-playlist-shuffle";
+            } else {
+                shuffleButton.icon.name = "media-playlist-normal";
+            }
+            if (repeat == false) {
+                repeatButton.icon.name = "media-repeat-none";
+            } else if (single) {
+                repeatButton.icon.name = "media-repeat-single";
+            } else {
+                repeatButton.icon.name = "media-repeat-all";
+            }
         }
     }
 
@@ -247,27 +264,60 @@ Kirigami.ApplicationWindow {
 
     footer: QQC2.ToolBar {
         id: footer
-        implicitHeight: 20
+        implicitHeight: 22
+        padding: 0
+
         background: Rectangle {
-            height: parent.height
             Kirigami.Theme.inherit: false
             Kirigami.Theme.colorSet: Kirigami.Theme.Header
             color: Kirigami.Theme.backgroundColor
-            RowLayout {
-                anchors.fill: parent
-                QQC2.Label {
-                    id: connectionStateLabel
-                    Layout.fillHeight: true
-                    Layout.leftMargin: 2 * Kirigami.Units.largeSpacing
-                    text: "Disconnected"
-                    leftPadding: Kirigami.Units.smallSpacing
-                    rightPadding: Kirigami.Units.smallSpacing
-                    background: Rectangle {
-                        id: connectionStateLabelBackground
-                        Kirigami.Theme.inherit: false
-                        Kirigami.Theme.colorSet: Kirigami.Theme.Window
-                        color: Kirigami.Theme.negativeBackgroundColor
-                    }
+        }
+
+        Item {
+            anchors.fill: parent
+
+            QQC2.Label {
+                id: connectionStateLabel
+                anchors.left: parent.left
+                anchors.leftMargin: Kirigami.Units.largeSpacing
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                topPadding: 2
+                leftPadding: Kirigami.Units.smallSpacing
+                rightPadding: Kirigami.Units.smallSpacing
+
+                text: "Disconnected"
+
+                background: Rectangle {
+                    id: connectionStateLabelBackground
+                    Kirigami.Theme.inherit: false
+                    Kirigami.Theme.colorSet: Kirigami.Theme.Window
+                    color: Kirigami.Theme.negativeBackgroundColor
+                }
+            }
+
+            QQC2.Button {
+                id: shuffleButton
+                focusPolicy: Qt.NoFocus
+                icon.name: "media-playlist-normal"
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                anchors.right: repeatButton.left
+                onClicked: {
+                    mpd_connector.shuffleToggle(mpd_connector.shuffle);
+                }
+            }
+
+            QQC2.Button {
+                id: repeatButton
+                focusPolicy: Qt.NoFocus
+                icon.name: "media-repeat-all"
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                anchors.right: parent.right
+                anchors.rightMargin: Kirigami.Units.largeSpacing
+                onClicked: function () {
+                    mpd_connector.repeatToggle(mpd_connector.repeat, mpd_connector.single);
                 }
             }
         }

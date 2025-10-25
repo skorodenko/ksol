@@ -12,11 +12,18 @@ pub mod qobject {
     extern "RustQt" {
         #[qobject]
         #[qml_element]
+        #[qproperty(bool, repeat, READ, WRITE, NOTIFY = update_options)]
+        #[qproperty(bool, single, READ, WRITE, NOTIFY = update_options)]
+        #[qproperty(bool, shuffle, READ, WRITE, NOTIFY = update_options)]
         type QMPDConnector = super::MPDConnector;
 
         #[qsignal]
         #[cxx_name = "connectionUpdate"]
         fn connection_update(self: Pin<&mut QMPDConnector>, status: QString);
+
+        #[qsignal]
+        #[cxx_name = "updateOptions"]
+        fn update_options(self: Pin<&mut QMPDConnector>);
 
         #[qsignal]
         #[cxx_name = "playStateChanged"]
@@ -47,8 +54,8 @@ pub mod qobject {
         fn connect(self: Pin<&mut QMPDConnector>);
 
         #[qinvokable]
-        #[cxx_name = "syncQueue"]
-        fn sync_queue(self: Pin<&mut QMPDConnector>);
+        #[cxx_name = "syncState"]
+        fn sync_state(self: Pin<&mut QMPDConnector>);
 
         #[qinvokable]
         #[cxx_name = "playSong"]
@@ -85,6 +92,14 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "sortPlaylist"]
         fn sort_playlist(self: Pin<&mut QMPDConnector>, sort_column: i32, sort_order: i32);
+
+        #[qinvokable]
+        #[cxx_name = "shuffleToggle"]
+        fn shuffle_toggle(self: Pin<&mut QMPDConnector>, current_state: bool);
+
+        #[qinvokable]
+        #[cxx_name = "repeatToggle"]
+        fn repeat_toggle(self: Pin<&mut QMPDConnector>, current_repeat: bool, current_single: bool);
     }
 
     impl cxx_qt::Threading for QMPDConnector {}
@@ -119,6 +134,9 @@ pub struct MPDConnector {
     pub client: Option<ClientController>,
     pub idle_client: Option<ClientIdler>,
     pub server: Option<Child>,
+    pub repeat: bool,
+    pub single: bool,
+    pub shuffle: bool,
     pub rt_idle: Runtime,
     pub rt_timeline: Runtime,
     pub rt_action: Runtime,
@@ -147,6 +165,10 @@ impl qobject::QMPDConnector {
                     Some(ConnectionEvent::SubsystemChange(Subsystem::Player)) => {
                         log::debug!("Server player changed");
                         let _ = tx_actions.send(MPSCCommand::IdlePlayer).await;
+                    }
+                    Some(ConnectionEvent::SubsystemChange(Subsystem::Options)) => {
+                        log::debug!("Server options changed");
+                        let _ = tx_actions.send(MPSCCommand::IdleOptions).await;
                     }
                     Some(e) => println!("Yay {:?}", e),
                     None => {
@@ -371,6 +393,33 @@ impl qobject::QMPDConnector {
                         let command = commands::Seek(commands::SeekMode::Absolute(seek_to));
                         let _ = mpd_client.command(command).await;
                     }
+                    Some(MPSCCommand::ShuffleToggle(current_state)) => {
+                        let command = commands::SetRandom(!current_state);
+                        let _ = mpd_client.command(command).await;
+                    }
+                    Some(MPSCCommand::RepeatToggle(current_repeat, current_single)) => {
+                        //FIXME
+                        match (current_repeat, current_single) {
+                            (false, false) | (false, true) => {
+                                let command = commands::SetRepeat(true);
+                                let _ = mpd_client.command(command).await;
+                                let command = commands::SetSingle(commands::SingleMode::Disabled);
+                                let _ = mpd_client.command(command).await;
+                            }
+                            (true, false) => {
+                                let command = commands::SetRepeat(true);
+                                let _ = mpd_client.command(command).await;
+                                let command = commands::SetSingle(commands::SingleMode::Enabled);
+                                let _ = mpd_client.command(command).await;
+                            }
+                            (true, true) => {
+                                let command = commands::SetRepeat(false);
+                                let _ = mpd_client.command(command).await;
+                                let command = commands::SetSingle(commands::SingleMode::Disabled);
+                                let _ = mpd_client.command(command).await;
+                            }
+                        };
+                    }
                     Some(MPSCCommand::IdlePlayer) => {
                         let command = commands::Status;
                         let result = mpd_client.command(command).await.unwrap();
@@ -390,6 +439,19 @@ impl qobject::QMPDConnector {
                         let bcode = QByteArray::from(bcode);
                         let _ = qt_thread.queue(|mut qobject| {
                             qobject.as_mut().stage_playlist_result(bcode);
+                        });
+                    }
+                    Some(MPSCCommand::IdleOptions) => {
+                        let command = commands::Status;
+                        let result = mpd_client.command(command).await.unwrap();
+                        let repeat = result.repeat;
+                        let shuffle = result.random;
+                        let single = !matches!(result.single, commands::SingleMode::Disabled);
+                        let _ = qt_thread.queue(move |mut qobject| {
+                            qobject.as_mut().rust_mut().repeat = repeat;
+                            qobject.as_mut().rust_mut().single = single;
+                            qobject.as_mut().rust_mut().shuffle = shuffle;
+                            qobject.update_options();
                         });
                     }
                     None => {}
@@ -450,9 +512,21 @@ impl qobject::QMPDConnector {
         let _ = tx_actions.blocking_send(MPSCCommand::SortPlaylist(sort_order));
     }
 
-    pub fn sync_queue(self: Pin<&mut QMPDConnector>) {
+    pub fn shuffle_toggle(self: Pin<&mut QMPDConnector>, current_state: bool) {
+        let tx_actions = self.tx_actions.clone();
+        let _ = tx_actions.blocking_send(MPSCCommand::ShuffleToggle(current_state));
+    }
+
+    fn repeat_toggle(self: Pin<&mut QMPDConnector>, current_repeat: bool, current_single: bool) {
+        let tx_actions = self.tx_actions.clone();
+        let _ = tx_actions.blocking_send(MPSCCommand::RepeatToggle(current_repeat, current_single));
+    }
+
+    pub fn sync_state(self: Pin<&mut QMPDConnector>) {
         let tx_actions = self.tx_actions.clone();
         let _ = tx_actions.blocking_send(MPSCCommand::IdleQueue);
+        let _ = tx_actions.blocking_send(MPSCCommand::IdlePlayer);
+        let _ = tx_actions.blocking_send(MPSCCommand::IdleOptions);
     }
 
     fn start_native_server(self: Pin<&mut Self>, mpd_binary: &PathBuf, native_config: &String) {
@@ -561,6 +635,9 @@ impl Default for MPDConnector {
             rt_action,
             tx_actions,
             rx_actions: Some(rx_actions),
+            repeat: false,
+            single: false,
+            shuffle: false,
         }
     }
 }
