@@ -345,7 +345,7 @@ Kirigami.ApplicationWindow {
                 MouseArea {
                     anchors.fill: parent
                     onDoubleClicked: function () {
-                        mpd_connector.playSong(parent.row);
+                        mpd_connector.playSong(parent.songId);
                     }
                 }
 

@@ -52,7 +52,7 @@ pub mod qobject {
 
         #[qinvokable]
         #[cxx_name = "playSong"]
-        fn play_song(self: Pin<&mut QMPDConnector>, pos: usize);
+        fn play_song(self: Pin<&mut QMPDConnector>, id: u64);
 
         #[qinvokable]
         #[cxx_name = "playToggle"]
@@ -211,8 +211,8 @@ impl qobject::QMPDConnector {
                         let command = commands::Previous;
                         let _ = mpd_client.command(command).await;
                     }
-                    Some(MPSCCommand::PlaySong(pos)) => {
-                        let command = commands::Play::song(commands::SongPosition::from(pos));
+                    Some(MPSCCommand::PlaySong(id)) => {
+                        let command = commands::Play::song(commands::SongId::from(id));
                         let _ = mpd_client.command(command).await;
                     }
                     Some(MPSCCommand::PlayToggle) => {
@@ -395,9 +395,9 @@ impl qobject::QMPDConnector {
         let _ = tx_actions.blocking_send(MPSCCommand::PlayToggle);
     }
 
-    pub fn play_song(self: Pin<&mut Self>, pos: usize) {
+    pub fn play_song(self: Pin<&mut Self>, id: u64) {
         let tx_actions = self.tx_actions.clone();
-        let _ = tx_actions.blocking_send(MPSCCommand::PlaySong(pos));
+        let _ = tx_actions.blocking_send(MPSCCommand::PlaySong(id));
     }
 
     pub fn play_next(self: Pin<&mut Self>) {
