@@ -34,6 +34,7 @@ pub enum MPSCCommand {
     GetPlaylists(SongField),
     StagePlaylist(String, SongField),
     SortPlaylist(ColumnSort),
+    Seek(Duration),
     IdlePlayer,
     IdleQueue,
 }

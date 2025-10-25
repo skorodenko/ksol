@@ -67,6 +67,10 @@ pub mod qobject {
         fn play_previous(self: Pin<&mut QMPDConnector>);
 
         #[qinvokable]
+        #[cxx_name = "playSeek"]
+        fn play_seek(self: Pin<&mut QMPDConnector>, value: u64);
+
+        #[qinvokable]
         #[cxx_name = "updateDb"]
         fn update_db(self: Pin<&mut QMPDConnector>);
 
@@ -363,6 +367,10 @@ impl qobject::QMPDConnector {
                             .collect();
                         let _ = mpd_client.command_list(add_commands).await.unwrap();
                     }
+                    Some(MPSCCommand::Seek(seek_to)) => {
+                        let command = commands::Seek(commands::SeekMode::Absolute(seek_to));
+                        let _ = mpd_client.command(command).await;
+                    }
                     Some(MPSCCommand::IdlePlayer) => {
                         let command = commands::Status;
                         let result = mpd_client.command(command).await.unwrap();
@@ -408,6 +416,12 @@ impl qobject::QMPDConnector {
     pub fn play_previous(self: Pin<&mut Self>) {
         let tx_actions = self.tx_actions.clone();
         let _ = tx_actions.blocking_send(MPSCCommand::Previous);
+    }
+
+    pub fn play_seek(self: Pin<&mut QMPDConnector>, value: u64) {
+        let seek_to = Duration::from_secs(value);
+        let tx_actions = self.tx_actions.clone();
+        let _ = tx_actions.blocking_send(MPSCCommand::Seek(seek_to));
     }
 
     pub fn update_db(self: Pin<&mut QMPDConnector>) {

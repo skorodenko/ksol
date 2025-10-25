@@ -214,6 +214,10 @@ Kirigami.ApplicationWindow {
                         from: 0
                         focusPolicy: Qt.NoFocus
                         Layout.fillWidth: true
+
+                        onMoved: {
+                            mpd_connector.playSeek(media_seeker.value);
+                        }
                     }
                 }
             }
