@@ -14,7 +14,6 @@ Kirigami.ApplicationWindow {
     Component.onCompleted: {
         mpd_connector.connect();
         mpd_connector.syncQueue();
-        //qplaylist_view.forceActiveFocus();
     }
 
     function message(message, type, iconName = null) {
@@ -167,6 +166,7 @@ Kirigami.ApplicationWindow {
                     id: playback_previous
                     flat: true
                     enabled: false
+                    focusPolicy: Qt.NoFocus
                     icon.name: "media-skip-backward"
                     onClicked: function () {
                         mpd_connector.playPrevious();
@@ -175,6 +175,7 @@ Kirigami.ApplicationWindow {
                 QQC2.Button {
                     id: playback_play
                     flat: true
+                    focusPolicy: Qt.NoFocus
                     icon.name: "media-playback-stop"
                     onClicked: function () {
                         mpd_connector.playToggle();
@@ -184,6 +185,7 @@ Kirigami.ApplicationWindow {
                     id: playback_next
                     flat: true
                     enabled: false
+                    focusPolicy: Qt.NoFocus
                     icon.name: "media-skip-forward"
                     onClicked: function () {
                         mpd_connector.playNext();
@@ -210,6 +212,7 @@ Kirigami.ApplicationWindow {
                     QQC2.Slider {
                         id: media_seeker
                         from: 0
+                        focusPolicy: Qt.NoFocus
                         Layout.fillWidth: true
                     }
                 }
@@ -218,6 +221,7 @@ Kirigami.ApplicationWindow {
             QQC2.ToolButton {
                 icon.name: "application-menu"
                 visible: true
+                focusPolicy: Qt.NoFocus
 
                 onClicked: {
                     globalMenu.popup();
@@ -317,14 +321,31 @@ Kirigami.ApplicationWindow {
             rowSpacing: Kirigami.Units.smallSpacing
             model: qplaylist
 
+            keyNavigationEnabled: true
+            pointerNavigationEnabled: true
+            selectionBehavior: TableView.SelectRows
+            selectionMode: TableView.SingleSelection
+
             focus: true
-            onFocusChanged: if (!focus)
-                Qt.callLater(forceActiveFocus)
+            onFocusChanged: if (!focus) {
+                Qt.callLater(forceActiveFocus);
+            }
+
+            Keys.onReturnPressed: function () {
+                var index = qplaylist_view.selectionModel.currentIndex;
+                var songId = qplaylist.data(index, QPlaylistModel.SongId);
+                mpd_connector.playSong(songId);
+            }
 
             Keys.forwardTo: [filterSearch]
 
             columnWidthProvider: function (column) {
                 return qplaylist_header.repeater.itemAt(column).width;
+            }
+
+            selectionModel: ItemSelectionModel {
+                model: qplaylist_view.model
+                onCurrentRowChanged: function (current, previous) {}
             }
 
             QQC2.ScrollBar.horizontal: QQC2.ScrollBar {
@@ -352,7 +373,14 @@ Kirigami.ApplicationWindow {
                 Rectangle {
                     anchors.fill: parent
                     visible: qplaylist.activeSongId == parent.songId
-                    color: Kirigami.Theme.neutralBackgroundColor
+                    color: Kirigami.Theme.focusColor
+                }
+
+                Rectangle {
+                    z: -1
+                    anchors.fill: parent
+                    visible: qplaylist_view.currentRow == parent.row
+                    color: Kirigami.Theme.activeBackgroundColor
                 }
 
                 Text {
