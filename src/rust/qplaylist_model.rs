@@ -39,7 +39,7 @@ mod qobject {
         #[qobject]
         #[qml_element]
         #[base = QAbstractTableModel]
-        #[qproperty(QString, filter, READ = get_filter, WRITE = set_filter, NOTIFY = update)]
+        #[qproperty(QString, filter, READ = get_filter, WRITE = set_filter, NOTIFY = update_filter)]
         #[qproperty(u64, active_song_id, cxx_name="activeSongId", READ, WRITE, NOTIFY = update_info)]
         #[qproperty(usize, last_visible_column, cxx_name="lastVisibleColumn", READ = get_last_visible_column, NOTIFY = update_header)]
         #[qproperty(QString, activeSongTitle, READ = get_active_song_title, NOTIFY = update_info)]
@@ -49,7 +49,8 @@ mod qobject {
         type QPlaylistModel = super::PlaylistModel;
 
         #[qsignal]
-        fn update(self: Pin<&mut QPlaylistModel>);
+        #[cxx_name = "updateFilter"]
+        fn update_filter(self: Pin<&mut QPlaylistModel>);
 
         #[qsignal]
         #[cxx_name = "updateInfo"]
@@ -159,6 +160,7 @@ use bincode::serde::{decode_from_slice, encode_to_vec};
 use core::pin::Pin;
 use cxx_qt::CxxQtType;
 use num_traits::{FromPrimitive, ToPrimitive};
+use regex::RegexBuilder;
 use strum::IntoEnumIterator;
 
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -277,7 +279,7 @@ impl qobject::QPlaylistModel {
         self.as_mut().rust_mut().queue = value.clone();
         self.as_mut().rust_mut().queue_proxy = value;
         self.as_mut().end_reset_model();
-        self.as_mut().update();
+        self.as_mut().update_filter();
     }
 
     fn get_filter(self: &QPlaylistModel) -> QString {
@@ -286,7 +288,7 @@ impl qobject::QPlaylistModel {
 
     fn set_filter(mut self: Pin<&mut QPlaylistModel>, value: QString) {
         self.as_mut().rust_mut().filter = value.into();
-        self.as_mut().update();
+        self.as_mut().update_filter();
     }
 
     fn get_active_song_title(self: &QPlaylistModel) -> QString {
@@ -371,17 +373,19 @@ impl Default for PlaylistModel {
 
 impl cxx_qt::Initialize for qobject::QPlaylistModel {
     fn initialize(self: Pin<&mut Self>) {
-        self.on_update(|mut qobject| {
+        self.on_update_filter(|mut qobject| {
             let queue = qobject.as_ref().rust().queue.clone();
-            //let filter = qobject.as_ref().rust().filter.clone();
-            //let pattern = RegexBuilder::new(&filter)
-            //    .case_insensitive(true)
-            //    .build()
-            //    .unwrap();
+            let filter = qobject.as_ref().rust().filter.clone();
+            let pattern = RegexBuilder::new(&filter)
+                .case_insensitive(true)
+                .build()
+                .unwrap();
             qobject.as_mut().layout_about_to_be_changed();
-            qobject.as_mut().rust_mut().queue_proxy = queue;
-            //qobject.as_mut().rust_mut().queue_proxy =
-            //    queue.into_iter().filter(|x| pattern.is_match(x)).collect();
+            qobject.as_mut().rust_mut().queue_proxy = queue
+                .clone()
+                .into_iter()
+                .filter(|x| pattern.is_match(&x.title) || pattern.is_match(&x.artist))
+                .collect();
             qobject.as_mut().layout_changed();
         })
         .release();

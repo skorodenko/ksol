@@ -14,6 +14,7 @@ Kirigami.ApplicationWindow {
     Component.onCompleted: {
         mpd_connector.connect();
         mpd_connector.syncQueue();
+        //qplaylist_view.forceActiveFocus();
     }
 
     function message(message, type, iconName = null) {
@@ -22,6 +23,32 @@ Kirigami.ApplicationWindow {
         infoMessage.text = message;
         infoMessage.type = type;
         infoMessage.icon.source = iconName;
+    }
+
+    Shortcut {
+        sequences: ["Escape"]
+        onActivated: function () {
+            filterSearchBox.visible = false;
+            drun.visible = false;
+        }
+    }
+
+    Shortcut {
+        id: drun_open
+        sequences: ["f"]
+        enabled: !filterSearchBox.visible && !drun.visible
+        onActivated: function () {
+            drun.visible = true;
+        }
+    }
+
+    Shortcut {
+        sequences: ["/"]
+        context: Qt.ApplicationShortcut
+        enabled: !filterSearchBox.visible && !drun.visible
+        onActivated: function () {
+            filterSearchBox.visible = true;
+        }
     }
 
     QMPDConnector {
@@ -93,6 +120,8 @@ Kirigami.ApplicationWindow {
 
     QPlaylistModel {
         id: qplaylist
+
+        filter: filterSearch.text
 
         onUpdateSort: {
             mpd_connector.sortPlaylist(qplaylist.sortColumn, qplaylist.sortOrder);
@@ -283,10 +312,16 @@ Kirigami.ApplicationWindow {
             anchors.top: qplaylist_header.bottom
             anchors.left: parent.left
             anchors.right: parent.right
-            anchors.bottom: parent.bottom
+            anchors.bottom: filterSearchBox.top
 
             rowSpacing: Kirigami.Units.smallSpacing
             model: qplaylist
+
+            focus: true
+            onFocusChanged: if (!focus)
+                Qt.callLater(forceActiveFocus)
+
+            Keys.forwardTo: [filterSearch]
 
             columnWidthProvider: function (column) {
                 return qplaylist_header.repeater.itemAt(column).width;
@@ -316,7 +351,7 @@ Kirigami.ApplicationWindow {
 
                 Rectangle {
                     anchors.fill: parent
-                    visible: qplaylist.activeSongId === parent.songId
+                    visible: qplaylist.activeSongId == parent.songId
                     color: Kirigami.Theme.neutralBackgroundColor
                 }
 
@@ -328,6 +363,44 @@ Kirigami.ApplicationWindow {
                     color: Kirigami.Theme.textColor
                     text: queue_delegate.songDisplay
                     elide: Text.ElideRight
+                }
+            }
+        }
+
+        RowLayout {
+            id: filterSearchBox
+
+            visible: false
+            height: 0
+
+            onVisibleChanged: {
+                if (visible) {
+                    filterSearchBox.height = 28;
+                    filterSearchBox.enabled = true;
+                } else {
+                    filterSearchBox.height = 0;
+                    filterSearch.text = "";
+                    filterSearchBox.enabled = false;
+                }
+            }
+
+            anchors {
+                left: parent.left
+                right: parent.right
+                bottom: parent.bottom
+            }
+
+            QQC2.TextField {
+                id: filterSearch
+                focusPolicy: Qt.NoFocus
+                placeholderText: "Filter by song title/artist ..."
+                Layout.alignment: Qt.AlignLeft
+                Layout.preferredWidth: parent.width
+                Layout.preferredHeight: parent.height
+                Keys.onPressed: function (event) {
+                    if (!(event.key > Qt.Key_Space || event.key < Qt.Key_AsciiTilde || event.key === Qt.Key_Backspace)) {
+                        event.accepted = true;
+                    }
                 }
             }
         }

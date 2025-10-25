@@ -38,29 +38,8 @@ QQC2.Popup {
     }
 
     Shortcut {
-        id: drun_open
-        sequences: ["f"]
-        context: Qt.ApplicationShortcut
-        enabled: !root.visible
-        onActivated: function () {
-            root.visible = true;
-        }
-    }
-
-    Shortcut {
-        id: drun_close
-        sequences: ["Escape"]
-        context: Qt.ApplicationShortcut
-        enabled: root.visible
-        onActivated: function () {
-            root.visible = false;
-        }
-    }
-
-    Shortcut {
         id: drun_group1
         sequences: ["F1"]
-        context: Qt.ApplicationShortcut
         enabled: root.visible
         onActivated: function () {
             group_repeater.itemAt(0).click();
@@ -70,7 +49,6 @@ QQC2.Popup {
     Shortcut {
         id: drun_group2
         sequences: ["F2"]
-        context: Qt.ApplicationShortcut
         enabled: root.visible
         onActivated: function () {
             group_repeater.itemAt(1).click();
@@ -80,7 +58,6 @@ QQC2.Popup {
     Shortcut {
         id: drun_group3
         sequences: ["F3"]
-        context: Qt.ApplicationShortcut
         enabled: root.visible
         onActivated: function () {
             group_repeater.itemAt(2).click();
@@ -90,7 +67,6 @@ QQC2.Popup {
     Shortcut {
         id: drun_group4
         sequences: ["F4"]
-        context: Qt.ApplicationShortcut
         enabled: root.visible
         onActivated: function () {
             group_repeater.itemAt(3).click();
@@ -106,6 +82,7 @@ QQC2.Popup {
         QQC2.TextField {
             id: search
             focusPolicy: Qt.NoFocus
+            placeholderText: "Filter by group ..."
             Layout.alignment: Qt.AlignLeft
             Layout.preferredWidth: parent.width * 0.3
             Keys.onPressed: function (event) {
@@ -187,8 +164,8 @@ QQC2.Popup {
             required property int index
 
             Keys.onReturnPressed: function () {
-                root.visible = false;
                 root.stagePlaylist(listView.currentItem.name, playlists_group.activeGroup);
+                root.visible = false;
             }
 
             MouseArea {
@@ -203,8 +180,8 @@ QQC2.Popup {
 
                 onDoubleClicked: function (mouse) {
                     if (mouse.button == Qt.LeftButton) {
-                        root.visible = false;
                         root.stagePlaylist(delegateItem.name, playlists_group.activeGroup);
+                        root.visible = false;
                     }
                 }
             }

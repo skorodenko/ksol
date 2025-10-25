@@ -14,7 +14,6 @@ fn main() {
             qml_files: &[
                 "src/qml/Main.qml",
                 "src/qml/Drun.qml",
-                "src/qml/Shortcuts.qml",
                 "src/qml/PlaylistHeader.qml",
             ],
             ..Default::default()
