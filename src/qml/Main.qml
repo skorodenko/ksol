@@ -379,11 +379,14 @@ Kirigami.ApplicationWindow {
             anchors.left: parent.left
             anchors.right: scrollBar.left
             anchors.bottom: filterSearchBox.top
+            rowSpacing: Kirigami.Units.smallSpacing
 
             property bool selectionTimeout: false
 
-            rowSpacing: Kirigami.Units.smallSpacing
             model: qplaylist
+
+            boundsMovement: Flickable.StopAtBounds
+            boundsBehavior: Flickable.StopAtBounds
 
             keyNavigationEnabled: true
             selectionBehavior: TableView.SelectRows
@@ -393,8 +396,6 @@ Kirigami.ApplicationWindow {
             onFocusChanged: if (!focus) {
                 Qt.callLater(forceActiveFocus);
             }
-
-            QQC2.ScrollBar.vertical: scrollBar
 
             Timer {
                 id: selectionTimeoutTimer
@@ -424,6 +425,8 @@ Kirigami.ApplicationWindow {
             selectionModel: ItemSelectionModel {
                 onCurrentRowChanged: function (current, previous) {}
             }
+
+            QQC2.ScrollBar.vertical: scrollBar
 
             delegate: Item {
                 id: delegate
