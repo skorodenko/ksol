@@ -48,8 +48,8 @@ Item {
     function toggleColumn(column, state) {
         var item = repeater.itemAt(column);
         if (state == true) {
-            item.Layout.horizontalStretchFactor = 1000;
-            root.model.updateColumnWidth(column, 1000);
+            item.Layout.horizontalStretchFactor = 100;
+            root.model.updateColumnWidth(column, 100);
         } else {
             item.Layout.horizontalStretchFactor = 0;
             root.model.updateColumnWidth(column, 0);
@@ -72,7 +72,7 @@ Item {
         for (var i = 0; i < repeater.count; i++) {
             var item = repeater.itemAt(i);
             if (item.width != 0.0) {
-                item.Layout.horizontalStretchFactor = 1000;
+                item.Layout.horizontalStretchFactor = 100;
             }
         }
     }
@@ -104,22 +104,37 @@ Item {
 
                 function applyWidthDelta(delta) {
                     var newWidth = delegate.Layout.horizontalStretchFactor + delta;
-                    if (newWidth >= 40) {
+                    if (newWidth >= 1000) {
+                        delegate.Layout.horizontalStretchFactor = 1000;
+                        root.model.updateColumnWidth(delegate.index, 1000);
+                    } else if (newWidth <= 10) {
+                        delegate.Layout.horizontalStretchFactor = 10;
+                        root.model.updateColumnWidth(delegate.index, 10);
+                    } else {
                         delegate.Layout.horizontalStretchFactor = newWidth;
                         root.model.updateColumnWidth(delegate.index, newWidth);
-                    } else {
-                        delegate.Layout.horizontalStretchFactor = 40;
-                        root.model.updateColumnWidth(delegate.index, 40);
                     }
                 }
 
-                Text {
-                    elide: Text.ElideRight
-                    color: Kirigami.Theme.textColor
-                    horizontalAlignment: Qt.AlignLeft
+                Item {
+                    id: splitter
+                    implicitWidth: 6
+                    anchors.top: delegate.top
+                    anchors.bottom: delegate.bottom
                     anchors.left: delegate.left
-                    anchors.right: sortIndicator.left
-                    text: root.model.headerData(delegate.index, Qt.Horizontal, QPlaylistModel.ColumnName)
+                    visible: delegate.index != root.model.firstVisibleColumn
+
+                    Rectangle {
+                        id: splitterRect
+                        implicitWidth: 2
+                        color: "#595d61"
+
+                        anchors {
+                            top: splitter.top
+                            bottom: splitter.bottom
+                            horizontalCenter: splitter.horizontalCenter
+                        }
+                    }
                 }
 
                 MouseArea {
@@ -134,16 +149,44 @@ Item {
                     onPositionChanged: {
                         if (pressed) {
                             var widthDelta = (mouseX - oldMouseX);
-                            delegate.applyWidthDelta(widthDelta);
-                            for (var i = delegate.index + 1; i < root.model.lastVisibleColumn; i++) {
-                                var itemDelegate = repeater.itemAt(i);
-                                if (itemDelegate.width > 0) {
-                                    itemDelegate.applyWidthDelta(-widthDelta);
-                                    break;
+                            console.log(widthDelta);
+                            if (delegate.index == root.model.lastVisibleColumn) {
+                                delegate.applyWidthDelta(-widthDelta);
+                                for (var i = delegate.index; i > root.model.firstVisibleColumn; --i) {
+                                    var itemDelegate = repeater.itemAt(delegate.index - 1);
+                                    if (itemDelegate.width > 0) {
+                                        itemDelegate.applyWidthDelta(widthDelta);
+                                        break;
+                                    }
                                 }
-                            };
+                            } else if (widthDelta > 0) {
+                                for (var i = delegate.index; i > root.model.firstVisibleColumn; --i) {
+                                    var itemDelegate = repeater.itemAt(delegate.index - 1);
+                                    if (itemDelegate.width > 0) {
+                                        itemDelegate.applyWidthDelta(widthDelta);
+                                        break;
+                                    }
+                                }
+                            } else {
+                                for (var i = delegate.index; i > root.model.firstVisibleColumn; --i) {
+                                    var itemDelegate = repeater.itemAt(delegate.index - 1);
+                                    if (itemDelegate.width > 0) {
+                                        itemDelegate.applyWidthDelta(widthDelta);
+                                        break;
+                                    }
+                                }
+                            }
                         }
                     }
+                }
+
+                Text {
+                    elide: Text.ElideRight
+                    color: Kirigami.Theme.textColor
+                    horizontalAlignment: Qt.AlignLeft
+                    anchors.left: splitter.right
+                    anchors.right: sortIndicator.left
+                    text: root.model.headerData(delegate.index, Qt.Horizontal, QPlaylistModel.ColumnName)
                 }
 
                 Item {
@@ -151,7 +194,7 @@ Item {
                     implicitWidth: 8
                     anchors.top: delegate.top
                     anchors.bottom: delegate.bottom
-                    anchors.right: splitter.left
+                    anchors.right: delegate.right
 
                     visible: delegate.width > 0
                     state: root.model.sortColumn == delegate.index ? root.model.sortOrder : "0"
@@ -189,27 +232,6 @@ Item {
                             }
                         }
                     ]
-                }
-
-                Item {
-                    id: splitter
-                    implicitWidth: 6
-                    anchors.top: delegate.top
-                    anchors.bottom: delegate.bottom
-                    anchors.right: delegate.right
-                    visible: delegate.index != root.model.lastVisibleColumn && delegate.width > 0
-
-                    Rectangle {
-                        id: splitterRect
-                        implicitWidth: 2
-                        color: "#595d61"
-
-                        anchors {
-                            top: splitter.top
-                            bottom: splitter.bottom
-                            horizontalCenter: splitter.horizontalCenter
-                        }
-                    }
                 }
             }
         }

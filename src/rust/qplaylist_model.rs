@@ -41,7 +41,8 @@ mod qobject {
         #[base = QAbstractTableModel]
         #[qproperty(QString, filter, READ = get_filter, WRITE = set_filter, NOTIFY = update_filter)]
         #[qproperty(u64, active_song_id, cxx_name="activeSongId", READ, WRITE, NOTIFY = update_info)]
-        #[qproperty(usize, last_visible_column, cxx_name="lastVisibleColumn", READ = get_last_visible_column, NOTIFY = update_header)]
+        #[qproperty(usize, lastVisibleColumn, READ = get_last_visible_column, NOTIFY = update_header)]
+        #[qproperty(usize, firstVisibleColumn, READ = get_first_visible_column, NOTIFY = update_header)]
         #[qproperty(QString, activeSongTitle, READ = get_active_song_title, NOTIFY = update_info)]
         #[qproperty(QString, activeSongArtist, READ = get_active_song_artist, NOTIFY = update_info)]
         #[qproperty(i32, sortOrder, READ = get_sort_order, NOTIFY = update_sort)]
@@ -117,6 +118,9 @@ mod qobject {
 
         #[qinvokable]
         fn get_last_visible_column(self: &QPlaylistModel) -> usize;
+
+        #[qinvokable]
+        fn get_first_visible_column(self: &QPlaylistModel) -> usize;
 
         #[qinvokable]
         #[cxx_name = "updateColumnWidth"]
@@ -329,6 +333,13 @@ impl qobject::QPlaylistModel {
             .rposition(|&x| x != 0)
             .unwrap_or(0)
     }
+
+    fn get_first_visible_column(self: &QPlaylistModel) -> usize {
+        self.column_width
+            .iter()
+            .position(|&x| x != 0)
+            .unwrap_or(0)
+    }
 }
 
 impl Drop for PlaylistModel {
@@ -366,7 +377,7 @@ impl Default for PlaylistModel {
                 filter: String::default(),
                 queue: Vec::default(),
                 queue_proxy: Vec::default(),
-                column_width: SongField::iter().map(|_| 1000).collect(),
+                column_width: SongField::iter().map(|_| 100).collect(),
                 active_song_id: 0,
                 column_sort: ColumnSort::Ascending(SongField::Track),
             },
