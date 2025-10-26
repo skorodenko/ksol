@@ -378,7 +378,6 @@ Kirigami.ApplicationWindow {
             model: qplaylist
 
             keyNavigationEnabled: true
-            pointerNavigationEnabled: true
             selectionBehavior: TableView.SelectRows
             selectionMode: TableView.SingleSelection
 
@@ -389,7 +388,7 @@ Kirigami.ApplicationWindow {
 
             Timer {
                 id: selectionTimeoutTimer
-                interval: 1000
+                interval: 2500
                 onTriggered: qplaylist_view.selectionTimeout = false
             }
 
@@ -399,9 +398,11 @@ Kirigami.ApplicationWindow {
             }
 
             Keys.onReturnPressed: function () {
-                var index = qplaylist_view.selectionModel.currentIndex;
-                var songId = qplaylist.data(index, QPlaylistModel.SongId);
-                mpd_connector.playSong(songId);
+                if (qplaylist_view.selectionTimeout) {
+                    var index = qplaylist_view.selectionModel.currentIndex;
+                    var songId = qplaylist.data(index, QPlaylistModel.SongId);
+                    mpd_connector.playSong(songId);
+                }
             }
 
             Keys.forwardTo: [filterSearch]
@@ -423,7 +424,7 @@ Kirigami.ApplicationWindow {
             }
 
             delegate: Item {
-                id: queue_delegate
+                id: delegate
                 implicitHeight: 18
 
                 required property int row
@@ -432,7 +433,10 @@ Kirigami.ApplicationWindow {
 
                 MouseArea {
                     anchors.fill: parent
-                    onDoubleClicked: function () {
+                    onClicked: {
+                        qplaylist_view.selectionModel.setCurrentIndex(qplaylist.index(delegate.row, 0), ItemSelectionModel.Rows);
+                    }
+                    onDoubleClicked: {
                         mpd_connector.playSong(parent.songId);
                     }
                 }
@@ -456,7 +460,7 @@ Kirigami.ApplicationWindow {
                     anchors.verticalCenter: parent.verticalCenter
                     horizontalAlignment: Qt.AlignLeft
                     color: Kirigami.Theme.textColor
-                    text: queue_delegate.songDisplay
+                    text: delegate.songDisplay
                     elide: Text.ElideRight
                 }
             }
