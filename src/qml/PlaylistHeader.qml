@@ -14,7 +14,6 @@ Item {
 
     required property var model
     required property int columnCount
-    required property real tableWidth
     property var color: "#32363b"
 
     QQC2.ContextMenu.menu: QQC2.Menu {
@@ -50,7 +49,7 @@ Item {
         var item = repeater.itemAt(column);
         if (state == true) {
             item.Layout.preferredWidth = 100;
-            root.model.updateColumnWidth(column, 100 / root.tableWidth);
+            root.model.updateColumnWidth(column, 100 / root.implicitWidth);
         } else {
             root.model.updateColumnWidth(column, 0.0);
         }
@@ -73,7 +72,7 @@ Item {
         for (var i = 0; i < repeater.count; i++) {
             var item = repeater.itemAt(i);
             if (item.width != 0.0) {
-                item.Layout.preferredWidth = root.tableWidth / visibleCols;
+                item.Layout.preferredWidth = root.implicitWidth / visibleCols;
                 root.model.updateColumnWidth(i, 1 / visibleCols);
             }
         }
@@ -117,7 +116,7 @@ Item {
                     } else {
                         delegate.Layout.preferredWidth = 45;
                     }
-                    root.model.updateColumnWidth(delegate.index, delegate.width / root.tableWidth);
+                    root.model.updateColumnWidth(delegate.index, delegate.width / root.implicitWidth);
                 }
 
                 Text {

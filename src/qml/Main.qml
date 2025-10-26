@@ -334,6 +334,7 @@ Kirigami.ApplicationWindow {
             id: infoMessage
 
             visible: false
+            anchors.top: parent.top
             anchors.left: parent.left
             anchors.right: parent.right
             onVisibleChanged: tmr.restart()
@@ -348,21 +349,27 @@ Kirigami.ApplicationWindow {
         PlaylistHeader {
             id: qplaylist_header
 
+            implicitHeight: 18
             anchors.top: infoMessage.bottom
             anchors.left: parent.left
-            anchors.right: parent.right
-
-            implicitHeight: 18
+            anchors.right: scrollBar.left
             z: 1
 
             model: qplaylist
             color: "#32363b"
             columnCount: qplaylist.columnCount()
-            tableWidth: qplaylist_view.width
 
             onColumnWidthChanged: {
                 qplaylist_view.forceLayout();
             }
+        }
+
+        QQC2.ScrollBar {
+            id: scrollBar
+            anchors.top: qplaylist_header.top
+            anchors.right: parent.right
+            anchors.bottom: qplaylist_view.bottom
+            orientation: Qt.Vertical
         }
 
         TableView {
@@ -370,7 +377,7 @@ Kirigami.ApplicationWindow {
 
             anchors.top: qplaylist_header.bottom
             anchors.left: parent.left
-            anchors.right: parent.right
+            anchors.right: scrollBar.left
             anchors.bottom: filterSearchBox.top
 
             property bool selectionTimeout: false
@@ -386,6 +393,8 @@ Kirigami.ApplicationWindow {
             onFocusChanged: if (!focus) {
                 Qt.callLater(forceActiveFocus);
             }
+
+            QQC2.ScrollBar.vertical: scrollBar
 
             Timer {
                 id: selectionTimeoutTimer
@@ -413,15 +422,7 @@ Kirigami.ApplicationWindow {
             }
 
             selectionModel: ItemSelectionModel {
-                model: qplaylist_view.model
                 onCurrentRowChanged: function (current, previous) {}
-            }
-
-            QQC2.ScrollBar.horizontal: QQC2.ScrollBar {
-                id: hbar
-            }
-            QQC2.ScrollBar.vertical: QQC2.ScrollBar {
-                id: vbar
             }
 
             delegate: Item {
