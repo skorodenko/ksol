@@ -372,6 +372,8 @@ Kirigami.ApplicationWindow {
             anchors.right: parent.right
             anchors.bottom: filterSearchBox.top
 
+            property bool selectionTimeout: false
+
             rowSpacing: Kirigami.Units.smallSpacing
             model: qplaylist
 
@@ -383,6 +385,17 @@ Kirigami.ApplicationWindow {
             focus: true
             onFocusChanged: if (!focus) {
                 Qt.callLater(forceActiveFocus);
+            }
+
+            Timer {
+                id: selectionTimeoutTimer
+                interval: 1000
+                onTriggered: qplaylist_view.selectionTimeout = false
+            }
+
+            onCurrentRowChanged: {
+                qplaylist_view.selectionTimeout = true;
+                selectionTimeoutTimer.restart();
             }
 
             Keys.onReturnPressed: function () {
@@ -433,7 +446,7 @@ Kirigami.ApplicationWindow {
                 Rectangle {
                     z: -1
                     anchors.fill: parent
-                    visible: qplaylist_view.currentRow == parent.row
+                    visible: qplaylist_view.selectionTimeout && qplaylist_view.currentRow == parent.row
                     color: Kirigami.Theme.activeBackgroundColor
                 }
 
