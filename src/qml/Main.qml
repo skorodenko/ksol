@@ -317,7 +317,7 @@ Kirigami.ApplicationWindow {
                 anchors.bottom: parent.bottom
                 anchors.right: parent.right
                 anchors.rightMargin: Kirigami.Units.largeSpacing
-                onClicked: function () {
+                onClicked: {
                     mpd_connector.repeatToggle(mpd_connector.repeat, mpd_connector.single);
                 }
             }
@@ -360,7 +360,7 @@ Kirigami.ApplicationWindow {
             columnCount: qplaylist.columnCount()
 
             onColumnWidthChanged: {
-                qplaylist_view.forceLayout();
+                Qt.callLater(qplaylist_view.forceLayout);
             }
         }
 
@@ -423,9 +423,7 @@ Kirigami.ApplicationWindow {
                 return item.visible ? item.width : 0;
             }
 
-            selectionModel: ItemSelectionModel {
-                onCurrentRowChanged: function (current, previous) {}
-            }
+            selectionModel: ItemSelectionModel {}
 
             QQC2.ScrollBar.vertical: scrollBar
 
@@ -462,7 +460,8 @@ Kirigami.ApplicationWindow {
 
                 Text {
                     id: song_play_text
-                    width: parent.width
+                    anchors.fill: parent
+                    anchors.leftMargin: 4
                     anchors.verticalCenter: parent.verticalCenter
                     horizontalAlignment: Qt.AlignLeft
                     color: Kirigami.Theme.textColor

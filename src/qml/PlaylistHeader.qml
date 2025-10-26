@@ -141,7 +141,7 @@ Item {
                             var widthDelta = (mouseX - oldMouseX);
                             if (delegate.index == root.model.lastVisibleColumn) {
                                 delegate.applyWidthDelta(-widthDelta);
-                                for (var i = delegate.index - 1; i > root.model.firstVisibleColumn; i--) {
+                                for (var i = delegate.index - 1; i >= root.model.firstVisibleColumn; i--) {
                                     var itemDelegate = repeater.itemAt(i);
                                     if (itemDelegate.width > 0) {
                                         itemDelegate.applyWidthDelta(widthDelta);
@@ -149,7 +149,7 @@ Item {
                                     }
                                 }
                             } else if (widthDelta > 0) {
-                                for (var i = delegate.index - 1; i > root.model.firstVisibleColumn; i--) {
+                                for (var i = delegate.index - 1; i >= root.model.firstVisibleColumn; i--) {
                                     var itemDelegate = repeater.itemAt(i);
                                     if (itemDelegate.width > 0) {
                                         itemDelegate.applyWidthDelta(widthDelta);
@@ -157,7 +157,7 @@ Item {
                                     }
                                 }
                             } else {
-                                for (var i = delegate.index - 1; i > root.model.firstVisibleColumn; i--) {
+                                for (var i = delegate.index - 1; i >= root.model.firstVisibleColumn; i--) {
                                     var itemDelegate = repeater.itemAt(i);
                                     if (itemDelegate.width > 0) {
                                         itemDelegate.applyWidthDelta(widthDelta);
@@ -190,7 +190,7 @@ Item {
                     MouseArea {
                         anchors.fill: sortIndicator
                         onClicked: {
-                            root.model.sort(delegate.index);
+                            root.model.sortPlaylist(delegate.index);
                         }
                     }
 

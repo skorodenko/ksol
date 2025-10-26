@@ -91,7 +91,8 @@ mod qobject {
 
         #[qinvokable]
         #[cxx_virtual]
-        fn sort(self: Pin<&mut QPlaylistModel>, column: i32);
+        #[cxx_name = "sortPlaylist"]
+        fn sort_playlist(self: Pin<&mut QPlaylistModel>, column: i32);
 
         #[qinvokable]
         #[cxx_virtual]
@@ -250,7 +251,7 @@ impl qobject::QPlaylistModel {
         }
     }
 
-    pub fn sort(mut self: Pin<&mut QPlaylistModel>, column: i32) {
+    pub fn sort_playlist(mut self: Pin<&mut QPlaylistModel>, column: i32) {
         let column = SongField::from_i32(column).unwrap();
         match self.column_sort {
             ColumnSort::Inactive => {
