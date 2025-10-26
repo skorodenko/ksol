@@ -120,7 +120,7 @@ mod qobject {
 
         #[qinvokable]
         #[cxx_name = "updateColumnWidth"]
-        pub fn update_column_width(self: Pin<&mut QPlaylistModel>, section: i32, width: f64);
+        pub fn update_column_width(self: Pin<&mut QPlaylistModel>, section: i32, width: i32);
 
         #[inherit]
         #[cxx_name = "headerDataChanged"]
@@ -168,7 +168,7 @@ pub struct PlaylistModel {
     pub filter: String,
     pub queue: Vec<QSong>,
     queue_proxy: Vec<QSong>,
-    pub column_width: Vec<f64>,
+    pub column_width: Vec<i32>,
     pub active_song_id: u64,
     pub column_sort: ColumnSort,
 }
@@ -266,7 +266,7 @@ impl qobject::QPlaylistModel {
         self.update_sort();
     }
 
-    pub fn update_column_width(mut self: Pin<&mut QPlaylistModel>, section: i32, width: f64) {
+    pub fn update_column_width(mut self: Pin<&mut QPlaylistModel>, section: i32, width: i32) {
         self.as_mut().rust_mut().column_width[section as usize] = width;
         let column_count = self.as_mut().rust_mut().column_width.len() as i32;
         self.header_data_changed(Orientation::Horizontal, 0, column_count);
@@ -326,7 +326,7 @@ impl qobject::QPlaylistModel {
     fn get_last_visible_column(self: &QPlaylistModel) -> usize {
         self.column_width
             .iter()
-            .rposition(|&x| x != 0.0)
+            .rposition(|&x| x != 0)
             .unwrap_or(0)
     }
 }
@@ -366,7 +366,7 @@ impl Default for PlaylistModel {
                 filter: String::default(),
                 queue: Vec::default(),
                 queue_proxy: Vec::default(),
-                column_width: SongField::iter().map(|_| 1_f64 / 14_f64).collect(), //FIX calculated max enum
+                column_width: SongField::iter().map(|_| 1000).collect(),
                 active_song_id: 0,
                 column_sort: ColumnSort::Ascending(SongField::Track),
             },

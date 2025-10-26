@@ -24,7 +24,7 @@ Item {
             delegate: QQC2.CheckBox {
                 required property int index
                 text: root.model.headerData(index, Qt.Horizontal, QPlaylistModel.ColumnName)
-                checked: root.model.headerData(index, Qt.Horizontal, QPlaylistModel.ColumnWidth) != 0.0
+                checked: root.model.headerData(index, Qt.Horizontal, QPlaylistModel.ColumnWidth) != 0
                 nextCheckState: function () {
                     root.toggleColumn(index, !checked);
                     return checked ? Qt.Unchecked : Qt.Checked;
@@ -48,12 +48,12 @@ Item {
     function toggleColumn(column, state) {
         var item = repeater.itemAt(column);
         if (state == true) {
-            item.Layout.preferredWidth = 100;
-            root.model.updateColumnWidth(column, 100 / root.implicitWidth);
+            item.Layout.horizontalStretchFactor = 1000;
+            root.model.updateColumnWidth(column, 1000);
         } else {
-            root.model.updateColumnWidth(column, 0.0);
+            item.Layout.horizontalStretchFactor = 0;
+            root.model.updateColumnWidth(column, 0);
         }
-        root.syncColumnWidth();
     }
 
     function visibleColumnCount() {
@@ -72,16 +72,8 @@ Item {
         for (var i = 0; i < repeater.count; i++) {
             var item = repeater.itemAt(i);
             if (item.width != 0.0) {
-                item.Layout.preferredWidth = root.implicitWidth / visibleCols;
-                root.model.updateColumnWidth(i, 1 / visibleCols);
+                item.Layout.horizontalStretchFactor = 1000;
             }
-        }
-    }
-
-    function syncColumnWidth() {
-        for (var i = 0; i < repeater.count; i++) {
-            var item = repeater.itemAt(i);
-            item.Layout.preferredWidth = root.width * root.model.headerData(i, Qt.Horizontal, QPlaylistModel.ColumnWidth);
         }
     }
 
@@ -100,7 +92,8 @@ Item {
                 color: root.color
 
                 Layout.fillWidth: true
-                Layout.preferredWidth: root.width * root.model.headerData(delegate.index, Qt.Horizontal, QPlaylistModel.ColumnWidth)
+                Layout.horizontalStretchFactor: root.model.headerData(index, Qt.Horizontal, QPlaylistModel.ColumnWidth)
+                Layout.preferredWidth: Layout.horizontalStretchFactor == 0 ? 0 : 40
                 Layout.preferredHeight: root.height
 
                 required property int index
@@ -110,13 +103,14 @@ Item {
                 }
 
                 function applyWidthDelta(delta) {
-                    var newWidth = delegate.Layout.preferredWidth + delta;
-                    if (newWidth >= 45) {
-                        delegate.Layout.preferredWidth = newWidth;
+                    var newWidth = delegate.Layout.horizontalStretchFactor + delta;
+                    if (newWidth >= 40) {
+                        delegate.Layout.horizontalStretchFactor = newWidth;
+                        root.model.updateColumnWidth(delegate.index, newWidth);
                     } else {
-                        delegate.Layout.preferredWidth = 45;
+                        delegate.Layout.horizontalStretchFactor = 40;
+                        root.model.updateColumnWidth(delegate.index, 40);
                     }
-                    root.model.updateColumnWidth(delegate.index, delegate.width / root.implicitWidth);
                 }
 
                 Text {
@@ -143,7 +137,7 @@ Item {
                             delegate.applyWidthDelta(widthDelta);
                             for (var i = delegate.index + 1; i < root.model.lastVisibleColumn; i++) {
                                 var itemDelegate = repeater.itemAt(i);
-                                if (itemDelegate.width > 0.0) {
+                                if (itemDelegate.width > 0) {
                                     itemDelegate.applyWidthDelta(-widthDelta);
                                     break;
                                 }
