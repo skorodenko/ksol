@@ -48,30 +48,18 @@ Item {
     function toggleColumn(column, state) {
         var item = repeater.itemAt(column);
         if (state == true) {
-            item.Layout.horizontalStretchFactor = 100;
+            item.visible = true;
             root.model.updateColumnWidth(column, 100);
         } else {
-            item.Layout.horizontalStretchFactor = 0;
+            item.visible = false;
             root.model.updateColumnWidth(column, 0);
         }
     }
 
-    function visibleColumnCount() {
-        var k = 0;
-        for (var i = 0; i < repeater.count; i++) {
-            var item = repeater.itemAt(i);
-            if (item.width != 0.0) {
-                k++;
-            }
-        }
-        return k;
-    }
-
     function resetColumnWidth() {
-        var visibleCols = root.visibleColumnCount();
-        for (var i = 0; i < repeater.count; i++) {
+        for (var i = 0; i < root.model.rowCount(); i++) {
             var item = repeater.itemAt(i);
-            if (item.width != 0.0) {
+            if (item.visible) {
                 item.Layout.horizontalStretchFactor = 100;
             }
         }
@@ -91,15 +79,17 @@ Item {
                 id: delegate
                 color: root.color
 
+                enabled: visible
+                visible: Layout.horizontalStretchFactor == 0 ? false : true
                 Layout.fillWidth: true
-                Layout.horizontalStretchFactor: root.model.headerData(index, Qt.Horizontal, QPlaylistModel.ColumnWidth)
-                Layout.preferredWidth: Layout.horizontalStretchFactor == 0 ? 0 : 40
+                Layout.preferredWidth: 35
                 Layout.preferredHeight: root.height
+                Layout.horizontalStretchFactor: root.model.headerData(index, Qt.Horizontal, QPlaylistModel.ColumnWidth)
 
                 required property int index
 
                 onWidthChanged: {
-                    root.columnWidthChanged();
+                    Qt.callLater(root.columnWidthChanged);
                 }
 
                 function applyWidthDelta(delta) {
@@ -118,7 +108,7 @@ Item {
 
                 Item {
                     id: splitter
-                    implicitWidth: 6
+                    implicitWidth: 4
                     anchors.top: delegate.top
                     anchors.bottom: delegate.bottom
                     anchors.left: delegate.left
@@ -132,14 +122,14 @@ Item {
                         anchors {
                             top: splitter.top
                             bottom: splitter.bottom
-                            horizontalCenter: splitter.horizontalCenter
+                            left: splitter.left
                         }
                     }
                 }
 
                 MouseArea {
                     anchors.fill: splitter
-                    enabled: delegate.width > 0.0
+                    enabled: delegate.visible
 
                     property int oldMouseX
 
@@ -149,27 +139,26 @@ Item {
                     onPositionChanged: {
                         if (pressed) {
                             var widthDelta = (mouseX - oldMouseX);
-                            console.log(widthDelta);
                             if (delegate.index == root.model.lastVisibleColumn) {
                                 delegate.applyWidthDelta(-widthDelta);
-                                for (var i = delegate.index; i > root.model.firstVisibleColumn; --i) {
-                                    var itemDelegate = repeater.itemAt(delegate.index - 1);
+                                for (var i = delegate.index - 1; i > root.model.firstVisibleColumn; i--) {
+                                    var itemDelegate = repeater.itemAt(i);
                                     if (itemDelegate.width > 0) {
                                         itemDelegate.applyWidthDelta(widthDelta);
                                         break;
                                     }
                                 }
                             } else if (widthDelta > 0) {
-                                for (var i = delegate.index; i > root.model.firstVisibleColumn; --i) {
-                                    var itemDelegate = repeater.itemAt(delegate.index - 1);
+                                for (var i = delegate.index - 1; i > root.model.firstVisibleColumn; i--) {
+                                    var itemDelegate = repeater.itemAt(i);
                                     if (itemDelegate.width > 0) {
                                         itemDelegate.applyWidthDelta(widthDelta);
                                         break;
                                     }
                                 }
                             } else {
-                                for (var i = delegate.index; i > root.model.firstVisibleColumn; --i) {
-                                    var itemDelegate = repeater.itemAt(delegate.index - 1);
+                                for (var i = delegate.index - 1; i > root.model.firstVisibleColumn; i--) {
+                                    var itemDelegate = repeater.itemAt(i);
                                     if (itemDelegate.width > 0) {
                                         itemDelegate.applyWidthDelta(widthDelta);
                                         break;
@@ -196,7 +185,6 @@ Item {
                     anchors.bottom: delegate.bottom
                     anchors.right: delegate.right
 
-                    visible: delegate.width > 0
                     state: root.model.sortColumn == delegate.index ? root.model.sortOrder : "0"
 
                     MouseArea {

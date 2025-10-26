@@ -366,9 +366,9 @@ Kirigami.ApplicationWindow {
 
         QQC2.ScrollBar {
             id: scrollBar
-            anchors.top: qplaylist_header.top
+            anchors.top: infoMessage.bottom
             anchors.right: parent.right
-            anchors.bottom: qplaylist_view.bottom
+            anchors.bottom: filterSearchBox.top
             orientation: Qt.Vertical
         }
 
@@ -419,7 +419,8 @@ Kirigami.ApplicationWindow {
             Keys.forwardTo: [filterSearch]
 
             columnWidthProvider: function (column) {
-                return qplaylist_header.repeater.itemAt(column).width;
+                var item = qplaylist_header.repeater.itemAt(column);
+                return item.visible ? item.width : 0;
             }
 
             selectionModel: ItemSelectionModel {
