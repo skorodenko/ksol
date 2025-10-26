@@ -14,6 +14,7 @@ Kirigami.ApplicationWindow {
     Component.onCompleted: {
         mpd_connector.connect();
         mpd_connector.syncState();
+        mpd_connector.getPlaylists(drun.activeGroup);
     }
 
     function message(message, type, iconName = null) {

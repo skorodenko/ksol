@@ -339,6 +339,9 @@ impl Drop for PlaylistModel {
                 panic!("Failed to open/create state db {}", e);
             }
         };
+        self.active_song_id = 0;
+        self.queue = vec![];
+        self.queue_proxy = vec![];
         let bcode: &[u8] = &encode_to_vec(self, config::standard()).unwrap();
         let _ = db.insert(b"playlist_model", bcode);
     }

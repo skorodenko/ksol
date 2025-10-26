@@ -74,7 +74,6 @@ use bincode::config;
 use bincode::serde::{decode_from_slice, encode_to_vec};
 use core::pin::Pin;
 use cxx_qt::CxxQtType;
-use num_traits::FromPrimitive;
 use regex::RegexBuilder;
 
 use qobject::*;
@@ -131,6 +130,8 @@ impl Drop for PlaylistsListModel {
                 panic!("Failed to open/create state db {}", e);
             }
         };
+        self.queue = vec![];
+        self.queue_proxy = vec![];
         let bcode: &[u8] = &encode_to_vec(self, config::standard()).unwrap();
         let _ = db.insert(b"playlists_list_model", bcode);
     }

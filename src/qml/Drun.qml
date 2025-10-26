@@ -20,6 +20,7 @@ QQC2.Popup {
 
     property alias playlists_list: playlists_list
     property alias playlists_group: playlists_group
+    property alias activeGroup: playlists_group.activeGroup
 
     QPlaylistsGroupModel {
         id: playlists_group
