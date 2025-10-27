@@ -113,8 +113,9 @@ Kirigami.ApplicationWindow {
             var dfs = Math.floor(duration % 60).toString().padStart(2, '0');
             media_duration.text = `${efm}:${efs} / ${dfm}:${dfs}`;
         }
-        onActiveSongChanged: function (songId) {
+        onActiveSongChanged: function (songPos, songId) {
             qplaylist.activeSongId = songId;
+            qplaylist_view.positionViewAtRow(songPos, Qt.AlignVCenter, 0.0);
         }
         onUpdateOptions: function () {
             var shuffle = mpd_connector.shuffle;
@@ -434,6 +435,7 @@ Kirigami.ApplicationWindow {
                 required property int row
                 required property var songId
                 required property string songDisplay
+                property bool activeSongItem: qplaylist.activeSongId == songId
 
                 MouseArea {
                     anchors.fill: parent
@@ -447,7 +449,7 @@ Kirigami.ApplicationWindow {
 
                 Rectangle {
                     anchors.fill: parent
-                    visible: qplaylist.activeSongId == parent.songId
+                    visible: delegate.activeSongItem
                     color: Kirigami.Theme.focusColor
                 }
 

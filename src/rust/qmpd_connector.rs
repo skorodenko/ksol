@@ -31,7 +31,7 @@ pub mod qobject {
 
         #[qsignal]
         #[cxx_name = "activeSongChanged"]
-        fn active_song_changed(self: Pin<&mut QMPDConnector>, song_id: u64);
+        fn active_song_changed(self: Pin<&mut QMPDConnector>, song_pos: usize, song_id: u64);
 
         #[qsignal]
         #[cxx_name = "timelineUpdate"]
@@ -424,10 +424,11 @@ impl qobject::QMPDConnector {
                         let command = commands::Status;
                         let result = mpd_client.command(command).await.unwrap();
                         let play_state = QString::from(format!("{:#?}", result.state));
+                        let song_pos = result.current_song.unwrap().0.0;
                         let song_id = result.current_song.unwrap().1.0;
                         let _ = qt_thread.queue(move |mut qobject| {
                             qobject.as_mut().play_state_changed(play_state);
-                            qobject.as_mut().active_song_changed(song_id);
+                            qobject.as_mut().active_song_changed(song_pos, song_id);
                         });
                     }
                     Some(MPSCCommand::IdleQueue) => {
