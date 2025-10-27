@@ -53,12 +53,7 @@ impl Default for Settings {
 
         Self {
             mpd_socket: "/home/rinkuro/.local/share/cantata/mpd/socket".to_string(),
-            search_groups: vec![
-                SongField::Directory,
-                SongField::Artist,
-                SongField::Album,
-                SongField::Genre,
-            ],
+            search_groups: vec![SongField::Directory, SongField::Artist, SongField::Album, SongField::Genre],
         }
     }
 }

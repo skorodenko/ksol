@@ -130,13 +130,10 @@ impl Default for PlaylistsGroupModel {
 
         match db.get(b"playlists_group_model").unwrap() {
             Some(val) => {
-                let (val, _): (Self, usize) =
-                    decode_from_slice(val.as_ref(), config::standard()).unwrap();
+                let (val, _): (Self, usize) = decode_from_slice(val.as_ref(), config::standard()).unwrap();
                 val
             }
-            None => Self {
-                active_group: SongField::Directory,
-            },
+            None => Self { active_group: SongField::Directory },
         }
     }
 }

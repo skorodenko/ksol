@@ -42,17 +42,7 @@ pub enum MPSCCommand {
     IdleOptions,
 }
 
-#[derive(
-    serde::Deserialize,
-    serde::Serialize,
-    PartialEq,
-    EnumIter,
-    FromPrimitive,
-    ToPrimitive,
-    Copy,
-    Clone,
-    Debug,
-)]
+#[derive(serde::Deserialize, serde::Serialize, PartialEq, EnumIter, FromPrimitive, ToPrimitive, Copy, Clone, Debug)]
 #[repr(i32)]
 pub enum SongField {
     Track = 0,
@@ -84,20 +74,8 @@ impl From<SongInQueue> for QSong {
         let song = value.song;
         Self {
             id: value.id.0,
-            track: song
-                .tags
-                .get(&Tag::Track)
-                .unwrap_or(&vec![])
-                .join(",")
-                .parse()
-                .unwrap_or(0),
-            disc: song
-                .tags
-                .get(&Tag::Disc)
-                .unwrap_or(&vec![])
-                .join(",")
-                .parse()
-                .unwrap_or(0),
+            track: song.tags.get(&Tag::Track).unwrap_or(&vec![]).join(",").parse().unwrap_or(0),
+            disc: song.tags.get(&Tag::Disc).unwrap_or(&vec![]).join(",").parse().unwrap_or(0),
             title: song.tags.get(&Tag::Title).unwrap_or(&vec![]).join(","),
             artist: song.tags.get(&Tag::Artist).unwrap_or(&vec![]).join(","),
             album: song.tags.get(&Tag::Album).unwrap_or(&vec![]).join(","),
@@ -108,12 +86,7 @@ impl From<SongInQueue> for QSong {
             format: song.format.unwrap_or("".into()),
             lastmodified: "".into(),
             duration: song.duration.unwrap_or_default(),
-            directory: Path::new(&song.url)
-                .parent()
-                .unwrap_or(Path::new("Root"))
-                .to_str()
-                .unwrap()
-                .to_string(),
+            directory: Path::new(&song.url).parent().unwrap_or(Path::new("Root")).to_str().unwrap().to_string(),
         }
     }
 }

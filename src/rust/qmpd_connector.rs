@@ -116,8 +116,7 @@ use cxx_qt::{CxxQtType, Threading};
 use log;
 use mpd_client::client::{ConnectionEvent, Subsystem};
 use mpd_client::{
-    ClientController, ClientIdler, commands, filter::Filter, responses::PlayState, responses::Song,
-    tag::Tag,
+    ClientController, ClientIdler, commands, filter::Filter, responses, responses::PlayState, responses::Song, tag::Tag,
 };
 use num_traits::FromPrimitive;
 use std::cmp::Reverse;
@@ -151,8 +150,9 @@ impl qobject::QMPDConnector {
         let tx_actions = self.tx_actions.clone();
         let rt_idle = &self.rt_idle;
         rt_idle.spawn(async move {
+            let mpd_idle = mpd_idle.as_mut().expect("idle client is None");
             loop {
-                match mpd_idle.as_mut().unwrap().next().await {
+                match mpd_idle.next().await {
                     Some(ConnectionEvent::SubsystemChange(Subsystem::Database)) => {
                         let _ = qt_thread.queue(|mut qobject| {
                             qobject.as_mut().db_updated(true);
@@ -185,50 +185,57 @@ impl qobject::QMPDConnector {
     }
 
     fn init_ui(self: Pin<&mut Self>) {
-        let mpd_client = self.client.clone();
+        let mpd_client = self.client.clone().expect("mpd client is None");
         let qt_thread = self.qt_thread();
         let rt_action = &self.rt_action;
         rt_action.spawn(async move {
             let command = commands::Status;
-            let result = mpd_client.unwrap().command(command).await.unwrap();
-            let play_state = QString::from(format!("{:#?}", result.state));
-            let _ = qt_thread.queue(|mut qobject| {
-                qobject.as_mut().init_actions();
-                qobject.as_mut().play_state_changed(play_state);
-                qobject.as_mut().init_timeline();
-            });
+            match mpd_client.command(command).await {
+                Ok(rsp) => {
+                    let play_state = QString::from(format!("{:#?}", rsp.state));
+                    let _ = qt_thread.queue(|mut qobject| {
+                        qobject.as_mut().init_actions();
+                        qobject.as_mut().play_state_changed(play_state);
+                        qobject.as_mut().init_timeline();
+                    });
+                }
+                Err(e) => {}
+            };
         });
     }
 
     fn init_timeline(self: Pin<&mut Self>) {
-        let mpd_client = self.client.clone().unwrap();
+        let mpd_client = self.client.clone().expect("mpd client is None");
         let qt_thread = self.qt_thread();
         let rt_timeline = &self.rt_timeline;
         rt_timeline.spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(1));
             loop {
                 let command = commands::Status;
-                let status = mpd_client.command(command).await.unwrap();
-                let duration = status.duration.unwrap_or(Duration::new(0, 0));
-                let elapsed = status.elapsed.unwrap_or(Duration::new(0, 0));
-                let _ = qt_thread.queue(move |mut qobject| {
-                    qobject
-                        .as_mut()
-                        .timeline_update(duration.as_secs(), elapsed.as_secs());
-                });
-                interval.tick().await;
+                match mpd_client.command(command).await {
+                    Ok(rsp) => {
+                        let duration = rsp.duration.unwrap_or(Duration::new(0, 0));
+                        let elapsed = rsp.elapsed.unwrap_or(Duration::new(0, 0));
+                        let _ = qt_thread.queue(move |mut qobject| {
+                            qobject.as_mut().timeline_update(duration.as_secs(), elapsed.as_secs());
+                        });
+                        interval.tick().await;
+                    }
+                    Err(e) => {}
+                };
             }
         });
     }
 
     fn init_actions(mut self: Pin<&mut Self>) {
         let mut rx_actions = self.as_mut().rust_mut().rx_actions.take();
-        let mpd_client = self.client.clone().unwrap();
+        let mpd_client = self.client.clone().expect("mpd client is None");
         let qt_thread = self.qt_thread();
         let rt_action = &self.rt_action;
         rt_action.spawn(async move {
+            let rx_actions = rx_actions.as_mut().expect("actions reciever is None");
             loop {
-                match rx_actions.as_mut().unwrap().recv().await {
+                match rx_actions.recv().await {
                     Some(MPSCCommand::Next) => {
                         let command = commands::Next;
                         let _ = mpd_client.command(command).await;
@@ -243,21 +250,23 @@ impl qobject::QMPDConnector {
                     }
                     Some(MPSCCommand::PlayToggle) => {
                         let command = commands::Status;
-                        let result = mpd_client.command(command).await.unwrap();
-                        match result.state {
-                            PlayState::Paused => {
-                                let command = commands::SetPause(false);
-                                mpd_client.command(command).await.unwrap();
-                            }
-                            PlayState::Playing => {
-                                let command = commands::SetPause(true);
-                                mpd_client.command(command).await.unwrap();
-                            }
-                            PlayState::Stopped => {
-                                let command = commands::Play::current();
-                                mpd_client.command(command).await.unwrap();
-                            }
-                        }
+                        match mpd_client.command(command).await {
+                            Ok(rsp) => match rsp.state {
+                                PlayState::Paused => {
+                                    let command = commands::SetPause(false);
+                                    let _ = mpd_client.command(command).await;
+                                }
+                                PlayState::Playing => {
+                                    let command = commands::SetPause(true);
+                                    let _ = mpd_client.command(command).await;
+                                }
+                                PlayState::Stopped => {
+                                    let command = commands::Play::current();
+                                    let _ = mpd_client.command(command).await;
+                                }
+                            },
+                            Err(e) => {}
+                        };
                     }
                     Some(MPSCCommand::UpdateDb) => {
                         let command = commands::Update::new();
@@ -271,33 +280,36 @@ impl qobject::QMPDConnector {
                         let mut result: Vec<String> = match group {
                             Tag::Other(value) if value == "Directory".into() => {
                                 let command = commands::ListAllIn::root();
-                                let res = mpd_client.command(command).await.unwrap();
-                                res.iter()
-                                    .map(|x| {
-                                        x.file_path()
-                                            .parent()
-                                            .unwrap_or(Path::new("Root"))
-                                            .to_str()
-                                            .unwrap()
-                                            .to_string()
-                                    })
-                                    .collect::<HashSet<_>>()
-                                    .into_iter()
-                                    .collect()
+                                if let Ok(rsp) = mpd_client.command(command).await {
+                                    rsp.iter()
+                                        .map(|x| {
+                                            x.file_path()
+                                                .parent()
+                                                .unwrap_or(Path::new("Root"))
+                                                .to_str()
+                                                .unwrap_or_default()
+                                                .to_string()
+                                        })
+                                        .collect::<HashSet<_>>()
+                                        .into_iter()
+                                        .collect()
+                                } else {
+                                    vec![]
+                                    // ERROR
+                                }
                             }
                             _ => {
                                 let command = commands::List::new(group);
-                                mpd_client
-                                    .command(command)
-                                    .await
-                                    .unwrap()
-                                    .values()
-                                    .map(|x| x.to_string())
-                                    .collect()
+                                if let Ok(rsp) = mpd_client.command(command).await {
+                                    rsp.values().map(|x| x.to_string()).collect()
+                                } else {
+                                    vec![]
+                                    // ERROR
+                                }
                             }
                         };
                         result.sort();
-                        let bcode: &[u8] = &encode_to_vec(result, config::standard()).unwrap();
+                        let bcode: &[u8] = &encode_to_vec(result, config::standard()).expect("failed to encode to bcode");
                         let bcode = QByteArray::from(bcode);
                         let _ = qt_thread.queue(|mut qobject| {
                             qobject.as_mut().get_playlists_result(bcode);
@@ -305,65 +317,53 @@ impl qobject::QMPDConnector {
                     }
                     Some(MPSCCommand::SortPlaylist(sort_order)) => {
                         let command = commands::Queue::all();
-                        let songs = mpd_client.command(command).await.unwrap();
-                        let mut songs: Vec<QSong> = songs.into_iter().map(QSong::from).collect();
-                        match sort_order {
-                            ColumnSort::Inactive => (),
-                            ColumnSort::Ascending(col) => match col {
-                                SongField::Track => songs.sort_by_key(|k| k.clone().track),
-                                SongField::Title => songs.sort_by_key(|k| k.clone().title),
-                                SongField::Artist => songs.sort_by_key(|k| k.clone().artist),
-                                SongField::Album => songs.sort_by_key(|k| k.clone().album),
-                                SongField::Date => songs.sort_by_key(|k| k.clone().date),
-                                SongField::Genre => songs.sort_by_key(|k| k.clone().genre),
-                                SongField::Disc => songs.sort_by_key(|k| k.clone().disc),
-                                SongField::Composer => songs.sort_by_key(|k| k.clone().composer),
-                                SongField::Albumartist => songs.sort_by_key(|k| k.clone().artist),
-                                SongField::File => songs.sort_by_key(|k| k.clone().file),
-                                SongField::Format => songs.sort_by_key(|k| k.clone().format),
-                                SongField::Lastmodified => {
-                                    songs.sort_by_key(|k| k.clone().lastmodified)
-                                }
-                                SongField::Duration => songs.sort_by_key(|k| k.clone().duration),
-                                SongField::Directory => songs.sort_by_key(|k| k.clone().directory),
-                            },
-                            ColumnSort::Descending(col) => match col {
-                                SongField::Track => songs.sort_by_key(|k| Reverse(k.clone().track)),
-                                SongField::Title => songs.sort_by_key(|k| Reverse(k.clone().title)),
-                                SongField::Artist => {
-                                    songs.sort_by_key(|k| Reverse(k.clone().artist))
-                                }
-                                SongField::Album => songs.sort_by_key(|k| Reverse(k.clone().album)),
-                                SongField::Date => songs.sort_by_key(|k| Reverse(k.clone().date)),
-                                SongField::Genre => songs.sort_by_key(|k| Reverse(k.clone().genre)),
-                                SongField::Disc => songs.sort_by_key(|k| Reverse(k.clone().disc)),
-                                SongField::Composer => {
-                                    songs.sort_by_key(|k| Reverse(k.clone().composer))
-                                }
-                                SongField::Albumartist => {
-                                    songs.sort_by_key(|k| Reverse(k.clone().artist))
-                                }
-                                SongField::File => songs.sort_by_key(|k| Reverse(k.clone().file)),
-                                SongField::Format => {
-                                    songs.sort_by_key(|k| Reverse(k.clone().format))
-                                }
-                                SongField::Lastmodified => {
-                                    songs.sort_by_key(|k| Reverse(k.clone().lastmodified))
-                                }
-                                SongField::Duration => {
-                                    songs.sort_by_key(|k| Reverse(k.clone().duration))
-                                }
-                                SongField::Directory => {
-                                    songs.sort_by_key(|k| Reverse(k.clone().directory))
-                                }
-                            },
-                        };
-                        let move_commands: Vec<commands::Move> = songs
-                            .iter()
-                            .enumerate()
-                            .map(|(i, x)| commands::Move::id(x.id.into()).to_position(i.into()))
-                            .collect();
-                        let _ = mpd_client.command_list(move_commands).await.unwrap();
+                        match mpd_client.command(command).await {
+                            Ok(songs) => {
+                                let mut songs: Vec<QSong> = songs.into_iter().map(QSong::from).collect();
+                                match sort_order {
+                                    ColumnSort::Inactive => (),
+                                    ColumnSort::Ascending(col) => match col {
+                                        SongField::Track => songs.sort_by_key(|k| k.clone().track),
+                                        SongField::Title => songs.sort_by_key(|k| k.clone().title),
+                                        SongField::Artist => songs.sort_by_key(|k| k.clone().artist),
+                                        SongField::Album => songs.sort_by_key(|k| k.clone().album),
+                                        SongField::Date => songs.sort_by_key(|k| k.clone().date),
+                                        SongField::Genre => songs.sort_by_key(|k| k.clone().genre),
+                                        SongField::Disc => songs.sort_by_key(|k| k.clone().disc),
+                                        SongField::Composer => songs.sort_by_key(|k| k.clone().composer),
+                                        SongField::Albumartist => songs.sort_by_key(|k| k.clone().artist),
+                                        SongField::File => songs.sort_by_key(|k| k.clone().file),
+                                        SongField::Format => songs.sort_by_key(|k| k.clone().format),
+                                        SongField::Lastmodified => songs.sort_by_key(|k| k.clone().lastmodified),
+                                        SongField::Duration => songs.sort_by_key(|k| k.clone().duration),
+                                        SongField::Directory => songs.sort_by_key(|k| k.clone().directory),
+                                    },
+                                    ColumnSort::Descending(col) => match col {
+                                        SongField::Track => songs.sort_by_key(|k| Reverse(k.clone().track)),
+                                        SongField::Title => songs.sort_by_key(|k| Reverse(k.clone().title)),
+                                        SongField::Artist => songs.sort_by_key(|k| Reverse(k.clone().artist)),
+                                        SongField::Album => songs.sort_by_key(|k| Reverse(k.clone().album)),
+                                        SongField::Date => songs.sort_by_key(|k| Reverse(k.clone().date)),
+                                        SongField::Genre => songs.sort_by_key(|k| Reverse(k.clone().genre)),
+                                        SongField::Disc => songs.sort_by_key(|k| Reverse(k.clone().disc)),
+                                        SongField::Composer => songs.sort_by_key(|k| Reverse(k.clone().composer)),
+                                        SongField::Albumartist => songs.sort_by_key(|k| Reverse(k.clone().artist)),
+                                        SongField::File => songs.sort_by_key(|k| Reverse(k.clone().file)),
+                                        SongField::Format => songs.sort_by_key(|k| Reverse(k.clone().format)),
+                                        SongField::Lastmodified => songs.sort_by_key(|k| Reverse(k.clone().lastmodified)),
+                                        SongField::Duration => songs.sort_by_key(|k| Reverse(k.clone().duration)),
+                                        SongField::Directory => songs.sort_by_key(|k| Reverse(k.clone().directory)),
+                                    },
+                                };
+                                let move_commands: Vec<commands::Move> = songs
+                                    .iter()
+                                    .enumerate()
+                                    .map(|(i, x)| commands::Move::id(x.id.into()).to_position(i.into()))
+                                    .collect();
+                                let _ = mpd_client.command_list(move_commands).await;
+                            }
+                            Err(e) => {}
+                        }
                     }
                     Some(MPSCCommand::StagePlaylist(name, group)) => {
                         let tag = Tag::from(group);
@@ -383,11 +383,8 @@ impl qobject::QMPDConnector {
                         let clear_command = commands::ClearQueue;
                         let _ = mpd_client.command(clear_command).await;
                         // Populate new queue
-                        let add_commands: Vec<commands::Add> = songs
-                            .iter()
-                            .map(|x| commands::Add::uri(x.url.as_str()))
-                            .collect();
-                        let _ = mpd_client.command_list(add_commands).await.unwrap();
+                        let add_commands: Vec<commands::Add> = songs.iter().map(|x| commands::Add::uri(x.url.as_str())).collect();
+                        let _ = mpd_client.command_list(add_commands).await;
                     }
                     Some(MPSCCommand::Seek(seek_to)) => {
                         let command = commands::Seek(commands::SeekMode::Absolute(seek_to));
@@ -398,7 +395,6 @@ impl qobject::QMPDConnector {
                         let _ = mpd_client.command(command).await;
                     }
                     Some(MPSCCommand::RepeatToggle(current_repeat, current_single)) => {
-                        //FIXME
                         match (current_repeat, current_single) {
                             (false, false) | (false, true) => {
                                 let command = commands::SetRepeat(true);
@@ -422,38 +418,52 @@ impl qobject::QMPDConnector {
                     }
                     Some(MPSCCommand::IdlePlayer) => {
                         let command = commands::Status;
-                        let result = mpd_client.command(command).await.unwrap();
-                        let play_state = QString::from(format!("{:#?}", result.state));
-                        let song_pos = result.current_song.unwrap().0.0;
-                        let song_id = result.current_song.unwrap().1.0;
-                        let _ = qt_thread.queue(move |mut qobject| {
-                            qobject.as_mut().play_state_changed(play_state);
-                            qobject.as_mut().active_song_changed(song_pos, song_id);
-                        });
+                        match mpd_client.command(command).await {
+                            Ok(rsp) => {
+                                let play_state = QString::from(format!("{:#?}", rsp.state));
+                                let (song_pos, song_id) = match rsp.current_song {
+                                    Some(song) => (song.0.0, song.1.0),
+                                    None => (0, 0),
+                                };
+                                let _ = qt_thread.queue(move |mut qobject| {
+                                    qobject.as_mut().play_state_changed(play_state);
+                                    qobject.as_mut().active_song_changed(song_pos, song_id);
+                                });
+                            }
+                            Err(e) => {}
+                        };
                     }
                     Some(MPSCCommand::IdleQueue) => {
                         // Propagate playlist to other components
                         let command = commands::Queue::all();
-                        let result = mpd_client.command(command).await.unwrap();
-                        let result: Vec<QSong> = result.into_iter().map(QSong::from).collect();
-                        let bcode: &[u8] = &encode_to_vec(result, config::standard()).unwrap();
-                        let bcode = QByteArray::from(bcode);
-                        let _ = qt_thread.queue(|mut qobject| {
-                            qobject.as_mut().stage_playlist_result(bcode);
-                        });
+                        match mpd_client.command(command).await {
+                            Ok(rsp) => {
+                                let songs: Vec<QSong> = rsp.into_iter().map(QSong::from).collect();
+                                let bcode: &[u8] = &encode_to_vec(songs, config::standard()).expect("failed to encode to bcode");
+                                let bcode = QByteArray::from(bcode);
+                                let _ = qt_thread.queue(|mut qobject| {
+                                    qobject.as_mut().stage_playlist_result(bcode);
+                                });
+                            }
+                            Err(e) => {}
+                        };
                     }
                     Some(MPSCCommand::IdleOptions) => {
                         let command = commands::Status;
-                        let result = mpd_client.command(command).await.unwrap();
-                        let repeat = result.repeat;
-                        let shuffle = result.random;
-                        let single = !matches!(result.single, commands::SingleMode::Disabled);
-                        let _ = qt_thread.queue(move |mut qobject| {
-                            qobject.as_mut().rust_mut().repeat = repeat;
-                            qobject.as_mut().rust_mut().single = single;
-                            qobject.as_mut().rust_mut().shuffle = shuffle;
-                            qobject.update_options();
-                        });
+                        match mpd_client.command(command).await {
+                            Ok(rsp) => {
+                                let repeat = rsp.repeat;
+                                let shuffle = rsp.random;
+                                let single = !matches!(rsp.single, commands::SingleMode::Disabled);
+                                let _ = qt_thread.queue(move |mut qobject| {
+                                    qobject.as_mut().rust_mut().repeat = repeat;
+                                    qobject.as_mut().rust_mut().single = single;
+                                    qobject.as_mut().rust_mut().shuffle = shuffle;
+                                    qobject.update_options();
+                                });
+                            }
+                            Err(e) => {}
+                        }
                     }
                     None => {}
                 }
@@ -494,20 +504,20 @@ impl qobject::QMPDConnector {
     }
 
     pub fn get_playlists(self: Pin<&mut QMPDConnector>, group: i32) {
-        let group = SongField::from_i32(group).unwrap();
+        let group = SongField::from_i32(group).expect("bad group value");
         let tx_actions = self.tx_actions.clone();
         let _ = tx_actions.blocking_send(MPSCCommand::GetPlaylists(group));
     }
 
     pub fn stage_playlist(self: Pin<&mut QMPDConnector>, name: QString, group: i32) {
         let name = String::from(name);
-        let group = SongField::from_i32(group).unwrap();
+        let group = SongField::from_i32(group).expect("bad group value");
         let tx_actions = self.tx_actions.clone();
         let _ = tx_actions.blocking_send(MPSCCommand::StagePlaylist(name, group));
     }
 
     pub fn sort_playlist(self: Pin<&mut QMPDConnector>, sort_column: i32, sort_order: i32) {
-        let sort_column = SongField::from_i32(sort_column).unwrap();
+        let sort_column = SongField::from_i32(sort_column).expect("bad sort_column value");
         let sort_order = ColumnSort::from((sort_order, sort_column));
         let tx_actions = self.tx_actions.clone();
         let _ = tx_actions.blocking_send(MPSCCommand::SortPlaylist(sort_order));
@@ -556,12 +566,10 @@ impl qobject::QMPDConnector {
                 //match TcpStream::connect(&settings.mpd_socket).await {
                 match UnixStream::connect(&settings.mpd_socket).await {
                     Ok(connection) => {
-                        let client = ClientController::connect(connection).await.unwrap();
-                        let idle = ClientIdler::connect(
-                            UnixStream::connect(&settings.mpd_socket).await.unwrap(),
-                        )
-                        .await
-                        .unwrap();
+                        let client = ClientController::connect(connection).await.expect("failed to init controller");
+                        let connection_2 =
+                            UnixStream::connect(&settings.mpd_socket).await.expect("failed to establish 2nd connection");
+                        let idle = ClientIdler::connect(connection_2).await.expect("failed to init idler");
                         log::debug!("Succesfully connected to MPD server");
                         break ("connected", Some(client), Some(idle));
                     }
@@ -596,13 +604,9 @@ impl qobject::QMPDConnector {
             match which("mpd") {
                 Ok(v) => {
                     log::debug!("Found mpd binary {:?}", v);
-                    self.as_mut()
-                        .start_native_server(&v, &isettings.native_config);
+                    self.as_mut().start_native_server(&v, &isettings.native_config);
                 }
-                Err(err) => panic!(
-                    "Using native socket, but no mpd binary was found, {:?}",
-                    err
-                ),
+                Err(err) => panic!("Using native socket, but no mpd binary was found, {:?}", err),
             };
         }
         self.connect_client();
@@ -611,21 +615,9 @@ impl qobject::QMPDConnector {
 
 impl Default for MPDConnector {
     fn default() -> Self {
-        let rt_idle = Builder::new_multi_thread()
-            .worker_threads(1)
-            .enable_io()
-            .enable_time()
-            .build()
-            .unwrap();
-        let rt_timeline = Builder::new_multi_thread()
-            .worker_threads(1)
-            .enable_time()
-            .build()
-            .unwrap();
-        let rt_action = Builder::new_multi_thread()
-            .worker_threads(1)
-            .build()
-            .unwrap();
+        let rt_idle = Builder::new_multi_thread().worker_threads(1).enable_io().enable_time().build().unwrap();
+        let rt_timeline = Builder::new_multi_thread().worker_threads(1).enable_time().build().unwrap();
+        let rt_action = Builder::new_multi_thread().worker_threads(1).build().unwrap();
         let (tx_actions, rx_actions) = tokio::sync::mpsc::channel(64);
         Self {
             client: None,

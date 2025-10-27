@@ -12,5 +12,4 @@ mod ffi {
     }
 }
 
-pub use ffi::{Orientation};
-
+pub use ffi::Orientation;

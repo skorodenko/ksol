@@ -106,8 +106,7 @@ impl qobject::QPlaylistsListModel {
     }
 
     pub fn set_queue(mut self: Pin<&mut QPlaylistsListModel>, value: QByteArray) {
-        let (value, _): (Vec<String>, usize) =
-            decode_from_slice(value.as_slice(), config::standard()).unwrap();
+        let (value, _): (Vec<String>, usize) = decode_from_slice(value.as_slice(), config::standard()).unwrap();
         self.as_mut().rust_mut().queue = value;
         self.as_mut().update();
     }
@@ -148,15 +147,10 @@ impl Default for PlaylistsListModel {
 
         match db.get(b"playlists_list_model").unwrap() {
             Some(val) => {
-                let (val, _): (Self, usize) =
-                    decode_from_slice(val.as_ref(), config::standard()).unwrap();
+                let (val, _): (Self, usize) = decode_from_slice(val.as_ref(), config::standard()).unwrap();
                 val
             }
-            None => Self {
-                filter: String::default(),
-                queue: Vec::default(),
-                queue_proxy: Vec::default(),
-            },
+            None => Self { filter: String::default(), queue: Vec::default(), queue_proxy: Vec::default() },
         }
     }
 }
@@ -166,13 +160,9 @@ impl cxx_qt::Initialize for qobject::QPlaylistsListModel {
         self.on_update(|mut qobject| {
             let queue = qobject.as_ref().rust().queue.clone();
             let filter = qobject.as_ref().rust().filter.clone();
-            let pattern = RegexBuilder::new(&filter)
-                .case_insensitive(true)
-                .build()
-                .unwrap();
+            let pattern = RegexBuilder::new(&filter).case_insensitive(true).build().unwrap();
             qobject.as_mut().layout_about_to_be_changed();
-            qobject.as_mut().rust_mut().queue_proxy =
-                queue.into_iter().filter(|x| pattern.is_match(x)).collect();
+            qobject.as_mut().rust_mut().queue_proxy = queue.into_iter().filter(|x| pattern.is_match(x)).collect();
             qobject.as_mut().layout_changed();
         })
         .release();

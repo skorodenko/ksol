@@ -82,12 +82,7 @@ mod qobject {
 
         #[cxx_override]
         #[cxx_name = "headerData"]
-        fn header_data(
-            self: &QPlaylistModel,
-            section: i32,
-            orientation: Orientation,
-            role: i32,
-        ) -> QVariant;
+        fn header_data(self: &QPlaylistModel, section: i32, orientation: Orientation, role: i32) -> QVariant;
 
         #[qinvokable]
         #[cxx_virtual]
@@ -129,12 +124,7 @@ mod qobject {
 
         #[inherit]
         #[cxx_name = "headerDataChanged"]
-        fn header_data_changed(
-            self: Pin<&mut QPlaylistModel>,
-            orientation: Orientation,
-            start: i32,
-            end: i32,
-        );
+        fn header_data_changed(self: Pin<&mut QPlaylistModel>, orientation: Orientation, start: i32, end: i32);
 
         #[inherit]
         #[cxx_name = "beginResetModel"]
@@ -218,11 +208,7 @@ impl qobject::QPlaylistModel {
                     SongField::File => qsong.file,
                     SongField::Format => qsong.format,
                     SongField::Lastmodified => qsong.lastmodified,
-                    SongField::Duration => format!(
-                        "{:0>2}:{:0>2}",
-                        qsong.duration.as_secs() / 60,
-                        qsong.duration.as_secs() % 60
-                    ),
+                    SongField::Duration => format!("{:0>2}:{:0>2}", qsong.duration.as_secs() / 60, qsong.duration.as_secs() % 60),
                     SongField::Directory => qsong.directory,
                 };
                 QVariant::from(&QString::from(field))
@@ -278,8 +264,7 @@ impl qobject::QPlaylistModel {
     }
 
     fn set_queue(mut self: Pin<&mut QPlaylistModel>, value: QByteArray) {
-        let (value, _): (Vec<QSong>, usize) =
-            decode_from_slice(value.as_slice(), config::standard()).unwrap();
+        let (value, _): (Vec<QSong>, usize) = decode_from_slice(value.as_slice(), config::standard()).unwrap();
         self.as_mut().begin_reset_model();
         self.as_mut().rust_mut().queue = value.clone();
         self.as_mut().rust_mut().queue_proxy = value;
@@ -329,17 +314,11 @@ impl qobject::QPlaylistModel {
     }
 
     fn get_last_visible_column(self: &QPlaylistModel) -> usize {
-        self.column_width
-            .iter()
-            .rposition(|&x| x != 0)
-            .unwrap_or(0)
+        self.column_width.iter().rposition(|&x| x != 0).unwrap_or(0)
     }
 
     fn get_first_visible_column(self: &QPlaylistModel) -> usize {
-        self.column_width
-            .iter()
-            .position(|&x| x != 0)
-            .unwrap_or(0)
+        self.column_width.iter().position(|&x| x != 0).unwrap_or(0)
     }
 }
 
@@ -370,8 +349,7 @@ impl Default for PlaylistModel {
 
         match db.get(b"playlist_model").unwrap() {
             Some(val) => {
-                let (val, _): (Self, usize) =
-                    decode_from_slice(val.as_ref(), config::standard()).unwrap();
+                let (val, _): (Self, usize) = decode_from_slice(val.as_ref(), config::standard()).unwrap();
                 val
             }
             None => Self {
@@ -391,16 +369,10 @@ impl cxx_qt::Initialize for qobject::QPlaylistModel {
         self.on_update_filter(|mut qobject| {
             let queue = qobject.as_ref().rust().queue.clone();
             let filter = qobject.as_ref().rust().filter.clone();
-            let pattern = RegexBuilder::new(&filter)
-                .case_insensitive(true)
-                .build()
-                .unwrap();
+            let pattern = RegexBuilder::new(&filter).case_insensitive(true).build().unwrap();
             qobject.as_mut().layout_about_to_be_changed();
-            qobject.as_mut().rust_mut().queue_proxy = queue
-                .clone()
-                .into_iter()
-                .filter(|x| pattern.is_match(&x.title) || pattern.is_match(&x.artist))
-                .collect();
+            qobject.as_mut().rust_mut().queue_proxy =
+                queue.clone().into_iter().filter(|x| pattern.is_match(&x.title) || pattern.is_match(&x.artist)).collect();
             qobject.as_mut().layout_changed();
         })
         .release();
