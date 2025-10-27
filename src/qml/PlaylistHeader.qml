@@ -138,7 +138,7 @@ Item {
                     }
                     onPositionChanged: {
                         if (pressed) {
-                            var widthDelta = (mouseX - oldMouseX);
+                            var widthDelta = 50 * (mouseX - oldMouseX) / root.width;
                             if (delegate.index == root.model.lastVisibleColumn) {
                                 delegate.applyWidthDelta(-widthDelta);
                                 for (var i = delegate.index - 1; i >= root.model.firstVisibleColumn; i--) {
