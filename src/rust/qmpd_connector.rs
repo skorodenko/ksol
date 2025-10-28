@@ -210,7 +210,9 @@ impl qobject::QMPDConnector {
                         qobject.as_mut().init_timeline();
                     });
                 }
-                Err(e) => {}
+                Err(e) => {
+                    log::error!("{}", e);
+                }
             };
         });
     }
@@ -232,7 +234,9 @@ impl qobject::QMPDConnector {
                         });
                         interval.tick().await;
                     }
-                    Err(e) => {}
+                    Err(e) => {
+                        log::error!("{}", e);
+                    }
                 };
             }
         });
@@ -276,7 +280,9 @@ impl qobject::QMPDConnector {
                                     let _ = mpd_client.command(command).await;
                                 }
                             },
-                            Err(e) => {}
+                            Err(e) => {
+                                log::error!("{}", e);
+                            }
                         };
                     }
                     Some(MPSCCommand::UpdateDb) => {
@@ -362,7 +368,9 @@ impl qobject::QMPDConnector {
                                     .collect();
                                 let _ = mpd_client.command_list(move_commands).await;
                             }
-                            Err(e) => {}
+                            Err(e) => {
+                                log::error!("{}", e);
+                            }
                         }
                     }
                     Some(MPSCCommand::StagePlaylist(name, group)) => {
@@ -430,7 +438,9 @@ impl qobject::QMPDConnector {
                                     qobject.as_mut().active_song_changed(song_pos, song_id);
                                 });
                             }
-                            Err(e) => {}
+                            Err(e) => {
+                                log::error!("{}", e);
+                            }
                         };
                     }
                     Some(MPSCCommand::IdleQueue) => {
@@ -445,7 +455,9 @@ impl qobject::QMPDConnector {
                                     qobject.as_mut().stage_playlist_result(bcode);
                                 });
                             }
-                            Err(e) => {}
+                            Err(e) => {
+                                log::error!("{}", e);
+                            }
                         };
                     }
                     Some(MPSCCommand::IdleOptions) => {
@@ -462,7 +474,9 @@ impl qobject::QMPDConnector {
                                     qobject.update_options();
                                 });
                             }
-                            Err(e) => {}
+                            Err(e) => {
+                                log::error!("{}", e);
+                            }
                         }
                     }
                     None => {}
@@ -588,20 +602,45 @@ impl qobject::QMPDConnector {
         }
     }
 
-    fn start_native_server(self: Pin<&mut Self>, mpd_binary: &PathBuf, native_config: &String) {
+    fn start_native_server(mut self: Pin<&mut Self>, mpd_binary: &PathBuf, native_config: &String) {
         log::debug!("Starting native mpd server");
         let qt_thread = self.qt_thread();
         let cmpd_binary = mpd_binary.clone();
         let cnative_config = native_config.clone();
-        std::thread::spawn(move || {
-            let mut command = Command::new(cmpd_binary);
-            command.arg("--no-daemon");
-            command.arg(cnative_config);
-            let handle = command.spawn().expect("Failed to start mpd server");
-            let _ = qt_thread.queue(move |mut qobject| {
-                qobject.as_mut().rust_mut().server.replace(handle);
-            });
-        });
+        let native_server = self.as_mut().rust_mut().server.take();
+        match native_server {
+            Some(mut server) => {
+                match server.try_wait() {
+                    // Previous server instance exited
+                    Ok(Some(_)) => {
+                        std::thread::spawn(move || {
+                            let mut command = Command::new(cmpd_binary);
+                            command.args(["--no-daemon", &cnative_config]);
+                            let handle = command.spawn().expect("Failed to start mpd server");
+                            let _ = qt_thread.queue(move |mut qobject| {
+                                qobject.as_mut().rust_mut().server.replace(handle);
+                            });
+                        });
+                    }
+                    // Previous server is alive
+                    Ok(None) => {}
+                    // No idea what is here)
+                    Err(err) => {
+                        panic!("{}", err)
+                    }
+                }
+            }
+            None => {
+                std::thread::spawn(move || {
+                    let mut command = Command::new(cmpd_binary);
+                    command.args(["--no-daemon", &cnative_config]);
+                    let handle = command.spawn().expect("Failed to start mpd server");
+                    let _ = qt_thread.queue(move |mut qobject| {
+                        qobject.as_mut().rust_mut().server.replace(handle);
+                    });
+                });
+            }
+        }
     }
 
     fn connect_client(self: Pin<&mut Self>) {
@@ -705,9 +744,7 @@ impl Default for MPDConnector {
 impl Drop for MPDConnector {
     fn drop(&mut self) {
         if let Some(server) = self.server.as_mut() {
-            println!("Start kill");
             server.kill().unwrap();
-            println!("Stop kill");
         }
     }
 }
