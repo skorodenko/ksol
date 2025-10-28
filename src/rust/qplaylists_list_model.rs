@@ -70,11 +70,11 @@ mod qobject {
     impl cxx_qt::Initialize for QPlaylistsListModel {}
 }
 
+use regex;
 use bincode::config;
 use bincode::serde::{decode_from_slice, encode_to_vec};
 use core::pin::Pin;
 use cxx_qt::CxxQtType;
-use regex::RegexBuilder;
 
 use qobject::*;
 
@@ -160,7 +160,8 @@ impl cxx_qt::Initialize for qobject::QPlaylistsListModel {
         self.on_update(|mut qobject| {
             let queue = qobject.as_ref().rust().queue.clone();
             let filter = qobject.as_ref().rust().filter.clone();
-            let pattern = RegexBuilder::new(&filter).case_insensitive(true).build().unwrap();
+            let filter = regex::escape(&filter);
+            let pattern = regex::RegexBuilder::new(&filter).case_insensitive(true).build().unwrap();
             qobject.as_mut().layout_about_to_be_changed();
             qobject.as_mut().rust_mut().queue_proxy = queue.into_iter().filter(|x| pattern.is_match(x)).collect();
             qobject.as_mut().layout_changed();

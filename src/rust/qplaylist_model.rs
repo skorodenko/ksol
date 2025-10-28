@@ -155,7 +155,7 @@ use bincode::serde::{decode_from_slice, encode_to_vec};
 use core::pin::Pin;
 use cxx_qt::CxxQtType;
 use num_traits::{FromPrimitive, ToPrimitive};
-use regex::RegexBuilder;
+use regex;
 use strum::IntoEnumIterator;
 
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -369,7 +369,8 @@ impl cxx_qt::Initialize for qobject::QPlaylistModel {
         self.on_update_filter(|mut qobject| {
             let queue = qobject.as_ref().rust().queue.clone();
             let filter = qobject.as_ref().rust().filter.clone();
-            let pattern = RegexBuilder::new(&filter).case_insensitive(true).build().unwrap();
+            let filter = regex::escape(&filter);
+            let pattern = regex::RegexBuilder::new(&filter).case_insensitive(true).build().unwrap();
             qobject.as_mut().layout_about_to_be_changed();
             qobject.as_mut().rust_mut().queue_proxy =
                 queue.clone().into_iter().filter(|x| pattern.is_match(&x.title) || pattern.is_match(&x.artist)).collect();
