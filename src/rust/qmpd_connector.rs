@@ -279,20 +279,9 @@ impl qobject::QMPDConnector {
                         let group = Tag::from(group);
                         let mut result: Vec<String> = match group {
                             Tag::Other(value) if value == "Directory".into() => {
-                                let command = commands::ListAllIn::root();
+                                let command = commands::ListDirs::root();
                                 if let Ok(rsp) = mpd_client.command(command).await {
-                                    rsp.iter()
-                                        .map(|x| {
-                                            x.file_path()
-                                                .parent()
-                                                .unwrap_or(Path::new("Root"))
-                                                .to_str()
-                                                .unwrap_or_default()
-                                                .to_string()
-                                        })
-                                        .collect::<HashSet<_>>()
-                                        .into_iter()
-                                        .collect()
+                                    rsp
                                 } else {
                                     vec![]
                                     // ERROR
