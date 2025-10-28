@@ -70,11 +70,11 @@ mod qobject {
     impl cxx_qt::Initialize for QPlaylistsListModel {}
 }
 
-use regex;
 use bincode::config;
 use bincode::serde::{decode_from_slice, encode_to_vec};
 use core::pin::Pin;
 use cxx_qt::CxxQtType;
+use regex;
 
 use qobject::*;
 

@@ -13,8 +13,6 @@ Kirigami.ApplicationWindow {
 
     Component.onCompleted: {
         mpd_connector.connect();
-        mpd_connector.syncState();
-        mpd_connector.getPlaylists(drun.activeGroup);
     }
 
     function message(message, type, iconName = null) {
@@ -38,6 +36,7 @@ Kirigami.ApplicationWindow {
         sequences: ["f"]
         enabled: !filterSearchBox.visible && !drun.visible
         onActivated: function () {
+            mpd_connector.getPlaylists(drun.activeGroup);
             drun.visible = true;
         }
     }
@@ -56,7 +55,6 @@ Kirigami.ApplicationWindow {
         onConnectionUpdate: function (state) {
             switch (state) {
             case "connected":
-                drun.playlists_list.update();
                 connectionStateLabel.text = "Connected";
                 connectionStateLabelBackground.color = Kirigami.Theme.positiveBackgroundColor;
                 break;
