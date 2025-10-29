@@ -34,6 +34,10 @@ pub mod qobject {
         fn active_song_changed(self: Pin<&mut QMPDConnector>, song_pos: usize, song_id: u64);
 
         #[qsignal]
+        #[cxx_name = "albumArtUpdate"]
+        fn album_art_update(self: Pin<&mut QMPDConnector>, art: QString);
+
+        #[qsignal]
         #[cxx_name = "timelineUpdate"]
         fn timeline_update(self: Pin<&mut QMPDConnector>, duration: u64, elapsed: u64);
 
@@ -110,11 +114,11 @@ use qobject::*;
 
 use crate::rust::entities::{ColumnSort, MPSCCommand, QSong, SongField};
 use crate::rust::settings::{InternalSettings, Settings};
+use base64::prelude::*;
 use bincode::config;
 use bincode::serde::encode_to_vec;
 use core::pin::Pin;
 use cxx_qt::{CxxQtType, Threading};
-use log;
 use mpd_client::client::{ConnectionEvent, Subsystem};
 use mpd_client::{
     ClientController, ClientIdler, commands, filter::Filter, responses, responses::PlayState, responses::Song, tag::Tag,
@@ -479,6 +483,30 @@ impl qobject::QMPDConnector {
                             }
                         }
                     }
+                    Some(MPSCCommand::UpdateArt) => {
+                        let command = commands::CurrentSong;
+                        if let Ok(Some(song)) = mpd_client.command(command).await {
+                            let command = commands::AlbumArtEmbedded::new(&song.song.url);
+                            if let Ok(Some(art)) = mpd_client.command(command).await {
+                                let mut image = art.data;
+                                let mut offset = image.len();
+                                let mime = art.mime.unwrap();
+                                while image.len() < art.size {
+                                    let command = commands::AlbumArtEmbedded::new(&song.song.url).offset(offset);
+                                    if let Ok(Some(art)) = mpd_client.command(command).await {
+                                        offset += art.data.len();
+                                        image.extend_from_slice(&art.data);
+                                    } 
+                                }
+                                let image = format!("data:{};base64,{}", mime, BASE64_STANDARD.encode(image));
+                                let _ = qt_thread.queue(move |qobject| {
+                                    qobject.album_art_update(QString::from(image));
+                                });
+                            }
+                        } else {
+                            log::error!("Error updating album art");
+                        }
+                    }
                     None => {}
                 }
             }
@@ -686,37 +714,48 @@ impl qobject::QMPDConnector {
 }
 
 impl cxx_qt::Initialize for qobject::QMPDConnector {
-    fn initialize(self: Pin<&mut Self>) {
-        self.on_connection_update(|mut qobject, msg| match String::from(msg).as_str() {
-            "disconnected" => {
-                let settings = Settings::load();
-                let isettings = InternalSettings::load();
-                if settings.mpd_socket == isettings.native_socket {
-                    log::debug!("Using native mpd server");
-                    match which("mpd") {
-                        Ok(v) => {
-                            log::debug!("Found mpd binary {:?}", v);
-                            qobject.as_mut().start_native_server(&v, &isettings.native_config);
-                        }
-                        Err(err) => panic!("Using native socket, but no mpd binary was found, {:?}", err),
-                    };
+    fn initialize(mut self: Pin<&mut Self>) {
+        self.as_mut()
+            .on_connection_update(|mut qobject, msg| match String::from(msg).as_str() {
+                "disconnected" => {
+                    let settings = Settings::load();
+                    let isettings = InternalSettings::load();
+                    if settings.mpd_socket == isettings.native_socket {
+                        log::debug!("Using native mpd server");
+                        match which("mpd") {
+                            Ok(v) => {
+                                log::debug!("Found mpd binary {:?}", v);
+                                qobject.as_mut().start_native_server(&v, &isettings.native_config);
+                            }
+                            Err(err) => panic!("Using native socket, but no mpd binary was found, {:?}", err),
+                        };
+                    }
+                    qobject.as_mut().connection_update(QString::from("connecting"));
                 }
-                qobject.as_mut().connection_update(QString::from("connecting"));
-            }
-            "connected" => {
-                let (tx_actions, rx_actions) = tokio::sync::mpsc::channel(64);
-                qobject.as_mut().rust_mut().tx_actions = Some(tx_actions);
-                qobject.as_mut().rust_mut().rx_actions = Some(rx_actions);
-                qobject.as_mut().idle();
-                qobject.as_mut().init_ui();
-                qobject.as_mut().sync_state();
-            }
-            "connecting" => {
-                qobject.connect_client();
-            }
-            _ => unreachable!(),
-        })
-        .release();
+                "connected" => {
+                    let (tx_actions, rx_actions) = tokio::sync::mpsc::channel(64);
+                    qobject.as_mut().rust_mut().tx_actions = Some(tx_actions);
+                    qobject.as_mut().rust_mut().rx_actions = Some(rx_actions);
+                    qobject.as_mut().idle();
+                    qobject.as_mut().init_ui();
+                    qobject.as_mut().sync_state();
+                }
+                "connecting" => {
+                    qobject.connect_client();
+                }
+                _ => unreachable!(),
+            })
+            .release();
+        self.as_mut()
+            .on_active_song_changed(|qobject, _song_pos, _song_id| {
+                let tx_actions = qobject.tx_actions.clone();
+                if let Some(ref sender) = tx_actions {
+                    let _ = sender.blocking_send(MPSCCommand::UpdateArt);
+                } else {
+                    log::warn!("Connection not available");
+                }
+            })
+            .release();
     }
 }
 

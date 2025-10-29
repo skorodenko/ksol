@@ -132,6 +132,9 @@ Kirigami.ApplicationWindow {
                 repeatButton.icon.name = "media-repeat-all";
             }
         }
+        onAlbumArtUpdate: function(art) {
+            tableBackground.source = art;
+        }
     }
 
     QPlaylistModel {
@@ -369,6 +372,13 @@ Kirigami.ApplicationWindow {
             anchors.right: parent.right
             anchors.bottom: filterSearchBox.top
             orientation: Qt.Vertical
+        }
+
+        Image {
+            id: tableBackground
+            anchors.fill: qplaylist_view
+            asynchronous: true
+            fillMode: Image.PreserveAspectCrop
         }
 
         TableView {
