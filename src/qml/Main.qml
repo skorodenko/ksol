@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Effects
 import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
 import github.skorodenko.ksol 1.0
@@ -132,7 +133,7 @@ Kirigami.ApplicationWindow {
                 repeatButton.icon.name = "media-repeat-all";
             }
         }
-        onAlbumArtUpdate: function(art) {
+        onAlbumArtUpdate: function (art) {
             tableBackground.source = art;
         }
     }
@@ -374,10 +375,19 @@ Kirigami.ApplicationWindow {
             orientation: Qt.Vertical
         }
 
+        MultiEffect {
+            source: tableBackground
+            anchors.fill: tableBackground
+            brightness: -0.15
+            blurEnabled: true
+            blurMax: 64
+            blur: 0.75
+        }
+
         Image {
             id: tableBackground
+            visible: false
             anchors.fill: qplaylist_view
-            asynchronous: true
             fillMode: Image.PreserveAspectCrop
         }
 
