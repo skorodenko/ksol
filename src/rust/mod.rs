@@ -5,3 +5,4 @@ pub mod qplaylists_group_model;
 pub mod qplaylists_list_model;
 pub mod qt;
 pub mod settings;
+pub mod init_hooks;

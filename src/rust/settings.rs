@@ -1,14 +1,18 @@
 use crate::rust::entities::SongField;
+use crate::rust::init_hooks::init_configs;
 use once_cell::sync::OnceCell;
 use serde;
 use std::fs::create_dir;
 use std::path::{Path, PathBuf};
 use xdg::BaseDirectories;
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 pub struct InternalSettings {
+    pub app_data_dir: PathBuf,
+    pub app_config_dir: PathBuf,
     pub native_socket: String,
     pub native_config: String,
+    pub native_music_dir: String,
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
@@ -24,6 +28,10 @@ impl Settings {
     }
 
     pub fn init_files() {
+        let internal_settings = InternalSettings::load();
+
+        init_configs(internal_settings);
+        
         let xdg_dirs = BaseDirectories::with_prefix("ksol");
         let app_config = xdg_dirs.get_config_home().unwrap();
         let app_data = xdg_dirs.get_data_home().unwrap();
@@ -52,7 +60,7 @@ impl Default for Settings {
         let mpd_config = app_config.join("mpd");
 
         Self {
-            mpd_socket: "/home/rinkuro/.local/share/cantata/mpd/socket".to_string(),
+            mpd_socket: "/home/rinkuro/.local/share/ksol/mpd/socket".to_string(),
             search_groups: vec![SongField::Directory, SongField::Artist, SongField::Album, SongField::Genre],
         }
     }
@@ -66,8 +74,11 @@ impl Default for InternalSettings {
         let mpd_config = app_config.join("mpd");
 
         Self {
-            native_socket: "/home/rinkuro/.local/share/cantata/mpd/socket".to_string(),
+            native_socket: "/home/rinkuro/.local/share/ksol/mpd/socket".to_string(),
             native_config: mpd_config.join("mpd.conf").to_str().unwrap().to_string(),
+            app_data_dir: app_data,
+            app_config_dir: app_config,
+            native_music_dir: String::from("/home/rinkuro/Music"),
         }
     }
 }
