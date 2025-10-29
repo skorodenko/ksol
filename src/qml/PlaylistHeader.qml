@@ -204,7 +204,7 @@ Item {
                         State {
                             name: "1"
                             PropertyChanges {
-                                sortIndicatorText.text: "V"
+                                sortIndicatorText.text: "v"
                             }
                         },
                         State {
@@ -216,7 +216,7 @@ Item {
                         State {
                             name: "-1"
                             PropertyChanges {
-                                sortIndicatorText.text: "Ʌ"
+                                sortIndicatorText.text: "ʌ"
                             }
                         }
                     ]
