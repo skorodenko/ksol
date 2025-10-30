@@ -9,6 +9,7 @@ use xdg::BaseDirectories;
 #[derive(Debug, serde::Serialize)]
 pub struct InternalSettings {
     pub app_data_dir: PathBuf,
+    pub app_cache_dir:PathBuf,
     pub app_config_dir: PathBuf,
     pub native_socket: String,
     pub native_config: String,
@@ -30,8 +31,6 @@ impl Settings {
     pub fn init_files() {
         let internal_settings = InternalSettings::load();
 
-        init_configs(internal_settings);
-        
         let xdg_dirs = BaseDirectories::with_prefix("ksol");
         let app_config = xdg_dirs.get_config_home().unwrap();
         let app_data = xdg_dirs.get_data_home().unwrap();
@@ -40,6 +39,8 @@ impl Settings {
         let _ = create_dir(app_config);
         let _ = create_dir(app_data);
         let _ = create_dir(mpd_config);
+
+        init_configs(internal_settings);
     }
 }
 
@@ -70,14 +71,16 @@ impl Default for InternalSettings {
     fn default() -> Self {
         let xdg_dirs = BaseDirectories::with_prefix("ksol");
         let app_config = xdg_dirs.get_config_home().unwrap();
+        let app_cache = xdg_dirs.get_cache_home().unwrap();
         let app_data = xdg_dirs.get_data_home().unwrap();
         let mpd_config = app_config.join("mpd");
 
         Self {
+            app_data_dir: app_data,
+            app_cache_dir: app_cache,
+            app_config_dir: app_config,
             native_socket: "/home/rinkuro/.local/share/ksol/mpd/socket".to_string(),
             native_config: mpd_config.join("mpd.conf").to_str().unwrap().to_string(),
-            app_data_dir: app_data,
-            app_config_dir: app_config,
             native_music_dir: String::from("/home/rinkuro/Music"),
         }
     }
