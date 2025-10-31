@@ -496,7 +496,7 @@ impl qobject::QMPDConnector {
                                     if let Ok(Some(art)) = mpd_client.command(command).await {
                                         offset += art.data.len();
                                         image.extend_from_slice(&art.data);
-                                    } 
+                                    }
                                 }
                                 let image = format!("data:{};base64,{}", mime, BASE64_STANDARD.encode(image));
                                 let _ = qt_thread.queue(move |qobject| {
@@ -504,7 +504,10 @@ impl qobject::QMPDConnector {
                                 });
                             }
                         } else {
-                            log::error!("Error updating album art");
+                            log::warn!("Album art absent");
+                            let _ = qt_thread.queue(move |qobject| {
+                                qobject.album_art_update(QString::from(""));
+                            });
                         }
                     }
                     None => {}
@@ -748,6 +751,16 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
             .release();
         self.as_mut()
             .on_active_song_changed(|qobject, _song_pos, _song_id| {
+                let tx_actions = qobject.tx_actions.clone();
+                if let Some(ref sender) = tx_actions {
+                    let _ = sender.blocking_send(MPSCCommand::UpdateArt);
+                } else {
+                    log::warn!("Connection not available");
+                }
+            })
+            .release();
+        self.as_mut()
+            .on_stage_playlist_result(|qobject, _data| {
                 let tx_actions = qobject.tx_actions.clone();
                 if let Some(ref sender) = tx_actions {
                     let _ = sender.blocking_send(MPSCCommand::UpdateArt);
