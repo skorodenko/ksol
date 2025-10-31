@@ -80,7 +80,7 @@ QQC2.Popup {
         anchors.left: parent.left
         anchors.right: parent.right
 
-        QQC2.TextField {
+        Kirigami.SearchField {
             id: search
             focusPolicy: Qt.NoFocus
             placeholderText: "Filter by group ..."
