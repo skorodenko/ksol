@@ -35,10 +35,12 @@ impl Settings {
         let app_config = xdg_dirs.get_config_home().unwrap();
         let app_data = xdg_dirs.get_data_home().unwrap();
         let mpd_config = app_config.join("mpd");
+        let mpd_data = app_data.join("mpd");
 
         let _ = create_dir(app_config);
         let _ = create_dir(app_data);
         let _ = create_dir(mpd_config);
+        let _ = create_dir(mpd_data);
 
         init_configs(internal_settings);
     }
@@ -54,11 +56,6 @@ impl InternalSettings {
 impl Default for Settings {
     fn default() -> Self {
         Self::init_files();
-
-        let xdg_dirs = BaseDirectories::with_prefix("ksol");
-        let app_config = xdg_dirs.get_config_home().unwrap();
-        let app_data = xdg_dirs.get_data_home().unwrap();
-        let mpd_config = app_config.join("mpd");
 
         Self {
             mpd_socket: "/home/rinkuro/.local/share/ksol/mpd/socket".to_string(),
