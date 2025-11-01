@@ -11,7 +11,7 @@ fn main() {
                 "src/rust/qplaylist_model.rs",
                 "src/rust/qt.rs",
             ],
-            qml_files: &["src/qml/Main.qml", "src/qml/Drun.qml", "src/qml/PlaylistHeader.qml"],
+            qml_files: &["src/qml/Main.qml", "src/qml/Drun.qml", "src/qml/PlaylistHeader.qml", "src/qml/About.qml"],
             ..Default::default()
         })
         .build();

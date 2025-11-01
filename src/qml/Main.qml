@@ -261,6 +261,13 @@ Kirigami.ApplicationWindow {
                             mpd_connector.updateDb();
                         }
                     }
+                    QQC2.MenuItem {
+                        text: qsTr("About")
+                        icon.name: "info"
+                        onClicked: {
+                            aboutPage.open();
+                        }
+                    }
                 }
             }
         }
@@ -326,6 +333,10 @@ Kirigami.ApplicationWindow {
             }
         }
     }
+
+    About {
+        id: aboutPage
+    } 
 
     Kirigami.Page {
         id: mainPage
