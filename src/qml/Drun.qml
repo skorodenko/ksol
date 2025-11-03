@@ -136,6 +136,7 @@ QQC2.Popup {
 
     ListView {
         id: listView
+        clip: true
         anchors.topMargin: Kirigami.Units.largeSpacing * 3
         anchors.top: group_change.bottom
         anchors.left: parent.left
