@@ -13,7 +13,19 @@ Kirigami.ApplicationWindow {
     pageStack.initialPage: mainPage
 
     Component.onCompleted: {
-        mpd_connector.connect();
+        initDelay.start();
+    }
+
+    Timer {
+        id: initDelay
+        interval: 150
+        onTriggered: {
+            if (QSettingsModel.mpdSocket == "") {
+                initWizard.visible = true;
+            } else {
+                mpd_connector.connect();
+            }
+        }
     }
 
     function message(message, type, iconName = null) {
@@ -170,6 +182,16 @@ Kirigami.ApplicationWindow {
         implicitWidth: root.width * 0.8
         implicitHeight: root.height * 0.8
         anchors.centerIn: parent
+    }
+
+    InitWizard {
+        id: initWizard
+        width: 0.5 * root.width
+        height: 0.5 * root.height
+
+        onFinished: {
+            mpd_connector.connect();
+        }
     }
 
     header: QQC2.ToolBar {
@@ -336,7 +358,7 @@ Kirigami.ApplicationWindow {
 
     About {
         id: aboutPage
-    } 
+    }
 
     Kirigami.Page {
         id: mainPage

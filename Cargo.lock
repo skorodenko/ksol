@@ -633,7 +633,6 @@ dependencies = [
  "mpd_client",
  "num-derive",
  "num-traits",
- "once_cell",
  "regex",
  "serde",
  "serde_json",

@@ -3,6 +3,7 @@ pub mod qmpd_connector;
 pub mod qplaylist_model;
 pub mod qplaylists_group_model;
 pub mod qplaylists_list_model;
+pub mod qsettings_model;
 pub mod qt;
 pub mod settings;
 pub mod init_hooks;

@@ -31,7 +31,7 @@ pub fn init_configs(defaults: &InternalSettings) {
     let render = tt.render("mpd_config", defaults).unwrap();
     match File::create_new(defaults.native_config.clone()) {
         Ok(mut file) => {
-            file.write_all(render.as_bytes());
+            let _ = file.write_all(render.as_bytes());
         }
         Err(_) => log::debug!("MPD config file exists")
     }

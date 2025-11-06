@@ -1,16 +1,19 @@
 use crate::rust::entities::SongField;
 use crate::rust::init_hooks::init_configs;
-use once_cell::sync::OnceCell;
 use serde;
 use std::fs::create_dir;
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
+use tokio::sync::RwLock;
+use which::which;
 use xdg::BaseDirectories;
 
 #[derive(Debug, serde::Serialize)]
 pub struct InternalSettings {
     pub app_data_dir: PathBuf,
-    pub app_cache_dir:PathBuf,
+    pub app_cache_dir: PathBuf,
     pub app_config_dir: PathBuf,
+    pub mpd_binary: PathBuf,
     pub native_socket: String,
     pub native_config: String,
     pub native_music_dir: String,
@@ -23,9 +26,9 @@ pub struct Settings {
 }
 
 impl Settings {
-    pub fn load() -> &'static Self {
-        static INSTANCE: OnceCell<Settings> = OnceCell::new();
-        INSTANCE.get_or_init(Settings::default)
+    pub fn load() -> &'static RwLock<Settings> {
+        static INSTANCE: OnceLock<RwLock<Settings>> = OnceLock::new();
+        INSTANCE.get_or_init(|| RwLock::new(Settings::default()))
     }
 
     pub fn init_files() {
@@ -48,7 +51,7 @@ impl Settings {
 
 impl InternalSettings {
     pub fn load() -> &'static Self {
-        static INSTANCE: OnceCell<InternalSettings> = OnceCell::new();
+        static INSTANCE: OnceLock<InternalSettings> = OnceLock::new();
         INSTANCE.get_or_init(InternalSettings::default)
     }
 }
@@ -76,6 +79,7 @@ impl Default for InternalSettings {
             app_data_dir: app_data,
             app_cache_dir: app_cache,
             app_config_dir: app_config,
+            mpd_binary: which("mpd").unwrap_or_default(),
             native_socket: "/home/rinkuro/.local/share/ksol/mpd/socket".to_string(),
             native_config: mpd_config.join("mpd.conf").to_str().unwrap().to_string(),
             native_music_dir: String::from("/home/rinkuro/Music"),

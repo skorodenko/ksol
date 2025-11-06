@@ -59,7 +59,7 @@ use bincode::config;
 use bincode::serde::{decode_from_slice, encode_to_vec};
 use core::pin::Pin;
 use cxx_qt::CxxQtType;
-use num_traits::FromPrimitive;
+use num_traits::{FromPrimitive, ToPrimitive};
 use serde;
 
 use qobject::*;
@@ -78,19 +78,30 @@ impl qobject::QPlaylistsGroupModel {
     }
 
     pub fn row_count(&self, _index: &QModelIndex) -> i32 {
-        let settings = Settings::load();
+        let settings = Settings::load().blocking_read();
         settings.search_groups.len() as i32
     }
 
     pub fn data(&self, index: &QModelIndex, role: i32) -> QVariant {
-        let settings = Settings::load();
         let role = QPlaylistsGroupRoles { repr: role };
-        let sg = settings.search_groups.get(index.row() as usize);
-        let sg_name = sg.unwrap().to_string();
-        let sg_value = *sg.unwrap() as i32;
+        let settings = Settings::load().blocking_read();
         match role {
-            QPlaylistsGroupRoles::Name => (&QString::from(sg_name)).into(),
-            QPlaylistsGroupRoles::Value => (&sg_value).into(),
+            QPlaylistsGroupRoles::Name => {
+                if let Some(sg) = settings.search_groups.get(index.row() as usize) {
+                    let sg_name = QString::from(sg.to_string());
+                    QVariant::from(&sg_name)
+                } else {
+                    QVariant::default()
+                }
+            }
+            QPlaylistsGroupRoles::Value => {
+                if let Some(sg) = settings.search_groups.get(index.row() as usize) {
+                    let sg_value = sg.to_i32().expect("Failed to cast to i32");
+                    QVariant::from(&sg_value)
+                } else {
+                    QVariant::default()
+                }
+            }
             _ => QVariant::default(),
         }
     }

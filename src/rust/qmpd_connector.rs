@@ -680,7 +680,7 @@ impl qobject::QMPDConnector {
         let rt_idle = &self.rt_idle;
         rt_idle.spawn(async move {
             let (state, mpd_client, mpd_idle) = loop {
-                let settings = Settings::load();
+                let settings = Settings::load().read().await;
                 //match TcpStream::connect(&settings.mpd_socket).await {
                 match UnixStream::connect(&settings.mpd_socket).await {
                     Ok(connection) => {
@@ -721,7 +721,7 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
         self.as_mut()
             .on_connection_update(|mut qobject, msg| match String::from(msg).as_str() {
                 "disconnected" => {
-                    let settings = Settings::load();
+                    let settings = Settings::load().blocking_read();
                     let isettings = InternalSettings::load();
                     if settings.mpd_socket == isettings.native_socket {
                         log::debug!("Using native mpd server");
