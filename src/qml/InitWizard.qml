@@ -16,21 +16,26 @@ Window {
     signal finished
 
     property alias currentPage: view.currentIndex
-    property bool nativeServer: QSettingsModel.mpdBinaryAvailable()
+    property int selectedOption: QSettingsModel.mpdBinaryAvailable() ? 0 : 1
+    property string customServerUrl: ""
 
     function nextPage() {
-        if (view.currentIndex == 1 && root.nativeServer) {
+        if (view.currentIndex == 1 && root.selectedOption == 0) {
             view.currentIndex = 3;
-        } else if (view.currentIndex == 1 && !root.nativeServer) {
+        } else if (view.currentIndex == 1 && root.selectedOption == 1) {
+            root.customServerUrl = "";
             nextButton.enabled = false;
-            view.currentIndex = view.currentIndex + 1;
+            view.currentIndex = 2;
         } else {
             view.currentIndex = view.currentIndex + 1;
         }
     }
 
     function previousPage() {
-        if (view.currentIndex == 100500) {} else {
+        if (view.currentIndex == 2) {
+            nextButton.enabled = true;
+            view.currentIndex = 1;
+        } else {
             view.currentIndex = view.currentIndex - 1;
         }
     }
@@ -84,7 +89,8 @@ Window {
                     anchors.topMargin: Kirigami.Units.largeSpacing
                     anchors.left: parent.left
                     anchors.right: parent.right
-                    checked: root.nativeServer
+                    checked: root.selectedOption == 0
+                    onClicked: root.selectedOption = 0
                     text: "Native server: mpd managed by ksol (mpd binary should be visible in PATH)"
                     contentItem: QQC2.Label {
                         text: parent.text
@@ -100,7 +106,8 @@ Window {
                     anchors.top: spRadioButton1.bottom
                     anchors.left: parent.left
                     anchors.right: parent.right
-                    checked: !root.nativeServer
+                    checked: root.selectedOption == 1
+                    onClicked: root.selectedOption = 1
                     text: "External server: mpd managed externally"
                     contentItem: QQC2.Label {
                         text: parent.text
@@ -137,7 +144,11 @@ Window {
                     anchors.left: parent.left
                     anchors.right: tpAddressCheck.left
                     anchors.rightMargin: Kirigami.Units.mediumSpacing
-                    text: QSettingsModel.mpdSocket
+                    Binding {
+                        target: root
+                        property: "customServerUrl"
+                        value: tpAdressField.text
+                    }
                     placeholderText: "http://... or Unix socket"
                 }
 
@@ -147,7 +158,7 @@ Window {
                     anchors.topMargin: Kirigami.Units.largeSpacing
                     anchors.right: parent.right
                     text: "Check connection"
-                    onClicked: QSettingsModel.checkServerConnection()
+                    onClicked: QSettingsModel.checkServerConnection(root.customServerUrl)
                 }
             }
         }
@@ -225,6 +236,10 @@ Window {
 
             onClicked: {
                 root.visible = false;
+                QSettingsModel.initWizard = false;
+                if (root.selectedOption == 1) {
+                    QSettingsModel.mpdSocket = root.customServerUrl;
+                }
                 root.finished();
             }
         }

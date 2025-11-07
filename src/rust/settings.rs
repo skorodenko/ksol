@@ -1,8 +1,8 @@
 use crate::rust::entities::SongField;
 use crate::rust::init_hooks::init_configs;
 use serde;
-use std::fs::create_dir;
-use std::path::{Path, PathBuf};
+use std::fs;
+use std::path::PathBuf;
 use std::sync::OnceLock;
 use tokio::sync::RwLock;
 use which::which;
@@ -13,14 +13,16 @@ pub struct InternalSettings {
     pub app_data_dir: PathBuf,
     pub app_cache_dir: PathBuf,
     pub app_config_dir: PathBuf,
+    pub app_config_file: String,
     pub mpd_binary: PathBuf,
     pub native_socket: String,
     pub native_config: String,
     pub native_music_dir: String,
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Debug)]
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
 pub struct Settings {
+    pub init_wizard: bool,
     pub mpd_socket: String,
     pub search_groups: Vec<SongField>,
 }
@@ -29,6 +31,13 @@ impl Settings {
     pub fn load() -> &'static RwLock<Settings> {
         static INSTANCE: OnceLock<RwLock<Settings>> = OnceLock::new();
         INSTANCE.get_or_init(|| RwLock::new(Settings::default()))
+    }
+
+    pub fn dump() {
+        let settings: Settings = Self::load().blocking_read().clone();
+        let settings_file = toml::to_string(&settings).expect("Failed to dump settings file");
+        let internal_settings = InternalSettings::load();
+        fs::write(&internal_settings.app_config_file, settings_file).expect("Failed to write settings file");
     }
 
     pub fn init_files() {
@@ -40,10 +49,10 @@ impl Settings {
         let mpd_config = app_config.join("mpd");
         let mpd_data = app_data.join("mpd");
 
-        let _ = create_dir(app_config);
-        let _ = create_dir(app_data);
-        let _ = create_dir(mpd_config);
-        let _ = create_dir(mpd_data);
+        let _ = fs::create_dir(app_config);
+        let _ = fs::create_dir(app_data);
+        let _ = fs::create_dir(mpd_config);
+        let _ = fs::create_dir(mpd_data);
 
         init_configs(internal_settings);
     }
@@ -56,17 +65,6 @@ impl InternalSettings {
     }
 }
 
-impl Default for Settings {
-    fn default() -> Self {
-        Self::init_files();
-
-        Self {
-            mpd_socket: "/home/rinkuro/.local/share/ksol/mpd/socket".to_string(),
-            search_groups: vec![SongField::Directory, SongField::Artist, SongField::Album, SongField::Genre],
-        }
-    }
-}
-
 impl Default for InternalSettings {
     fn default() -> Self {
         let xdg_dirs = BaseDirectories::with_prefix("ksol");
@@ -74,15 +72,41 @@ impl Default for InternalSettings {
         let app_cache = xdg_dirs.get_cache_home().unwrap();
         let app_data = xdg_dirs.get_data_home().unwrap();
         let mpd_config = app_config.join("mpd");
+        let mpd_data = app_data.join("mpd");
 
         Self {
             app_data_dir: app_data,
             app_cache_dir: app_cache,
-            app_config_dir: app_config,
+            app_config_dir: app_config.clone(),
+            app_config_file: app_config.join("settings.toml").to_str().unwrap().to_string(),
             mpd_binary: which("mpd").unwrap_or_default(),
-            native_socket: "/home/rinkuro/.local/share/ksol/mpd/socket".to_string(),
+            native_socket: mpd_data.join("socket").to_str().unwrap().to_string(),
             native_config: mpd_config.join("mpd.conf").to_str().unwrap().to_string(),
             native_music_dir: String::from("/home/rinkuro/Music"),
+        }
+    }
+}
+
+impl Drop for Settings {
+    fn drop(&mut self) {
+        let settings_file = toml::to_string(self).expect("Failed to dump settings file");
+        let internal_settings = InternalSettings::load();
+        fs::write(&internal_settings.app_config_file, settings_file).expect("Failed to write settings file");
+    }
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        let internal_settings = InternalSettings::load();
+        let settings_file = fs::read_to_string(&internal_settings.app_config_file).unwrap_or_default();
+
+        match toml::from_str(&settings_file) {
+            Ok(val) => val,
+            Err(_) => Self {
+                init_wizard: true,
+                mpd_socket: internal_settings.native_socket.clone(),
+                search_groups: vec![SongField::Directory, SongField::Artist, SongField::Album, SongField::Genre],
+            },
         }
     }
 }

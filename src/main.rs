@@ -29,5 +29,6 @@ fn main() {
         app.exec();
     }
 
-    debug!("Application closing")
+    debug!("Application closing");
+    ksol::rust::settings::Settings::dump();
 }

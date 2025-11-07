@@ -20,7 +20,7 @@ Kirigami.ApplicationWindow {
         id: initDelay
         interval: 150
         onTriggered: {
-            if (QSettingsModel.mpdSocket == "") {
+            if (QSettingsModel.initWizard) {
                 initWizard.visible = true;
             } else {
                 mpd_connector.connect();
