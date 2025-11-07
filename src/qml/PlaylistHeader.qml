@@ -56,14 +56,12 @@ Item {
         var item = repeater.itemAt(column);
         if (state == true) {
             item.visible = true;
-            item.Layout.horizontalStretchFactor = 100;
             QSettingsModel.setColumnWidth(column, 100);
             root.firstVisibleColumn = root.updateFirstVisibleColumn();
             root.lastVisibleColumn = root.updateLastVisibleColumn();
         } else {
             item.visible = false;
             QSettingsModel.setColumnWidth(column, 0);
-            item.Layout.horizontalStretchFactor = 0;
             root.firstVisibleColumn = root.updateFirstVisibleColumn();
             root.lastVisibleColumn = root.updateLastVisibleColumn();
         }
@@ -72,7 +70,7 @@ Item {
     function updateFirstVisibleColumn() {
         for (var i = 0; i < root.columnCount; i++) {
             var itemDelegate = repeater.itemAt(i);
-            if (itemDelegate.width > 0) {
+            if (itemDelegate.visible) {
                 return i;
             }
         }
@@ -82,7 +80,7 @@ Item {
     function updateLastVisibleColumn() {
         for (var i = root.columnCount - 1; i > 0; i--) {
             var itemDelegate = repeater.itemAt(i);
-            if (itemDelegate.width > 0) {
+            if (itemDelegate.visible) {
                 return i;
             }
         }
@@ -176,7 +174,7 @@ Item {
                                 delegate.applyWidthDelta(-widthDelta);
                                 for (var i = delegate.index - 1; i >= 0; i--) {
                                     var itemDelegate = repeater.itemAt(i);
-                                    if (itemDelegate.width > 0) {
+                                    if (itemDelegate.visible) {
                                         itemDelegate.applyWidthDelta(widthDelta);
                                         break;
                                     }
@@ -184,7 +182,7 @@ Item {
                             } else if (widthDelta > 0) {
                                 for (var i = delegate.index - 1; i >= 0; i--) {
                                     var itemDelegate = repeater.itemAt(i);
-                                    if (itemDelegate.width > 0) {
+                                    if (itemDelegate.visible) {
                                         itemDelegate.applyWidthDelta(widthDelta);
                                         break;
                                     }
@@ -192,7 +190,7 @@ Item {
                             } else {
                                 for (var i = delegate.index - 1; i >= 0; i--) {
                                     var itemDelegate = repeater.itemAt(i);
-                                    if (itemDelegate.width > 0) {
+                                    if (itemDelegate.visible) {
                                         itemDelegate.applyWidthDelta(widthDelta);
                                         break;
                                     }
