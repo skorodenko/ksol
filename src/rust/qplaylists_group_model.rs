@@ -55,19 +55,13 @@ mod qobject {
 
 use crate::rust::entities::SongField;
 use crate::rust::settings::Settings;
-use bincode::config;
-use bincode::serde::{decode_from_slice, encode_to_vec};
 use core::pin::Pin;
-use cxx_qt::CxxQtType;
 use num_traits::{FromPrimitive, ToPrimitive};
-use serde;
 
 use qobject::*;
 
-#[derive(serde::Deserialize, serde::Serialize)]
-pub struct PlaylistsGroupModel {
-    pub active_group: SongField,
-}
+#[derive(Default)]
+pub struct PlaylistsGroupModel {}
 
 impl qobject::QPlaylistsGroupModel {
     pub fn role_names(&self) -> QHash_i32_QByteArray {
@@ -107,44 +101,15 @@ impl qobject::QPlaylistsGroupModel {
     }
 
     pub fn get_active_group(&self) -> i32 {
-        self.active_group as i32
+        let settings = Settings::load().blocking_read();
+        settings.active_group as i32
     }
 
-    pub fn set_active_group(mut self: Pin<&mut Self>, value: i32) {
+    pub fn set_active_group(self: Pin<&mut Self>, value: i32) {
         let cvalue = SongField::from_i32(value).unwrap();
-        self.as_mut().rust_mut().active_group = cvalue;
+        let mut settings = Settings::load().blocking_write();
+        settings.active_group = cvalue;
+        std::mem::drop(settings);
         self.active_group_changed(value);
-    }
-}
-
-impl Drop for PlaylistsGroupModel {
-    fn drop(&mut self) {
-        let db = match sled::open("db") {
-            Ok(v) => v,
-            Err(e) => {
-                panic!("Failed to open/create state db {}", e);
-            }
-        };
-        let bcode: &[u8] = &encode_to_vec(self, config::standard()).unwrap();
-        let _ = db.insert(b"playlists_group_model", bcode);
-    }
-}
-
-impl Default for PlaylistsGroupModel {
-    fn default() -> Self {
-        let db = match sled::open("db") {
-            Ok(v) => v,
-            Err(e) => {
-                panic!("Failed to open/create state db {}", e);
-            }
-        };
-
-        match db.get(b"playlists_group_model").unwrap() {
-            Some(val) => {
-                let (val, _): (Self, usize) = decode_from_slice(val.as_ref(), config::standard()).unwrap();
-                val
-            }
-            None => Self { active_group: SongField::Directory },
-        }
     }
 }

@@ -12,7 +12,6 @@ cxx-qt-lib-extras = "0.7.3"
 env_logger = "0.11.8"
 log = "0.4.27"
 serde = { version = "1.0.219", features = ["derive"] }
-sled = "0.34.7"
 subprocess = "0.2.9"
 which = "8.0.0"
 xdg = "3.0.0"

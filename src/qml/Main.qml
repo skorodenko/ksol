@@ -152,11 +152,14 @@ Kirigami.ApplicationWindow {
 
     QPlaylistModel {
         id: qplaylist
-
         filter: filterSearch.text
+    }
 
-        onUpdateSort: {
-            mpd_connector.sortPlaylist(qplaylist.sortColumn, qplaylist.sortOrder);
+    Connections {
+        target: QSettingsModel
+
+        function onUpdateSortColumn() {
+            mpd_connector.sortPlaylist(QSettingsModel.sortColumn, QSettingsModel.sortOrder);
         }
     }
 
@@ -165,7 +168,7 @@ Kirigami.ApplicationWindow {
 
         function onStagePlaylist(name, group) {
             mpd_connector.stagePlaylist(name, group);
-            mpd_connector.sortPlaylist(qplaylist.sortColumn, qplaylist.sortOrder);
+            mpd_connector.sortPlaylist(QSettingsModel.sortColumn, QSettingsModel.sortOrder);
         }
     }
 

@@ -71,14 +71,14 @@ mod qobject {
 }
 
 use bincode::config;
-use bincode::serde::{decode_from_slice, encode_to_vec};
+use bincode::serde::decode_from_slice;
 use core::pin::Pin;
 use cxx_qt::CxxQtType;
 use regex;
 
 use qobject::*;
 
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Default)]
 pub struct PlaylistsListModel {
     pub filter: String,
     pub queue: Vec<String>,
@@ -118,40 +118,6 @@ impl qobject::QPlaylistsListModel {
     pub fn set_filter(mut self: Pin<&mut QPlaylistsListModel>, value: QString) {
         self.as_mut().rust_mut().filter = value.into();
         self.as_mut().update();
-    }
-}
-
-impl Drop for PlaylistsListModel {
-    fn drop(&mut self) {
-        let db = match sled::open("db") {
-            Ok(v) => v,
-            Err(e) => {
-                panic!("Failed to open/create state db {}", e);
-            }
-        };
-        self.queue = vec![];
-        self.queue_proxy = vec![];
-        let bcode: &[u8] = &encode_to_vec(self, config::standard()).unwrap();
-        let _ = db.insert(b"playlists_list_model", bcode);
-    }
-}
-
-impl Default for PlaylistsListModel {
-    fn default() -> Self {
-        let db = match sled::open("db") {
-            Ok(v) => v,
-            Err(e) => {
-                panic!("Failed to open/create state db {}", e);
-            }
-        };
-
-        match db.get(b"playlists_list_model").unwrap() {
-            Some(val) => {
-                let (val, _): (Self, usize) = decode_from_slice(val.as_ref(), config::standard()).unwrap();
-                val
-            }
-            None => Self { filter: String::default(), queue: Vec::default(), queue_proxy: Vec::default() },
-        }
     }
 }
 

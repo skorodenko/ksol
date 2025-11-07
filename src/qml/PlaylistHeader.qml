@@ -14,7 +14,14 @@ Item {
 
     required property var model
     required property int columnCount
+    property int firstVisibleColumn: 0
+    property int lastVisibleColumn: 0
     property var color: "#32363b"
+
+    Component.onCompleted: {
+        root.firstVisibleColumn = root.updateFirstVisibleColumn();
+        root.lastVisibleColumn = root.updateLastVisibleColumn();
+    }
 
     QQC2.ContextMenu.menu: QQC2.Menu {
         id: playlistHeaderMenu
@@ -24,7 +31,7 @@ Item {
             delegate: QQC2.CheckBox {
                 required property int index
                 text: root.model.headerData(index, Qt.Horizontal, QPlaylistModel.ColumnName)
-                checked: root.model.headerData(index, Qt.Horizontal, QPlaylistModel.ColumnWidth) != 0
+                checked: QSettingsModel.getColumnWidth(index) != 0
                 nextCheckState: function () {
                     root.toggleColumn(index, !checked);
                     return checked ? Qt.Unchecked : Qt.Checked;
@@ -49,15 +56,41 @@ Item {
         var item = repeater.itemAt(column);
         if (state == true) {
             item.visible = true;
-            root.model.updateColumnWidth(column, 100);
+            item.Layout.horizontalStretchFactor = 100;
+            QSettingsModel.setColumnWidth(column, 100);
+            root.firstVisibleColumn = root.updateFirstVisibleColumn();
+            root.lastVisibleColumn = root.updateLastVisibleColumn();
         } else {
             item.visible = false;
-            root.model.updateColumnWidth(column, 0);
+            QSettingsModel.setColumnWidth(column, 0);
+            item.Layout.horizontalStretchFactor = 0;
+            root.firstVisibleColumn = root.updateFirstVisibleColumn();
+            root.lastVisibleColumn = root.updateLastVisibleColumn();
         }
     }
 
+    function updateFirstVisibleColumn() {
+        for (var i = 0; i < root.columnCount; i++) {
+            var itemDelegate = repeater.itemAt(i);
+            if (itemDelegate.width > 0) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
+    function updateLastVisibleColumn() {
+        for (var i = root.columnCount - 1; i > 0; i--) {
+            var itemDelegate = repeater.itemAt(i);
+            if (itemDelegate.width > 0) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
     function resetColumnWidth() {
-        for (var i = 0; i < root.model.rowCount(); i++) {
+        for (var i = 0; i < root.columnCount; i++) {
             var item = repeater.itemAt(i);
             if (item.visible) {
                 item.Layout.horizontalStretchFactor = 100;
@@ -84,25 +117,25 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredWidth: 35
                 Layout.preferredHeight: root.height
-                Layout.horizontalStretchFactor: root.model.headerData(index, Qt.Horizontal, QPlaylistModel.ColumnWidth)
+                Layout.horizontalStretchFactor: QSettingsModel.getColumnWidth(index)
 
                 required property int index
 
                 onWidthChanged: {
-                    Qt.callLater(root.columnWidthChanged);
+                    root.columnWidthChanged();
                 }
 
                 function applyWidthDelta(delta) {
                     var newWidth = delegate.Layout.horizontalStretchFactor + delta;
                     if (newWidth >= 1000) {
                         delegate.Layout.horizontalStretchFactor = 1000;
-                        root.model.updateColumnWidth(delegate.index, 1000);
+                        QSettingsModel.setColumnWidth(delegate.index, 1000);
                     } else if (newWidth <= 10) {
                         delegate.Layout.horizontalStretchFactor = 10;
-                        root.model.updateColumnWidth(delegate.index, 10);
+                        QSettingsModel.setColumnWidth(delegate.index, 10);
                     } else {
                         delegate.Layout.horizontalStretchFactor = newWidth;
-                        root.model.updateColumnWidth(delegate.index, newWidth);
+                        QSettingsModel.setColumnWidth(delegate.index, newWidth);
                     }
                 }
 
@@ -112,7 +145,7 @@ Item {
                     anchors.top: delegate.top
                     anchors.bottom: delegate.bottom
                     anchors.left: delegate.left
-                    visible: delegate.index != root.model.firstVisibleColumn
+                    visible: delegate.index != root.firstVisibleColumn
 
                     Rectangle {
                         id: splitterRect
@@ -139,9 +172,9 @@ Item {
                     onPositionChanged: {
                         if (pressed) {
                             var widthDelta = 50 * (mouseX - oldMouseX) / root.width;
-                            if (delegate.index == root.model.lastVisibleColumn) {
+                            if (delegate.index == root.lastVisibleColumn) {
                                 delegate.applyWidthDelta(-widthDelta);
-                                for (var i = delegate.index - 1; i >= root.model.firstVisibleColumn; i--) {
+                                for (var i = delegate.index - 1; i >= 0; i--) {
                                     var itemDelegate = repeater.itemAt(i);
                                     if (itemDelegate.width > 0) {
                                         itemDelegate.applyWidthDelta(widthDelta);
@@ -149,7 +182,7 @@ Item {
                                     }
                                 }
                             } else if (widthDelta > 0) {
-                                for (var i = delegate.index - 1; i >= root.model.firstVisibleColumn; i--) {
+                                for (var i = delegate.index - 1; i >= 0; i--) {
                                     var itemDelegate = repeater.itemAt(i);
                                     if (itemDelegate.width > 0) {
                                         itemDelegate.applyWidthDelta(widthDelta);
@@ -157,7 +190,7 @@ Item {
                                     }
                                 }
                             } else {
-                                for (var i = delegate.index - 1; i >= root.model.firstVisibleColumn; i--) {
+                                for (var i = delegate.index - 1; i >= 0; i--) {
                                     var itemDelegate = repeater.itemAt(i);
                                     if (itemDelegate.width > 0) {
                                         itemDelegate.applyWidthDelta(widthDelta);
@@ -185,12 +218,12 @@ Item {
                     anchors.bottom: delegate.bottom
                     anchors.right: delegate.right
 
-                    state: root.model.sortColumn == delegate.index ? root.model.sortOrder : "0"
+                    state: QSettingsModel.sortColumn == delegate.index ? QSettingsModel.sortOrder : "0"
 
                     MouseArea {
                         anchors.fill: sortIndicator
                         onClicked: {
-                            root.model.sortPlaylist(delegate.index);
+                            QSettingsModel.toggleSortColumn(delegate.index);
                         }
                     }
 

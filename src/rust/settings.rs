@@ -1,4 +1,4 @@
-use crate::rust::entities::SongField;
+use crate::rust::entities::{SongField, ColumnSort};
 use crate::rust::init_hooks::init_configs;
 use serde;
 use std::fs;
@@ -7,6 +7,7 @@ use std::sync::OnceLock;
 use tokio::sync::RwLock;
 use which::which;
 use xdg::BaseDirectories;
+use strum::IntoEnumIterator;
 
 #[derive(Debug, serde::Serialize)]
 pub struct InternalSettings {
@@ -25,6 +26,9 @@ pub struct Settings {
     pub init_wizard: bool,
     pub mpd_socket: String,
     pub search_groups: Vec<SongField>,
+    pub column_width: Vec<i32>,
+    pub column_sort: ColumnSort,
+    pub active_group: SongField,
 }
 
 impl Settings {
@@ -106,6 +110,9 @@ impl Default for Settings {
                 init_wizard: true,
                 mpd_socket: internal_settings.native_socket.clone(),
                 search_groups: vec![SongField::Directory, SongField::Artist, SongField::Album, SongField::Genre],
+                column_width: SongField::iter().map(|_| 100).collect(),
+                column_sort: ColumnSort::Ascending(SongField::Track),
+                active_group: SongField::Directory,
             },
         }
     }
