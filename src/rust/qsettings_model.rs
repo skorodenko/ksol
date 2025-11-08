@@ -46,11 +46,11 @@ mod qobject {
 
         #[qinvokable]
         #[cxx_name = "getColumnWidth"]
-        fn get_column_width(self: Pin<&mut QSettingsModel>, column: usize) -> i32;
+        fn get_column_width(self: Pin<&mut QSettingsModel>, column: usize) -> f64;
 
         #[qinvokable]
         #[cxx_name = "setColumnWidth"]
-        fn set_column_width(self: Pin<&mut QSettingsModel>, column: usize, value: i32);
+        fn set_column_width(self: Pin<&mut QSettingsModel>, column: usize, value: f64);
 
         #[qinvokable]
         fn get_sort_order(self: &QSettingsModel) -> i32;
@@ -105,12 +105,12 @@ impl qobject::QSettingsModel {
         settings.init_wizard = value;
     }
 
-    pub fn get_column_width(self: Pin<&mut QSettingsModel>, column: usize) -> i32 {
+    pub fn get_column_width(self: Pin<&mut QSettingsModel>, column: usize) -> f64 {
         let settings = Settings::load().blocking_read();
         *settings.column_width.get(column).unwrap()
     }
 
-    pub fn set_column_width(self: Pin<&mut QSettingsModel>, column: usize, value: i32) {
+    pub fn set_column_width(self: Pin<&mut QSettingsModel>, column: usize, value: f64) {
         let mut settings = Settings::load().blocking_write();
         settings.column_width[column] = value;
     }

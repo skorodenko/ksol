@@ -26,7 +26,7 @@ pub struct Settings {
     pub init_wizard: bool,
     pub mpd_socket: String,
     pub search_groups: Vec<SongField>,
-    pub column_width: Vec<i32>,
+    pub column_width: Vec<f64>,
     pub column_sort: ColumnSort,
     pub active_group: SongField,
 }
@@ -110,7 +110,7 @@ impl Default for Settings {
                 init_wizard: true,
                 mpd_socket: internal_settings.native_socket.clone(),
                 search_groups: vec![SongField::Directory, SongField::Artist, SongField::Album, SongField::Genre],
-                column_width: SongField::iter().map(|_| 100).collect(),
+                column_width: SongField::iter().map(|_| 1_f64/14_f64).collect(),
                 column_sort: ColumnSort::Ascending(SongField::Track),
                 active_group: SongField::Directory,
             },

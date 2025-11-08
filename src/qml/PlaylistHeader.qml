@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Controls as QQC2
+import QtQuick.Controls
 import org.kde.kirigami as Kirigami
 import github.skorodenko.ksol 1.0
 
@@ -16,6 +16,9 @@ Item {
     required property int columnCount
     property int firstVisibleColumn: 0
     property int lastVisibleColumn: 0
+    property int minimumColumnWidth: 60
+    property int mediumColumnWidth: 75
+    property int maximumColumnWidth: width
     property var color: "#32363b"
 
     Component.onCompleted: {
@@ -23,12 +26,12 @@ Item {
         root.lastVisibleColumn = root.updateLastVisibleColumn();
     }
 
-    QQC2.ContextMenu.menu: QQC2.Menu {
+    ContextMenu.menu: Menu {
         id: playlistHeaderMenu
 
         Repeater {
             model: root.columnCount
-            delegate: QQC2.CheckBox {
+            delegate: CheckBox {
                 required property int index
                 text: root.model.headerData(index, Qt.Horizontal, QPlaylistModel.ColumnName)
                 checked: QSettingsModel.getColumnWidth(index) != 0
@@ -39,7 +42,7 @@ Item {
             }
         }
 
-        QQC2.MenuItem {
+        MenuItem {
             text: qsTr("Reset width")
             onTriggered: {
                 root.resetColumnWidth();
@@ -56,7 +59,7 @@ Item {
         var item = repeater.itemAt(column);
         if (state == true) {
             item.visible = true;
-            QSettingsModel.setColumnWidth(column, 100);
+            QSettingsModel.setColumnWidth(column, root.mediumColumnWidth);
             root.firstVisibleColumn = root.updateFirstVisibleColumn();
             root.lastVisibleColumn = root.updateLastVisibleColumn();
         } else {
@@ -87,19 +90,44 @@ Item {
         return 0;
     }
 
+    function visibleColumnCount() {
+        var k = 0;
+        for (var i = 0; i < root.columnCount; i++) {
+            var itemDelegate = repeater.itemAt(i);
+            if (itemDelegate.visible) {
+                k++;
+            }
+        }
+        return k;
+    }
+
     function resetColumnWidth() {
+        var visibleColumnCount = root.visibleColumnCount();
         for (var i = 0; i < root.columnCount; i++) {
             var item = repeater.itemAt(i);
             if (item.visible) {
-                item.Layout.horizontalStretchFactor = 100;
+                item.SplitView.preferredWidth = root.width / visibleColumnCount;
             }
         }
     }
 
-    RowLayout {
-        id: row
+    SplitView {
+        id: view
         spacing: 0
         anchors.fill: parent
+        orientation: Qt.Horizontal
+
+        handle: Rectangle {
+            id: handleRect
+            implicitWidth: 2
+            color: "#595d61"
+
+            containmentMask: Item {
+                x: (handleRect.width - width) / 2
+                width: 4
+                height: view.height
+            }
+        }
 
         Repeater {
             id: repeater
@@ -111,101 +139,26 @@ Item {
                 color: root.color
 
                 enabled: visible
-                visible: Layout.horizontalStretchFactor == 0 ? false : true
-                Layout.fillWidth: true
-                Layout.preferredWidth: 35
-                Layout.preferredHeight: root.height
-                Layout.horizontalStretchFactor: QSettingsModel.getColumnWidth(index)
+                visible: SplitView.preferredWidth == 0 ? false : true
+                SplitView.fillWidth: index == root.lastVisibleColumn
+                SplitView.minimumWidth: root.minimumColumnWidth
+                SplitView.maximumWidth: root.maximumColumnWidth
+                SplitView.preferredWidth: QSettingsModel.getColumnWidth(index) * root.width
 
                 required property int index
 
                 onWidthChanged: {
                     root.columnWidthChanged();
-                }
-
-                function applyWidthDelta(delta) {
-                    var newWidth = delegate.Layout.horizontalStretchFactor + delta;
-                    if (newWidth >= 1000) {
-                        delegate.Layout.horizontalStretchFactor = 1000;
-                        QSettingsModel.setColumnWidth(delegate.index, 1000);
-                    } else if (newWidth <= 10) {
-                        delegate.Layout.horizontalStretchFactor = 10;
-                        QSettingsModel.setColumnWidth(delegate.index, 10);
-                    } else {
-                        delegate.Layout.horizontalStretchFactor = newWidth;
-                        QSettingsModel.setColumnWidth(delegate.index, newWidth);
-                    }
-                }
-
-                Item {
-                    id: splitter
-                    implicitWidth: 4
-                    anchors.top: delegate.top
-                    anchors.bottom: delegate.bottom
-                    anchors.left: delegate.left
-                    visible: delegate.index != root.firstVisibleColumn
-
-                    Rectangle {
-                        id: splitterRect
-                        implicitWidth: 2
-                        color: "#595d61"
-
-                        anchors {
-                            top: splitter.top
-                            bottom: splitter.bottom
-                            left: splitter.left
-                        }
-                    }
-                }
-
-                MouseArea {
-                    anchors.fill: splitter
-                    enabled: delegate.visible
-
-                    property int oldMouseX
-
-                    onPressed: {
-                        oldMouseX = mouseX;
-                    }
-                    onPositionChanged: {
-                        if (pressed) {
-                            var widthDelta = 50 * (mouseX - oldMouseX) / root.width;
-                            if (delegate.index == root.lastVisibleColumn) {
-                                delegate.applyWidthDelta(-widthDelta);
-                                for (var i = delegate.index - 1; i >= 0; i--) {
-                                    var itemDelegate = repeater.itemAt(i);
-                                    if (itemDelegate.visible) {
-                                        itemDelegate.applyWidthDelta(widthDelta);
-                                        break;
-                                    }
-                                }
-                            } else if (widthDelta > 0) {
-                                for (var i = delegate.index - 1; i >= 0; i--) {
-                                    var itemDelegate = repeater.itemAt(i);
-                                    if (itemDelegate.visible) {
-                                        itemDelegate.applyWidthDelta(widthDelta);
-                                        break;
-                                    }
-                                }
-                            } else {
-                                for (var i = delegate.index - 1; i >= 0; i--) {
-                                    var itemDelegate = repeater.itemAt(i);
-                                    if (itemDelegate.visible) {
-                                        itemDelegate.applyWidthDelta(widthDelta);
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    QSettingsModel.setColumnWidth(delegate.index, delegate.SplitView.preferredWidth / root.width);
                 }
 
                 Text {
                     elide: Text.ElideRight
                     color: Kirigami.Theme.textColor
                     horizontalAlignment: Qt.AlignLeft
-                    anchors.left: splitter.right
+                    anchors.left: delegate.left
                     anchors.right: sortIndicator.left
+                    anchors.leftMargin: Kirigami.Units.smallSpacing
                     text: root.model.headerData(delegate.index, Qt.Horizontal, QPlaylistModel.ColumnName)
                 }
 
@@ -215,6 +168,7 @@ Item {
                     anchors.top: delegate.top
                     anchors.bottom: delegate.bottom
                     anchors.right: delegate.right
+                    anchors.rightMargin: Kirigami.Units.smallSpacing
 
                     state: QSettingsModel.sortColumn == delegate.index ? QSettingsModel.sortOrder : "0"
 

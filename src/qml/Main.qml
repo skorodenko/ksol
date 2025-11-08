@@ -475,7 +475,7 @@ Kirigami.ApplicationWindow {
 
             columnWidthProvider: function (column) {
                 var item = qplaylist_header.repeater.itemAt(column);
-                return item.visible ? item.width : 0;
+                return item.visible ? item.width + 2 : 0; // 2 is splitter width (which is not acounted in delegate width)
             }
 
             selectionModel: ItemSelectionModel {}
@@ -517,7 +517,7 @@ Kirigami.ApplicationWindow {
                 Text {
                     id: song_play_text
                     anchors.fill: parent
-                    anchors.leftMargin: 4
+                    anchors.leftMargin: Kirigami.Units.smallSpacing
                     anchors.verticalCenter: parent.verticalCenter
                     horizontalAlignment: Qt.AlignLeft
                     color: Kirigami.Theme.textColor
