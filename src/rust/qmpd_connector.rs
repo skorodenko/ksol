@@ -125,12 +125,12 @@ use mpd_client::{
 };
 use num_traits::FromPrimitive;
 use std::cmp::Reverse;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::{Child, Command};
 use tokio::net::{TcpStream, UnixStream};
 use tokio::runtime::{Builder, Runtime};
 use tokio::sync::mpsc::{Receiver, Sender};
-use tokio::time::{Duration, sleep};
+use tokio::time::Duration;
 use which::which;
 
 pub struct MPDConnector {

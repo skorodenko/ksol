@@ -17,7 +17,6 @@ Item {
     property int firstVisibleColumn: 0
     property int lastVisibleColumn: 0
     property int minimumColumnWidth: 60
-    property int mediumColumnWidth: 75
     property int maximumColumnWidth: width
     property var color: "#32363b"
 
@@ -34,7 +33,7 @@ Item {
             delegate: CheckBox {
                 required property int index
                 text: root.model.headerData(index, Qt.Horizontal, QPlaylistModel.ColumnName)
-                checked: QSettingsModel.getColumnWidth(index) != 0
+                checked: QSettingsModel.getColumnWidth(index) != 0.0
                 nextCheckState: function () {
                     root.toggleColumn(index, !checked);
                     return checked ? Qt.Unchecked : Qt.Checked;
@@ -59,12 +58,12 @@ Item {
         var item = repeater.itemAt(column);
         if (state == true) {
             item.visible = true;
-            QSettingsModel.setColumnWidth(column, root.mediumColumnWidth);
+            QSettingsModel.setColumnWidth(column, root.minimumColumnWidth / root.width);
             root.firstVisibleColumn = root.updateFirstVisibleColumn();
             root.lastVisibleColumn = root.updateLastVisibleColumn();
         } else {
             item.visible = false;
-            QSettingsModel.setColumnWidth(column, 0);
+            QSettingsModel.setColumnWidth(column, 0.0);
             root.firstVisibleColumn = root.updateFirstVisibleColumn();
             root.lastVisibleColumn = root.updateLastVisibleColumn();
         }
