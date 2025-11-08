@@ -405,6 +405,7 @@ Kirigami.ApplicationWindow {
 
         QQC2.ScrollBar {
             id: scrollBar
+            width: visible ? implicitWidth : 0
             anchors.top: infoMessage.bottom
             anchors.right: parent.right
             anchors.bottom: filterSearchBox.top
