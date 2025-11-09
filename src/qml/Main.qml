@@ -125,8 +125,16 @@ Kirigami.ApplicationWindow {
             media_duration.text = `${efm}:${efs} / ${dfm}:${dfs}`;
         }
         onActiveSongChanged: function (songPos, songId) {
+            if (qplaylist_view.songPos != songPos) {
+                if (songPos < qplaylist_view.topRow) {
+                    qplaylist_view.positionViewAtRow(songPos, Qt.AlignTop, 0);
+                }
+                if (songPos > qplaylist_view.bottomRow) {
+                    qplaylist_view.positionViewAtRow(songPos, Qt.AlignBottom, 0);
+                }
+            }
             qplaylist.activeSongId = songId;
-            qplaylist_view.positionViewAtRow(songPos, Qt.AlignVCenter, 0.0);
+            qplaylist_view.songPos = songPos;
         }
         onUpdateOptions: function () {
             var shuffle = mpd_connector.shuffle;
@@ -438,6 +446,7 @@ Kirigami.ApplicationWindow {
             rowSpacing: Kirigami.Units.smallSpacing
 
             property bool selectionTimeout: false
+            property int songPos: 0
 
             model: qplaylist
 
