@@ -708,7 +708,7 @@ impl qobject::QMPDConnector {
                         break ("disconnected", None, None);
                     }
                     log::warn!("Failed to connect to mpd, retrying");
-                    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                    tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
                 }
             };
             let _ = qt_thread.queue(|mut qobject| {
