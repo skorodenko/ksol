@@ -444,6 +444,7 @@ Kirigami.ApplicationWindow {
             boundsMovement: Flickable.StopAtBounds
             boundsBehavior: Flickable.StopAtBounds
 
+            reuseItems: true
             keyNavigationEnabled: true
             selectionBehavior: TableView.SelectRows
             selectionMode: TableView.SingleSelection

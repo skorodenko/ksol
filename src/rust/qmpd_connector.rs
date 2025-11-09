@@ -113,6 +113,7 @@ pub mod qobject {
 use qobject::*;
 
 use crate::rust::entities::{ColumnSort, MPSCCommand, QSong, SongField};
+use crate::rust::init_hooks::init_native_mpd_config;
 use crate::rust::settings::{InternalSettings, Settings};
 use base64::prelude::*;
 use bincode::config;
@@ -125,7 +126,7 @@ use mpd_client::{
 };
 use num_traits::FromPrimitive;
 use std::cmp::Reverse;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
 use tokio::net::{TcpStream, UnixStream};
 use tokio::runtime::{Builder, Runtime};
@@ -639,6 +640,11 @@ impl qobject::QMPDConnector {
         let cmpd_binary = mpd_binary.clone();
         let cnative_config = native_config.clone();
         let native_server = self.as_mut().rust_mut().server.take();
+        if !Path::new(&cnative_config).exists() {
+            let settings = Settings::load().blocking_read().clone();
+            let isettings = InternalSettings::load().clone();
+            init_native_mpd_config(settings, isettings);
+        };
         match native_server {
             Some(mut server) => {
                 match server.try_wait() {

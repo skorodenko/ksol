@@ -13,6 +13,7 @@ mod qobject {
         #[qml_element]
         #[qml_singleton]
         #[qproperty(QString, mpdSocket, READ = get_mpd_socket, WRITE = set_mpd_socket, NOTIFY = mpd_socket_changed)]
+        #[qproperty(QString, nativeMpdMusicDir, READ = get_native_mpd_music_dir, WRITE = set_native_mpd_music_dir, NOTIFY = native_mpd_music_dir_changed)]
         #[qproperty(bool, initWizard, READ = get_init_wizard, WRITE = set_init_wizard, NOTIFY = init_wizard_changed)]
         #[qproperty(i32, sortOrder, READ = get_sort_order, NOTIFY = update_sort_column)]
         #[qproperty(i32, sortColumn, READ = get_sort_column, NOTIFY = update_sort_column)]
@@ -20,6 +21,9 @@ mod qobject {
 
         #[qsignal]
         fn mpd_socket_changed(self: Pin<&mut QSettingsModel>);
+
+        #[qsignal]
+        fn native_mpd_music_dir_changed(self: Pin<&mut QSettingsModel>);
 
         #[qsignal]
         fn init_wizard_changed(self: Pin<&mut QSettingsModel>);
@@ -37,6 +41,12 @@ mod qobject {
 
         #[qinvokable]
         fn set_mpd_socket(self: Pin<&mut QSettingsModel>, value: QString);
+
+        #[qinvokable]
+        fn get_native_mpd_music_dir(self: Pin<&mut QSettingsModel>) -> QString;
+
+        #[qinvokable]
+        fn set_native_mpd_music_dir(self: Pin<&mut QSettingsModel>, value: QString);
 
         #[qinvokable]
         fn get_init_wizard(self: Pin<&mut QSettingsModel>) -> bool;
@@ -93,6 +103,16 @@ impl qobject::QSettingsModel {
         let mut settings = Settings::load().blocking_write();
         settings.mpd_socket = value.into();
         self.mpd_socket_changed();
+    }
+
+    fn get_native_mpd_music_dir(self: Pin<&mut QSettingsModel>) -> QString {
+        let settings = Settings::load().blocking_read();
+        QString::from(&settings.native_music_dir)
+    }
+
+    fn set_native_mpd_music_dir(self: Pin<&mut QSettingsModel>, value: QString) {
+        let mut settings = Settings::load().blocking_write();
+        settings.native_music_dir = value.into();
     }
 
     fn get_init_wizard(self: Pin<&mut QSettingsModel>) -> bool {
@@ -163,9 +183,7 @@ impl qobject::QSettingsModel {
     pub fn check_server_connection(self: Pin<&mut QSettingsModel>, url: QString) {
         match UnixStream::connect(url.to_string()) {
             Ok(_) => self.check_server_connection_result(true),
-            Err(_) => {
-                self.check_server_connection_result(false)
-            }
+            Err(_) => self.check_server_connection_result(false),
         }
     }
 }

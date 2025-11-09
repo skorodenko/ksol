@@ -1,38 +1,40 @@
-use crate::rust::settings::InternalSettings;
-use std::{fs::File, io::Write};
+use crate::rust::settings::{InternalSettings, Settings};
 use log;
+use std::{fs::File, io::Write};
 use tinytemplate::TinyTemplate;
 
-static MPD_CONFIG_TEMPLATE: &'static str = r#"
-music_directory "{native_music_dir}"
-playlist_directory "{app_data_dir}mpd/playlists"
-sticker_file "{app_data_dir}mpd/sticker.sql"
-bind_to_address "{app_data_dir}mpd/socket"
-db_file "{app_cache_dir}mpd/tag_cache"
-pid_file "{app_cache_dir}mpd/pid"
-state_file "{app_cache_dir}mpd/state"
+static MPD_CONFIG_TEMPLATE: &str = r#"
+music_directory "{s.native_music_dir}"
+sticker_file "{is.app_data_dir}mpd/sticker.sql"
+bind_to_address "{is.app_data_dir}mpd/socket"
+db_file "{is.app_cache_dir}mpd/tag_cache"
+pid_file "{is.app_cache_dir}mpd/pid"
+state_file "{is.app_cache_dir}mpd/state"
 log_file "/dev/null"
-zeroconf_enabled "no"
-metadata_to_use	"artist,album,title,track,name,genre,date,disc,albumartist,composer,musicbrainz_albumid,originaldate,albumartistsort,artistsort,albumsort"
 audio_output \{
     type "pipewire"
     name "ksol"
 }
-mixer_type "software"
 audio_buffer_size "8192"
-filesystem_charset "UTF-8"
-id3v1_encoding "UTF-8"
+restore_paused "yes"
 "#;
 
-pub fn init_configs(defaults: &InternalSettings) {
-    log::debug!("Init config files");
+#[derive(serde::Serialize, serde::Deserialize)]
+struct TemplateData {
+    pub s: Settings,
+    pub is: InternalSettings,
+}
+
+pub fn init_native_mpd_config(s: Settings, is: InternalSettings) {
+    log::debug!("Init native mpd config");
     let mut tt = TinyTemplate::new();
     tt.add_template("mpd_config", MPD_CONFIG_TEMPLATE).unwrap();
-    let render = tt.render("mpd_config", defaults).unwrap();
-    match File::create_new(defaults.native_config.clone()) {
+    let data = TemplateData { s, is };
+    let render = tt.render("mpd_config", &data).unwrap();
+    match File::create_new(data.is.native_config.clone()) {
         Ok(mut file) => {
             let _ = file.write_all(render.as_bytes());
         }
-        Err(_) => log::debug!("MPD config file exists")
+        Err(_) => log::debug!("MPD config file exists"),
     }
 }

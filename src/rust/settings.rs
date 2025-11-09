@@ -1,15 +1,14 @@
-use crate::rust::entities::{SongField, ColumnSort};
-use crate::rust::init_hooks::init_configs;
+use crate::rust::entities::{ColumnSort, SongField};
 use serde;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::OnceLock;
+use strum::IntoEnumIterator;
 use tokio::sync::RwLock;
 use which::which;
 use xdg::BaseDirectories;
-use strum::IntoEnumIterator;
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
 pub struct InternalSettings {
     pub app_data_dir: PathBuf,
     pub app_cache_dir: PathBuf,
@@ -18,13 +17,13 @@ pub struct InternalSettings {
     pub mpd_binary: PathBuf,
     pub native_socket: String,
     pub native_config: String,
-    pub native_music_dir: String,
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
 pub struct Settings {
     pub init_wizard: bool,
     pub mpd_socket: String,
+    pub native_music_dir: String,
     pub search_groups: Vec<SongField>,
     pub column_width: Vec<f64>,
     pub column_sort: ColumnSort,
@@ -34,7 +33,10 @@ pub struct Settings {
 impl Settings {
     pub fn load() -> &'static RwLock<Settings> {
         static INSTANCE: OnceLock<RwLock<Settings>> = OnceLock::new();
-        INSTANCE.get_or_init(|| RwLock::new(Settings::default()))
+        INSTANCE.get_or_init(|| {
+            Settings::init_dirs();
+            RwLock::new(Settings::default())
+        })
     }
 
     pub fn dump() {
@@ -44,9 +46,7 @@ impl Settings {
         fs::write(&internal_settings.app_config_file, settings_file).expect("Failed to write settings file");
     }
 
-    pub fn init_files() {
-        let internal_settings = InternalSettings::load();
-
+    fn init_dirs() {
         let xdg_dirs = BaseDirectories::with_prefix("ksol");
         let app_config = xdg_dirs.get_config_home().unwrap();
         let app_data = xdg_dirs.get_data_home().unwrap();
@@ -57,8 +57,6 @@ impl Settings {
         let _ = fs::create_dir(app_data);
         let _ = fs::create_dir(mpd_config);
         let _ = fs::create_dir(mpd_data);
-
-        init_configs(internal_settings);
     }
 }
 
@@ -86,7 +84,6 @@ impl Default for InternalSettings {
             mpd_binary: which("mpd").unwrap_or_default(),
             native_socket: mpd_data.join("socket").to_str().unwrap().to_string(),
             native_config: mpd_config.join("mpd.conf").to_str().unwrap().to_string(),
-            native_music_dir: String::from("/home/rinkuro/Music"),
         }
     }
 }
@@ -104,13 +101,16 @@ impl Default for Settings {
         let internal_settings = InternalSettings::load();
         let settings_file = fs::read_to_string(&internal_settings.app_config_file).unwrap_or_default();
 
+        let xdg_home = std::env::home_dir().expect("Failed to get $HOME");
+
         match toml::from_str(&settings_file) {
             Ok(val) => val,
             Err(_) => Self {
                 init_wizard: true,
                 mpd_socket: internal_settings.native_socket.clone(),
+                native_music_dir: xdg_home.join("Music/").to_str().unwrap().to_string(),
                 search_groups: vec![SongField::Directory, SongField::Artist, SongField::Album, SongField::Genre],
-                column_width: SongField::iter().map(|_| 1_f64/14_f64).collect(),
+                column_width: SongField::iter().map(|_| 1_f64 / 14_f64).collect(),
                 column_sort: ColumnSort::Ascending(SongField::Track),
                 active_group: SongField::Directory,
             },

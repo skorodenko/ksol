@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Dialogs
 import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
 import github.skorodenko.ksol 1.0
@@ -35,8 +36,16 @@ Window {
         if (view.currentIndex == 2) {
             nextButton.enabled = true;
             view.currentIndex = 1;
+        } else if (view.currentIndex == 3) {
+            view.currentIndex = 1;
         } else {
             view.currentIndex = view.currentIndex - 1;
+        }
+    }
+
+    onClosing: {
+        if (root.currentPage != view.count - 1) {
+            Qt.quit();
         }
     }
 
@@ -165,6 +174,54 @@ Window {
 
         Item {
             id: fourthPage
+
+            Item {
+                anchors.fill: parent
+                anchors.margins: 18
+
+                Kirigami.Heading {
+                    id: fpHeading
+                    anchors.top: parent.top
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    wrapMode: Text.WordWrap
+                    text: "Select where your music is located"
+                }
+
+                QQC2.TextField {
+                    id: fpMusicFolder
+                    anchors.top: fpHeading.bottom
+                    anchors.topMargin: Kirigami.Units.largeSpacing
+                    anchors.left: parent.left
+                    anchors.right: fpChooseMusicFolder.left
+                    anchors.rightMargin: Kirigami.Units.mediumSpacing
+                    text: QSettingsModel.nativeMpdMusicDir
+                    placeholderText: "Music folder ..."
+                }
+
+                FolderDialog {
+                    id: folderDialog
+                    title: "Please choose music folder"
+
+                    onAccepted: {
+                        fpMusicFolder.text = folderDialog.selectedFolder;
+                        QSettingsModel.nativeMpdMusicDir = folderDialog.selectedFolder;
+                    }
+                }
+
+                QQC2.Button {
+                    id: fpChooseMusicFolder
+                    anchors.top: fpHeading.bottom
+                    anchors.topMargin: Kirigami.Units.largeSpacing
+                    anchors.right: parent.right
+                    text: "Check connection"
+                    onClicked: folderDialog.open()
+                }
+            }
+        }
+
+        Item {
+            id: fifthPage
 
             Kirigami.Heading {
                 text: "Initial config successfull"
