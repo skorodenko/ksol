@@ -205,6 +205,12 @@ Kirigami.ApplicationWindow {
         }
     }
 
+    Settings {
+        id: settings
+        width: 0.5 * root.width
+        height: 0.5 * root.height
+    }
+
     header: QQC2.ToolBar {
         implicitHeight: 48
 
@@ -292,6 +298,13 @@ Kirigami.ApplicationWindow {
                         icon.name: "server-database"
                         onClicked: {
                             mpd_connector.updateDb();
+                        }
+                    }
+                    QQC2.MenuItem {
+                        text: qsTr("Settings")
+                        icon.name: "settings"
+                        onClicked: {
+                            settings.visible = true;
                         }
                     }
                     QQC2.MenuItem {

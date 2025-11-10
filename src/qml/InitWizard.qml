@@ -27,6 +27,8 @@ Window {
             root.customServerUrl = "";
             nextButton.enabled = false;
             view.currentIndex = 2;
+        } else if (view.currentIndex == 2) {
+            view.currentIndex = 4;
         } else {
             view.currentIndex = view.currentIndex + 1;
         }
@@ -53,7 +55,27 @@ Window {
         target: QSettingsModel
 
         function onCheckServerConnectionResult(result) {
+            infoMessage.visible = false;
+            infoMessage.visible = true;
+            infoMessage.text = result ? "Successfully connected to server" : "Failed to connect to server";
+            infoMessage.type = result ? Kirigami.MessageType.Positive : Kirigami.MessageType.Error;
             nextButton.enabled = result;
+        }
+    }
+
+    Kirigami.InlineMessage {
+        id: infoMessage
+
+        visible: false
+        anchors.bottom: footer.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        onVisibleChanged: tmr.restart()
+
+        Timer {
+            id: tmr
+            interval: Kirigami.Units.humanMoment
+            onTriggered: infoMessage.visible = false
         }
     }
 
@@ -64,7 +86,7 @@ Window {
             top: parent.top
             left: parent.left
             right: parent.right
-            bottom: footer.top
+            bottom: infoMessage.top
         }
 
         Item {
@@ -296,6 +318,7 @@ Window {
                 QSettingsModel.initWizard = false;
                 if (root.selectedOption == 1) {
                     QSettingsModel.mpdSocket = root.customServerUrl;
+                    console.log(QSettingsModel.mpdSocket);
                 }
                 root.finished();
             }

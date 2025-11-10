@@ -18,6 +18,7 @@ fn main() {
                 "src/qml/PlaylistHeader.qml",
                 "src/qml/About.qml",
                 "src/qml/InitWizard.qml",
+                "src/qml/Settings.qml",
             ],
             ..Default::default()
         })

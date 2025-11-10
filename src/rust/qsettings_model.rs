@@ -43,6 +43,10 @@ mod qobject {
         fn set_mpd_socket(self: Pin<&mut QSettingsModel>, value: QString);
 
         #[qinvokable]
+        #[cxx_name = "getNativeMpdSocket"]
+        fn get_native_mpd_socket(self: Pin<&mut QSettingsModel>) -> QString;
+
+        #[qinvokable]
         fn get_native_mpd_music_dir(self: Pin<&mut QSettingsModel>) -> QString;
 
         #[qinvokable]
@@ -102,7 +106,13 @@ impl qobject::QSettingsModel {
     pub fn set_mpd_socket(self: Pin<&mut QSettingsModel>, value: QString) {
         let mut settings = Settings::load().blocking_write();
         settings.mpd_socket = value.into();
+        std::mem::drop(settings);
         self.mpd_socket_changed();
+    }
+
+    pub fn get_native_mpd_socket(self: Pin<&mut QSettingsModel>) -> QString {
+        let isettings = InternalSettings::load();
+        QString::from(&isettings.native_socket)
     }
 
     fn get_native_mpd_music_dir(self: Pin<&mut QSettingsModel>) -> QString {
