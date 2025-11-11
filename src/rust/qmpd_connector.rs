@@ -132,6 +132,7 @@ use tokio::net::{TcpStream, UnixStream};
 use tokio::runtime::{Builder, Runtime};
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::time::Duration;
+use tracing;
 use which::which;
 
 pub struct MPDConnector {
@@ -154,6 +155,7 @@ impl qobject::QMPDConnector {
         let qt_thread = self.qt_thread();
         let tx_actions = self.tx_actions.clone();
         let rt_idle = &self.rt_idle;
+        tracing::debug!("Starting idle");
         rt_idle.spawn(async move {
             let mpd_idle = mpd_idle.as_mut().expect("idle client is None");
             loop {
@@ -164,32 +166,29 @@ impl qobject::QMPDConnector {
                         });
                     }
                     Some(ConnectionEvent::SubsystemChange(Subsystem::Queue)) => {
-                        log::debug!("Server queue changed");
                         if let Some(ref sender) = tx_actions {
                             let _ = sender.send(MPSCCommand::IdleQueue).await;
                         } else {
-                            log::warn!("Connection not available");
+                            tracing::warn!("Connection not available");
                         }
                     }
                     Some(ConnectionEvent::SubsystemChange(Subsystem::Player)) => {
-                        log::debug!("Server player changed");
                         if let Some(ref sender) = tx_actions {
                             let _ = sender.send(MPSCCommand::IdlePlayer).await;
                         } else {
-                            log::warn!("Connection not available");
+                            tracing::warn!("Connection not available");
                         }
                     }
                     Some(ConnectionEvent::SubsystemChange(Subsystem::Options)) => {
-                        log::debug!("Server options changed");
                         if let Some(ref sender) = tx_actions {
                             let _ = sender.send(MPSCCommand::IdleOptions).await;
                         } else {
-                            log::warn!("Connection not available");
+                            tracing::warn!("Connection not available");
                         }
                     }
-                    Some(e) => println!("Yay {:?}", e),
+                    Some(_) => (),
                     None => {
-                        log::warn!("Connection lost");
+                        tracing::warn!("Connection lost");
                         let _ = qt_thread.queue(|mut qobject| {
                             qobject.as_mut().connection_update(QString::from("disconnected"));
                         });
@@ -204,6 +203,7 @@ impl qobject::QMPDConnector {
         let mpd_client = self.client.clone().expect("mpd client is None");
         let qt_thread = self.qt_thread();
         let rt_action = &self.rt_action;
+        tracing::debug!("Starting init_ui");
         rt_action.spawn(async move {
             let command = commands::Status;
             match mpd_client.command(command).await {
@@ -216,7 +216,7 @@ impl qobject::QMPDConnector {
                     });
                 }
                 Err(e) => {
-                    log::error!("{}", e);
+                    tracing::error!("{}", e);
                 }
             };
         });
@@ -226,6 +226,7 @@ impl qobject::QMPDConnector {
         let mpd_client = self.client.clone().expect("mpd client is None");
         let qt_thread = self.qt_thread();
         let rt_timeline = &self.rt_timeline;
+        tracing::debug!("Starting init_timeline");
         rt_timeline.spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(1));
             loop {
@@ -240,7 +241,7 @@ impl qobject::QMPDConnector {
                         interval.tick().await;
                     }
                     Err(e) => {
-                        log::error!("{}", e);
+                        tracing::error!("{}", e);
                     }
                 };
             }
@@ -252,6 +253,7 @@ impl qobject::QMPDConnector {
         let mpd_client = self.client.clone().expect("mpd client is None");
         let qt_thread = self.qt_thread();
         let rt_action = &self.rt_action;
+        tracing::debug!("Starting init_actions");
         rt_action.spawn(async move {
             let rx_actions = rx_actions.as_mut().expect("actions reciever is None");
             loop {
@@ -286,7 +288,7 @@ impl qobject::QMPDConnector {
                                 }
                             },
                             Err(e) => {
-                                log::error!("{}", e);
+                                tracing::error!("{}", e);
                             }
                         };
                     }
@@ -305,7 +307,7 @@ impl qobject::QMPDConnector {
                                 if let Ok(rsp) = mpd_client.command(command).await {
                                     rsp
                                 } else {
-                                    log::warn!("Connection not available");
+                                    tracing::warn!("Connection not available");
                                     vec![]
                                 }
                             }
@@ -314,7 +316,7 @@ impl qobject::QMPDConnector {
                                 if let Ok(rsp) = mpd_client.command(command).await {
                                     rsp.values().map(|x| x.to_string()).collect()
                                 } else {
-                                    log::warn!("Connection not available");
+                                    tracing::warn!("Connection not available");
                                     vec![]
                                 }
                             }
@@ -374,7 +376,7 @@ impl qobject::QMPDConnector {
                                 let _ = mpd_client.command_list(move_commands).await;
                             }
                             Err(e) => {
-                                log::error!("{}", e);
+                                tracing::error!("{}", e);
                             }
                         }
                     }
@@ -444,7 +446,7 @@ impl qobject::QMPDConnector {
                                 });
                             }
                             Err(e) => {
-                                log::error!("{}", e);
+                                tracing::error!("{}", e);
                             }
                         };
                     }
@@ -461,7 +463,7 @@ impl qobject::QMPDConnector {
                                 });
                             }
                             Err(e) => {
-                                log::error!("{}", e);
+                                tracing::error!("{}", e);
                             }
                         };
                     }
@@ -480,7 +482,7 @@ impl qobject::QMPDConnector {
                                 });
                             }
                             Err(e) => {
-                                log::error!("{}", e);
+                                tracing::error!("{}", e);
                             }
                         }
                     }
@@ -505,7 +507,7 @@ impl qobject::QMPDConnector {
                                 });
                             }
                         } else {
-                            log::warn!("Album art absent");
+                            tracing::warn!("Album art absent");
                             let _ = qt_thread.queue(move |qobject| {
                                 qobject.album_art_update(QString::from(""));
                             });
@@ -522,7 +524,7 @@ impl qobject::QMPDConnector {
         if let Some(ref sender) = tx_actions {
             let _ = sender.blocking_send(MPSCCommand::PlayToggle);
         } else {
-            log::warn!("Connection not available");
+            tracing::warn!("Connection not available");
         }
     }
 
@@ -531,7 +533,7 @@ impl qobject::QMPDConnector {
         if let Some(ref sender) = tx_actions {
             let _ = sender.blocking_send(MPSCCommand::PlaySong(id));
         } else {
-            log::warn!("Connection not available");
+            tracing::warn!("Connection not available");
         }
     }
 
@@ -540,7 +542,7 @@ impl qobject::QMPDConnector {
         if let Some(ref sender) = tx_actions {
             let _ = sender.blocking_send(MPSCCommand::Next);
         } else {
-            log::warn!("Connection not available");
+            tracing::warn!("Connection not available");
         }
     }
 
@@ -549,7 +551,7 @@ impl qobject::QMPDConnector {
         if let Some(ref sender) = tx_actions {
             let _ = sender.blocking_send(MPSCCommand::Previous);
         } else {
-            log::warn!("Connection not available");
+            tracing::warn!("Connection not available");
         }
     }
 
@@ -559,17 +561,17 @@ impl qobject::QMPDConnector {
         if let Some(ref sender) = tx_actions {
             let _ = sender.blocking_send(MPSCCommand::Seek(seek_to));
         } else {
-            log::warn!("Connection not available");
+            tracing::warn!("Connection not available");
         }
     }
 
     pub fn update_db(self: Pin<&mut QMPDConnector>) {
-        log::debug!("Updating MPD DB");
+        tracing::debug!("Updating MPD DB");
         let tx_actions = self.tx_actions.clone();
         if let Some(ref sender) = tx_actions {
             let _ = sender.blocking_send(MPSCCommand::UpdateDb);
         } else {
-            log::warn!("Connection not available");
+            tracing::warn!("Connection not available");
         }
     }
 
@@ -579,7 +581,7 @@ impl qobject::QMPDConnector {
         if let Some(ref sender) = tx_actions {
             let _ = sender.blocking_send(MPSCCommand::GetPlaylists(group));
         } else {
-            log::warn!("Connection not available");
+            tracing::warn!("Connection not available");
         }
     }
 
@@ -590,7 +592,7 @@ impl qobject::QMPDConnector {
         if let Some(ref sender) = tx_actions {
             let _ = sender.blocking_send(MPSCCommand::StagePlaylist(name, group));
         } else {
-            log::warn!("Connection not available");
+            tracing::warn!("Connection not available");
         }
     }
 
@@ -601,7 +603,7 @@ impl qobject::QMPDConnector {
         if let Some(ref sender) = tx_actions {
             let _ = sender.blocking_send(MPSCCommand::SortPlaylist(sort_order));
         } else {
-            log::warn!("Connection not available");
+            tracing::warn!("Connection not available");
         }
     }
 
@@ -610,7 +612,7 @@ impl qobject::QMPDConnector {
         if let Some(ref sender) = tx_actions {
             let _ = sender.blocking_send(MPSCCommand::ShuffleToggle(current_state));
         } else {
-            log::warn!("Connection not available");
+            tracing::warn!("Connection not available");
         }
     }
 
@@ -619,7 +621,7 @@ impl qobject::QMPDConnector {
         if let Some(ref sender) = tx_actions {
             let _ = sender.blocking_send(MPSCCommand::RepeatToggle(current_repeat, current_single));
         } else {
-            log::warn!("Connection not available");
+            tracing::warn!("Connection not available");
         }
     }
 
@@ -630,12 +632,12 @@ impl qobject::QMPDConnector {
             let _ = sender.blocking_send(MPSCCommand::IdlePlayer);
             let _ = sender.blocking_send(MPSCCommand::IdleOptions);
         } else {
-            log::warn!("Connection not available");
+            tracing::warn!("Connection not available");
         }
     }
 
     fn start_native_server(mut self: Pin<&mut Self>, mpd_binary: &PathBuf, native_config: &String) {
-        log::debug!("Starting native mpd server");
+        tracing::debug!("Starting native mpd server");
         let qt_thread = self.qt_thread();
         let cmpd_binary = mpd_binary.clone();
         let cnative_config = native_config.clone();
@@ -687,27 +689,28 @@ impl qobject::QMPDConnector {
         rt_idle.spawn(async move {
             let (state, mpd_client, mpd_idle) = loop {
                 let settings = Settings::load().read().await;
+                tracing::debug!("Connecting to server {}", settings.mpd_socket);
                 if let Ok(connection) = TcpStream::connect(&settings.mpd_socket).await {
                     let client = ClientController::connect(connection).await.expect("failed to init controller");
                     let connection_2 =
                         TcpStream::connect(&settings.mpd_socket).await.expect("failed to establish 2nd connection");
                     let idle = ClientIdler::connect(connection_2).await.expect("failed to init idler");
-                    log::debug!("Succesfully connected to MPD server");
+                    tracing::debug!("Succesfully connected to MPD server");
                     break ("connected", Some(client), Some(idle));
                 } else if let Ok(connection) = UnixStream::connect(&settings.mpd_socket).await {
                     let client = ClientController::connect(connection).await.expect("failed to init controller");
                     let connection_2 =
                         UnixStream::connect(&settings.mpd_socket).await.expect("failed to establish 2nd connection");
                     let idle = ClientIdler::connect(connection_2).await.expect("failed to init idler");
-                    log::debug!("Succesfully connected to MPD server");
+                    tracing::debug!("Succesfully connected to MPD server");
                     break ("connected", Some(client), Some(idle));
                 } else {
                     retcount -= 1;
                     if retcount <= 0 {
-                        log::error!("Failed to connect to MPD server");
+                        tracing::error!("Failed to connect to MPD server");
                         break ("disconnected", None, None);
                     }
-                    log::warn!("Failed to connect to mpd, retrying");
+                    tracing::warn!("Failed to connect to mpd, retrying");
                     tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
                 }
             };
@@ -720,7 +723,7 @@ impl qobject::QMPDConnector {
     }
 
     pub fn connect(self: Pin<&mut Self>) {
-        log::debug!("Connecting to mpd");
+        tracing::debug!("Connecting to mpd");
         self.connection_update(QString::from("connecting"));
     }
 }
@@ -733,10 +736,10 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                     let settings = Settings::load().blocking_read();
                     let isettings = InternalSettings::load();
                     if settings.mpd_socket == isettings.native_socket {
-                        log::debug!("Using native mpd server");
+                        tracing::debug!("Using native mpd server");
                         match which("mpd") {
                             Ok(v) => {
-                                log::debug!("Found mpd binary {:?}", v);
+                                tracing::debug!("Found mpd binary {:?}", v);
                                 qobject.as_mut().start_native_server(&v, &isettings.native_config);
                             }
                             Err(err) => panic!("Using native socket, but no mpd binary was found, {:?}", err),
@@ -745,6 +748,7 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                     qobject.as_mut().connection_update(QString::from("connecting"));
                 }
                 "connected" => {
+                    tracing::debug!("Connected to server");
                     let (tx_actions, rx_actions) = tokio::sync::mpsc::channel(64);
                     qobject.as_mut().rust_mut().tx_actions = Some(tx_actions);
                     qobject.as_mut().rust_mut().rx_actions = Some(rx_actions);
@@ -753,6 +757,7 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                     qobject.as_mut().sync_state();
                 }
                 "connecting" => {
+                    tracing::debug!("Connecting to server");
                     qobject.connect_client();
                 }
                 _ => unreachable!(),
@@ -764,7 +769,7 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                 if let Some(ref sender) = tx_actions {
                     let _ = sender.blocking_send(MPSCCommand::UpdateArt);
                 } else {
-                    log::warn!("Connection not available");
+                    tracing::warn!("Connection not available");
                 }
             })
             .release();
@@ -774,7 +779,7 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                 if let Some(ref sender) = tx_actions {
                     let _ = sender.blocking_send(MPSCCommand::UpdateArt);
                 } else {
-                    log::warn!("Connection not available");
+                    tracing::warn!("Connection not available");
                 }
             })
             .release();

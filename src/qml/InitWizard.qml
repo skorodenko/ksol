@@ -318,7 +318,6 @@ Window {
                 QSettingsModel.initWizard = false;
                 if (root.selectedOption == 1) {
                     QSettingsModel.mpdSocket = root.customServerUrl;
-                    console.log(QSettingsModel.mpdSocket);
                 }
                 root.finished();
             }

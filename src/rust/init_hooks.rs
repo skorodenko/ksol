@@ -1,5 +1,5 @@
 use crate::rust::settings::{InternalSettings, Settings};
-use log;
+use tracing;
 use std::{fs::File, io::Write};
 use tinytemplate::TinyTemplate;
 
@@ -26,7 +26,7 @@ struct TemplateData {
 }
 
 pub fn init_native_mpd_config(s: Settings, is: InternalSettings) {
-    log::debug!("Init native mpd config");
+    tracing::debug!("Init native mpd config");
     let mut tt = TinyTemplate::new();
     tt.add_template("mpd_config", MPD_CONFIG_TEMPLATE).unwrap();
     let data = TemplateData { s, is };
@@ -35,6 +35,6 @@ pub fn init_native_mpd_config(s: Settings, is: InternalSettings) {
         Ok(mut file) => {
             let _ = file.write_all(render.as_bytes());
         }
-        Err(_) => log::debug!("MPD config file exists"),
+        Err(_) => tracing::debug!("MPD config file exists"),
     }
 }

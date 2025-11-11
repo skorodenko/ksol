@@ -2,13 +2,15 @@ extern crate ksol;
 
 use cxx_qt_lib::{QQmlApplicationEngine, QQuickStyle, QString, QUrl};
 use cxx_qt_lib_extras::QApplication;
-use log::{LevelFilter, debug};
 use std::env;
+use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
+#[tracing::instrument(level = "debug", name = "ksol")]
 fn main() {
-    env_logger::builder().filter_level(LevelFilter::Debug).init();
+    let filter = EnvFilter::from_default_env().add_directive("mpd_protocol=error".parse().unwrap());
+    tracing_subscriber::registry().with(fmt::layer()).with(filter).init();
 
-    debug!("Starting application");
+    tracing::debug!("Starting application");
 
     let mut app = QApplication::new();
     let mut engine = QQmlApplicationEngine::new();
@@ -29,6 +31,6 @@ fn main() {
         app.exec();
     }
 
-    debug!("Application closing");
+    tracing::debug!("Application closing");
     ksol::rust::settings::Settings::dump();
 }
