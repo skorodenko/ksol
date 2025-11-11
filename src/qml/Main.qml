@@ -409,7 +409,7 @@ Kirigami.ApplicationWindow {
         PlaylistHeader {
             id: qplaylist_header
 
-            implicitHeight: 18
+            implicitHeight: 22
             anchors.top: infoMessage.bottom
             anchors.left: parent.left
             anchors.right: scrollBar.left

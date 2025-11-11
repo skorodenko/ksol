@@ -118,7 +118,7 @@ Item {
 
         handle: Rectangle {
             id: handleRect
-            implicitWidth: 2
+            implicitWidth: 1
             color: "#595d61"
 
             containmentMask: Item {
@@ -157,6 +157,7 @@ Item {
                     horizontalAlignment: Qt.AlignLeft
                     anchors.left: delegate.left
                     anchors.right: sortIndicator.left
+                    anchors.verticalCenter: delegate.verticalCenter
                     anchors.leftMargin: Kirigami.Units.smallSpacing
                     text: root.model.headerData(delegate.index, Qt.Horizontal, QPlaylistModel.ColumnName)
                 }
@@ -204,6 +205,14 @@ Item {
                             }
                         }
                     ]
+                }
+
+                Rectangle {
+                    implicitHeight: 1
+                    color: "#595d61"
+                    anchors.left: delegate.left
+                    anchors.right: delegate.right
+                    anchors.bottom: delegate.bottom
                 }
             }
         }
