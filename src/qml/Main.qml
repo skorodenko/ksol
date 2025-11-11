@@ -446,10 +446,7 @@ Kirigami.ApplicationWindow {
         Image {
             id: tableBackground
             visible: false
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: qplaylist_header.bottom
-            anchors.bottom: parent.bottom
+            anchors.fill: parent
             fillMode: Image.PreserveAspectCrop
         }
 
@@ -585,6 +582,13 @@ Kirigami.ApplicationWindow {
                 Layout.alignment: Qt.AlignLeft
                 Layout.preferredWidth: parent.width
                 Layout.preferredHeight: parent.height
+
+                onTextEdited: {
+                    qplaylist_view.selectionModel.setCurrentIndex(qplaylist.index(0, 0), ItemSelectionModel.Rows);
+                    qplaylist_view.selectionTimeout = true;
+                    selectionTimeoutTimer.restart();
+                }
+
                 Keys.onPressed: function (event) {
                     if (!(event.key > Qt.Key_Space || event.key < Qt.Key_AsciiTilde || event.key === Qt.Key_Backspace)) {
                         event.accepted = true;
