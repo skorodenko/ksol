@@ -41,6 +41,7 @@ pub enum MPSCCommand {
     IdlePlayer,
     IdleQueue,
     IdleOptions,
+    IdleTimeline,
 }
 
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, EnumIter, FromPrimitive, ToPrimitive, Copy, Clone, Debug)]
