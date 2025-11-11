@@ -741,7 +741,7 @@ impl qobject::QMPDConnector {
 
     pub fn connect(self: Pin<&mut Self>) {
         tracing::debug!("Connecting to mpd");
-        self.connection_update(QString::from("connecting"));
+        self.connection_update(QString::from("disconnected"));
     }
 }
 
