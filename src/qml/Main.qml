@@ -426,6 +426,7 @@ Kirigami.ApplicationWindow {
 
         QQC2.ScrollBar {
             id: scrollBar
+            clip: true
             width: visible ? implicitWidth : 0
             anchors.top: infoMessage.bottom
             anchors.right: parent.right
@@ -445,7 +446,10 @@ Kirigami.ApplicationWindow {
         Image {
             id: tableBackground
             visible: false
-            anchors.fill: qplaylist_view
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: qplaylist_header.bottom
+            anchors.bottom: parent.bottom
             fillMode: Image.PreserveAspectCrop
         }
 
