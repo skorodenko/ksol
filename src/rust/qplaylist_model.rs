@@ -119,13 +119,13 @@ mod qobject {
 
 use qobject::*;
 
-use crate::rust::entities::{ColumnSort, QSong, SongField};
+use crate::rust::entities::{QSong, SongField};
 use crate::rust::settings::Settings;
 use bincode::config;
-use bincode::serde::{decode_from_slice, encode_to_vec};
+use bincode::serde::decode_from_slice;
 use core::pin::Pin;
 use cxx_qt::CxxQtType;
-use num_traits::{FromPrimitive, ToPrimitive};
+use num_traits::FromPrimitive;
 use regex;
 
 #[derive(Default)]
