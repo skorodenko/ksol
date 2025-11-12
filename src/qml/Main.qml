@@ -445,6 +445,10 @@ Kirigami.ApplicationWindow {
 
         Image {
             id: tableBackground
+            cache: false
+            asynchronous: true
+            retainWhileLoading: true
+            mipmap: true
             visible: false
             anchors.fill: parent
             fillMode: Image.PreserveAspectCrop
