@@ -701,9 +701,9 @@ impl qobject::QMPDConnector {
         let mut retcount = 3;
         let rt_idle = &self.rt_idle;
         rt_idle.spawn(async move {
-            let settings = Settings::load().read().await;
-            tracing::debug!("Connecting to server {}", settings.mpd_socket);
             let (state, mpd_client, mpd_idle) = loop {
+                let settings = Settings::load().read().await;
+                tracing::debug!("Trying to connect to server {}", settings.mpd_socket);
                 tokio::select! {
                     Ok(connection) = TcpStream::connect(&settings.mpd_socket) => {
                         let client = ClientController::connect(connection).await.expect("failed to init controller");
@@ -765,7 +765,6 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                     qobject.as_mut().connection_update(QString::from("connecting"));
                 }
                 "connected" => {
-                    tracing::debug!("Connected to server");
                     let (tx_actions, rx_actions) = tokio::sync::mpsc::channel(64);
                     qobject.as_mut().rust_mut().tx_actions = Some(tx_actions);
                     qobject.as_mut().rust_mut().rx_actions = Some(rx_actions);
