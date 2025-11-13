@@ -132,7 +132,7 @@ use regex;
 pub struct PlaylistModel {
     pub filter: String,
     pub queue: Vec<QSong>,
-    queue_proxy: Vec<QSong>,
+    queue_proxy: Vec<usize>,
     pub active_song_id: u64,
 }
 
@@ -162,29 +162,32 @@ impl qobject::QPlaylistModel {
                 let row = index.row() as usize;
                 let column = index.column();
                 let sf = SongField::from_i32(column).unwrap();
-                let qsong: QSong = self.queue_proxy.get(row).unwrap().clone();
-                let field: String = match sf {
-                    SongField::Track => format!("{}", qsong.track),
-                    SongField::Title => qsong.title,
-                    SongField::Artist => qsong.artist,
-                    SongField::Album => qsong.album,
-                    SongField::Date => qsong.date.to_string(),
-                    SongField::Genre => qsong.genre,
-                    SongField::Disc => format!("{}", qsong.disc),
-                    SongField::Composer => qsong.composer,
-                    SongField::Albumartist => String::default(),
-                    SongField::File => qsong.file,
-                    SongField::Format => qsong.format,
-                    SongField::Lastmodified => qsong.lastmodified,
-                    SongField::Duration => format!("{:0>2}:{:0>2}", qsong.duration.as_secs() / 60, qsong.duration.as_secs() % 60),
-                    SongField::Directory => qsong.directory,
+                let index = self.queue_proxy[row];
+                let qsong = &self.queue[index];
+                let field = match sf {
+                    SongField::Track => &format!("{}", qsong.track),
+                    SongField::Title => &qsong.title,
+                    SongField::Artist => &qsong.artist,
+                    SongField::Album => &qsong.album,
+                    SongField::Date => &qsong.date.to_string(),
+                    SongField::Genre => &qsong.genre,
+                    SongField::Disc => &format!("{}", qsong.disc),
+                    SongField::Composer => &qsong.composer,
+                    SongField::Albumartist => &String::default(),
+                    SongField::File => &qsong.file,
+                    SongField::Format => &qsong.format,
+                    SongField::Lastmodified => &qsong.lastmodified,
+                    SongField::Duration => {
+                        &format!("{:0>2}:{:0>2}", qsong.duration.as_secs() / 60, qsong.duration.as_secs() % 60)
+                    }
+                    SongField::Directory => &qsong.directory,
                 };
                 QVariant::from(&QString::from(field))
             }
             QPlaylistRoles::SongId => {
                 let row = index.row() as usize;
-                let qsong: QSong = self.queue_proxy.get(row).unwrap().clone();
-                QVariant::from(&qsong.id)
+                let index = self.queue_proxy[row];
+                QVariant::from(&self.queue[index].id)
             }
             _ => QVariant::default(),
         }
@@ -204,8 +207,8 @@ impl qobject::QPlaylistModel {
     fn set_queue(mut self: Pin<&mut QPlaylistModel>, value: QByteArray) {
         let (value, _): (Vec<QSong>, usize) = decode_from_slice(value.as_slice(), config::standard()).unwrap();
         self.as_mut().begin_reset_model();
-        self.as_mut().rust_mut().queue = value.clone();
-        self.as_mut().rust_mut().queue_proxy = value;
+        self.as_mut().rust_mut().queue = value;
+        self.as_mut().rust_mut().queue_proxy = (0..self.queue.len()).collect();
         self.as_mut().end_reset_model();
         self.as_mut().update_filter();
     }
@@ -239,13 +242,14 @@ impl qobject::QPlaylistModel {
 impl cxx_qt::Initialize for qobject::QPlaylistModel {
     fn initialize(self: Pin<&mut Self>) {
         self.on_update_filter(|mut qobject| {
-            let queue = qobject.as_ref().rust().queue.clone();
-            let filter = qobject.as_ref().rust().filter.clone();
-            let filter = regex::escape(&filter);
+            let filter = regex::escape(&qobject.filter);
             let pattern = regex::RegexBuilder::new(&filter).case_insensitive(true).build().unwrap();
+            let proxy: Vec<usize> = (0..qobject.queue.len()).collect();
             qobject.as_mut().layout_about_to_be_changed();
-            qobject.as_mut().rust_mut().queue_proxy =
-                queue.clone().into_iter().filter(|x| pattern.is_match(&x.title) || pattern.is_match(&x.artist)).collect();
+            qobject.as_mut().rust_mut().queue_proxy = proxy
+                .into_iter()
+                .filter(|&x| pattern.is_match(&qobject.queue[x].title) || pattern.is_match(&qobject.queue[x].artist))
+                .collect();
             qobject.as_mut().layout_changed();
         })
         .release();

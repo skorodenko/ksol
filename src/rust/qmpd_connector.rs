@@ -121,18 +121,16 @@ use bincode::serde::encode_to_vec;
 use core::pin::Pin;
 use cxx_qt::{CxxQtType, Threading};
 use mpd_client::client::{ConnectionEvent, Subsystem};
-use mpd_client::{
-    ClientController, ClientIdler, commands, filter::Filter, responses::PlayState, responses::Song, tag::Tag,
-};
+use mpd_client::{ClientController, ClientIdler, commands, filter::Filter, responses::PlayState, responses::Song, tag::Tag};
 use num_traits::FromPrimitive;
 use std::cmp::Reverse;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
+use std::sync::Arc;
 use tokio::net::{TcpStream, UnixStream};
 use tokio::runtime::{Builder, Runtime};
-use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::Notify;
-use std::sync::Arc;
+use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::time::Duration;
 use tracing;
 use which::which;
@@ -334,36 +332,36 @@ impl qobject::QMPDConnector {
                                 match sort_order {
                                     ColumnSort::Inactive => (),
                                     ColumnSort::Ascending(col) => match col {
-                                        SongField::Track => songs.sort_by_key(|k| k.clone().track),
-                                        SongField::Title => songs.sort_by_key(|k| k.clone().title),
-                                        SongField::Artist => songs.sort_by_key(|k| k.clone().artist),
-                                        SongField::Album => songs.sort_by_key(|k| k.clone().album),
-                                        SongField::Date => songs.sort_by_key(|k| k.clone().date),
-                                        SongField::Genre => songs.sort_by_key(|k| k.clone().genre),
-                                        SongField::Disc => songs.sort_by_key(|k| k.clone().disc),
-                                        SongField::Composer => songs.sort_by_key(|k| k.clone().composer),
-                                        SongField::Albumartist => songs.sort_by_key(|k| k.clone().artist),
-                                        SongField::File => songs.sort_by_key(|k| k.clone().file),
-                                        SongField::Format => songs.sort_by_key(|k| k.clone().format),
-                                        SongField::Lastmodified => songs.sort_by_key(|k| k.clone().lastmodified),
-                                        SongField::Duration => songs.sort_by_key(|k| k.clone().duration),
-                                        SongField::Directory => songs.sort_by_key(|k| k.clone().directory),
+                                        SongField::Track => songs.sort_by(|a, b| a.track.cmp(&b.track)),
+                                        SongField::Title => songs.sort_by(|a, b| a.title.cmp(&b.title)),
+                                        SongField::Artist => songs.sort_by(|a, b| a.artist.cmp(&b.artist)),
+                                        SongField::Album => songs.sort_by(|a, b| a.album.cmp(&b.album)),
+                                        SongField::Date => songs.sort_by(|a, b| a.date.cmp(&b.date)),
+                                        SongField::Genre => songs.sort_by(|a, b| a.genre.cmp(&b.genre)),
+                                        SongField::Disc => songs.sort_by(|a, b| a.disc.cmp(&b.disc)),
+                                        SongField::Composer => songs.sort_by(|a, b| a.composer.cmp(&b.composer)),
+                                        SongField::Albumartist => songs.sort_by(|a, b| a.artist.cmp(&b.artist)),
+                                        SongField::File => songs.sort_by(|a, b| a.file.cmp(&b.file)),
+                                        SongField::Format => songs.sort_by(|a, b| a.format.cmp(&b.format)),
+                                        SongField::Lastmodified => songs.sort_by(|a, b| a.lastmodified.cmp(&b.lastmodified)),
+                                        SongField::Duration => songs.sort_by(|a, b| a.duration.cmp(&b.duration)),
+                                        SongField::Directory => songs.sort_by(|a, b| a.directory.cmp(&b.directory)),
                                     },
                                     ColumnSort::Descending(col) => match col {
-                                        SongField::Track => songs.sort_by_key(|k| Reverse(k.clone().track)),
-                                        SongField::Title => songs.sort_by_key(|k| Reverse(k.clone().title)),
-                                        SongField::Artist => songs.sort_by_key(|k| Reverse(k.clone().artist)),
-                                        SongField::Album => songs.sort_by_key(|k| Reverse(k.clone().album)),
-                                        SongField::Date => songs.sort_by_key(|k| Reverse(k.clone().date)),
-                                        SongField::Genre => songs.sort_by_key(|k| Reverse(k.clone().genre)),
-                                        SongField::Disc => songs.sort_by_key(|k| Reverse(k.clone().disc)),
-                                        SongField::Composer => songs.sort_by_key(|k| Reverse(k.clone().composer)),
-                                        SongField::Albumartist => songs.sort_by_key(|k| Reverse(k.clone().artist)),
-                                        SongField::File => songs.sort_by_key(|k| Reverse(k.clone().file)),
-                                        SongField::Format => songs.sort_by_key(|k| Reverse(k.clone().format)),
-                                        SongField::Lastmodified => songs.sort_by_key(|k| Reverse(k.clone().lastmodified)),
-                                        SongField::Duration => songs.sort_by_key(|k| Reverse(k.clone().duration)),
-                                        SongField::Directory => songs.sort_by_key(|k| Reverse(k.clone().directory)),
+                                        SongField::Track => songs.sort_by(|b, a| a.track.cmp(&b.track)),
+                                        SongField::Title => songs.sort_by(|b, a| a.title.cmp(&b.title)),
+                                        SongField::Artist => songs.sort_by(|b, a| a.artist.cmp(&b.artist)),
+                                        SongField::Album => songs.sort_by(|b, a| a.album.cmp(&b.album)),
+                                        SongField::Date => songs.sort_by(|b, a| a.date.cmp(&b.date)),
+                                        SongField::Genre => songs.sort_by(|b, a| a.genre.cmp(&b.genre)),
+                                        SongField::Disc => songs.sort_by(|b, a| a.disc.cmp(&b.disc)),
+                                        SongField::Composer => songs.sort_by(|b, a| a.composer.cmp(&b.composer)),
+                                        SongField::Albumartist => songs.sort_by(|b, a| a.artist.cmp(&b.artist)),
+                                        SongField::File => songs.sort_by(|b, a| a.file.cmp(&b.file)),
+                                        SongField::Format => songs.sort_by(|b, a| a.format.cmp(&b.format)),
+                                        SongField::Lastmodified => songs.sort_by(|b, a| a.lastmodified.cmp(&b.lastmodified)),
+                                        SongField::Duration => songs.sort_by(|b, a| a.duration.cmp(&b.duration)),
+                                        SongField::Directory => songs.sort_by(|b, a| a.directory.cmp(&b.directory)),
                                     },
                                 };
                                 let move_commands: Vec<commands::Move> = songs

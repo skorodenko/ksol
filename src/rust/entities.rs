@@ -73,22 +73,21 @@ pub enum ColumnSort {
 
 impl From<SongInQueue> for QSong {
     fn from(value: SongInQueue) -> Self {
-        let song = value.song;
         Self {
             id: value.id.0,
-            track: song.tags.get(&Tag::Track).unwrap_or(&vec![]).join(",").parse().unwrap_or(0),
-            disc: song.tags.get(&Tag::Disc).unwrap_or(&vec![]).join(",").parse().unwrap_or(0),
-            title: song.tags.get(&Tag::Title).unwrap_or(&vec![]).join(","),
-            artist: song.tags.get(&Tag::Artist).unwrap_or(&vec![]).join(","),
-            album: song.tags.get(&Tag::Album).unwrap_or(&vec![]).join(","),
-            date: song.tags.get(&Tag::Date).unwrap_or(&vec![]).join(","),
-            genre: song.tags.get(&Tag::Genre).unwrap_or(&vec![]).join(","),
-            composer: song.tags.get(&Tag::Composer).unwrap_or(&vec![]).join(","),
-            file: song.url.clone(),
-            format: song.format.unwrap_or("".into()),
+            track: value.song.tags.get(&Tag::Track).unwrap_or(&vec![]).join(",").parse().unwrap_or(0),
+            disc: value.song.tags.get(&Tag::Disc).unwrap_or(&vec![]).join(",").parse().unwrap_or(0),
+            title: value.song.tags.get(&Tag::Title).unwrap_or(&vec![]).join(","),
+            artist: value.song.tags.get(&Tag::Artist).unwrap_or(&vec![]).join(","),
+            album: value.song.tags.get(&Tag::Album).unwrap_or(&vec![]).join(","),
+            date: value.song.tags.get(&Tag::Date).unwrap_or(&vec![]).join(","),
+            genre: value.song.tags.get(&Tag::Genre).unwrap_or(&vec![]).join(","),
+            composer: value.song.tags.get(&Tag::Composer).unwrap_or(&vec![]).join(","),
+            file: value.song.url.clone(),
+            format: value.song.format.unwrap_or("".into()),
             lastmodified: "".into(),
-            duration: song.duration.unwrap_or_default(),
-            directory: Path::new(&song.url).parent().unwrap_or(Path::new("Root")).to_str().unwrap().to_string(),
+            duration: value.song.duration.unwrap_or_default(),
+            directory: Path::new(&value.song.url).parent().unwrap_or(Path::new("Root")).to_str().unwrap_or_default().to_string(),
         }
     }
 }

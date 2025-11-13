@@ -82,7 +82,7 @@ use qobject::*;
 pub struct PlaylistsListModel {
     pub filter: String,
     pub queue: Vec<String>,
-    queue_proxy: Vec<String>,
+    queue_proxy: Vec<usize>,
 }
 
 impl qobject::QPlaylistsListModel {
@@ -98,9 +98,9 @@ impl qobject::QPlaylistsListModel {
 
     pub fn data(&self, index: &QModelIndex, role: i32) -> QVariant {
         let role = QPlaylistsListRoles { repr: role };
-        let name = self.queue_proxy.get(index.row() as usize).unwrap();
+        let index = self.queue_proxy[index.row() as usize];
         match role {
-            QPlaylistsListRoles::Name => (&QString::from(name)).into(),
+            QPlaylistsListRoles::Name => (&QString::from(&self.queue[index])).into(),
             _ => QVariant::default(),
         }
     }
@@ -124,12 +124,14 @@ impl qobject::QPlaylistsListModel {
 impl cxx_qt::Initialize for qobject::QPlaylistsListModel {
     fn initialize(self: Pin<&mut Self>) {
         self.on_update(|mut qobject| {
-            let queue = qobject.as_ref().rust().queue.clone();
-            let filter = qobject.as_ref().rust().filter.clone();
-            let filter = regex::escape(&filter);
+            let filter = regex::escape(&qobject.filter);
             let pattern = regex::RegexBuilder::new(&filter).case_insensitive(true).build().unwrap();
+            let proxy: Vec<usize> = (0..qobject.queue.len()).collect();
             qobject.as_mut().layout_about_to_be_changed();
-            qobject.as_mut().rust_mut().queue_proxy = queue.into_iter().filter(|x| pattern.is_match(x)).collect();
+            qobject.as_mut().rust_mut().queue_proxy = proxy
+                .into_iter()
+                .filter(|&x| pattern.is_match(&qobject.queue[x]) || pattern.is_match(&qobject.queue[x]))
+                .collect();
             qobject.as_mut().layout_changed();
         })
         .release();
