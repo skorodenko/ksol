@@ -39,6 +39,8 @@ Kirigami.ApplicationWindow {
     Shortcut {
         sequences: ["Escape"]
         onActivated: function () {
+            qplaylist_view.selectionTimeout = false;
+            selectionTimeoutTimer.stop();
             filterSearchBox.visible = false;
             drun.visible = false;
         }
