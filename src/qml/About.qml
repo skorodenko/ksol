@@ -18,21 +18,18 @@ Kirigami.Dialog {
 
     Kirigami.AboutPage {
         aboutData: {
-            "displayName": "KirigamiApp",
-            "productName": "kirigami/app",
-            "componentName": "kirigamiapp",
-            "shortDescription": "A Kirigami example",
+            "displayName": "Ksol",
+            "productName": "skorodenko/ksol",
+            "shortDescription": "Lightweight, keyboard oriented Rust+Qtquick mpd client",
             "homepage": "",
-            "bugAddress": "submit@bugs.kde.org",
-            "version": "5.14.80",
+            "bugAddress": "",
+            "version": "1.0",
             "otherText": "",
             "authors": [
                 {
-                    "name": "...",
-                    "task": "",
-                    "emailAddress": "somebody@kde.org",
-                    "webAddress": "",
-                    "ocsUsername": ""
+                    "name": "skorodenko",
+                    "task": "Main developer",
+                    "emailAddress": "mskorodenko@gmail.com",
                 }
             ],
             "credits": [],
@@ -45,7 +42,7 @@ Kirigami.Dialog {
                 }
             ],
             "copyrightStatement": "© 2010-2018 Plasma Development Team",
-            "desktopFileName": "org.kde.kirigamiapp"
+            "desktopFileName": "github.skorodenko.ksol"
         }
     }
 }

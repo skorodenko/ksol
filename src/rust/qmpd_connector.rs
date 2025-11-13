@@ -123,7 +123,6 @@ use cxx_qt::{CxxQtType, Threading};
 use mpd_client::client::{ConnectionEvent, Subsystem};
 use mpd_client::{ClientController, ClientIdler, commands, filter::Filter, responses::PlayState, responses::Song, tag::Tag};
 use num_traits::FromPrimitive;
-use std::cmp::Reverse;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
 use std::sync::Arc;
