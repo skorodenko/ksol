@@ -73,7 +73,6 @@ impl Default for InternalSettings {
         let app_config = xdg_dirs.get_config_home().unwrap();
         let app_cache = xdg_dirs.get_cache_home().unwrap();
         let app_data = xdg_dirs.get_data_home().unwrap();
-        let mpd_config = app_config.join("mpd");
         let mpd_data = app_data.join("mpd");
 
         Self {
@@ -83,7 +82,7 @@ impl Default for InternalSettings {
             app_config_file: app_config.join("settings.toml").to_str().unwrap().to_string(),
             mpd_binary: which("mpd").unwrap_or_default(),
             native_socket: mpd_data.join("socket").to_str().unwrap().to_string(),
-            native_config: mpd_config.join("mpd.conf").to_str().unwrap().to_string(),
+            native_config: mpd_data.join("mpd.conf").to_str().unwrap().to_string(),
         }
     }
 }

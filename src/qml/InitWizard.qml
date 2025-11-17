@@ -51,18 +51,6 @@ Window {
         }
     }
 
-    Connections {
-        target: QSettingsModel
-
-        function onCheckServerConnectionResult(result) {
-            infoMessage.visible = false;
-            infoMessage.visible = true;
-            infoMessage.text = result ? "Successfully connected to server" : "Failed to connect to server";
-            infoMessage.type = result ? Kirigami.MessageType.Positive : Kirigami.MessageType.Error;
-            nextButton.enabled = result;
-        }
-    }
-
     Kirigami.InlineMessage {
         id: infoMessage
 
@@ -189,7 +177,14 @@ Window {
                     anchors.topMargin: Kirigami.Units.largeSpacing
                     anchors.right: parent.right
                     text: "Check connection"
-                    onClicked: QSettingsModel.checkServerConnection(root.customServerUrl)
+                    onClicked: {
+                        var result = QSettingsModel.checkServerConnection(root.customServerUrl);
+                        infoMessage.visible = false;
+                        infoMessage.visible = true;
+                        infoMessage.text = result ? "Successfully connected to server" : "Failed to connect to server";
+                        infoMessage.type = result ? Kirigami.MessageType.Positive : Kirigami.MessageType.Error;
+                        nextButton.enabled = result;
+                    }
                 }
             }
         }

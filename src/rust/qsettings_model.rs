@@ -32,10 +32,6 @@ mod qobject {
         #[cxx_name = "updateSortColumn"]
         fn update_sort_column(self: Pin<&mut QSettingsModel>);
 
-        #[qsignal]
-        #[cxx_name = "checkServerConnectionResult"]
-        fn check_server_connection_result(self: Pin<&mut QSettingsModel>, result: bool);
-
         #[qinvokable]
         fn get_mpd_socket(self: Pin<&mut QSettingsModel>) -> QString;
 
@@ -82,7 +78,7 @@ mod qobject {
 
         #[qinvokable]
         #[cxx_name = "checkServerConnection"]
-        fn check_server_connection(self: Pin<&mut QSettingsModel>, url: QString);
+        fn check_server_connection(self: Pin<&mut QSettingsModel>, url: QString) -> bool;
     }
 }
 
@@ -190,10 +186,10 @@ impl qobject::QSettingsModel {
         isettings.mpd_binary.exists()
     }
 
-    pub fn check_server_connection(self: Pin<&mut QSettingsModel>, url: QString) {
+    pub fn check_server_connection(self: Pin<&mut QSettingsModel>, url: QString) -> bool {
         match UnixStream::connect(url.to_string()) {
-            Ok(_) => self.check_server_connection_result(true),
-            Err(_) => self.check_server_connection_result(false),
+            Ok(_) => true,
+            Err(_) => false,
         }
     }
 }

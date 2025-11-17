@@ -718,7 +718,7 @@ impl qobject::QMPDConnector {
                         tracing::debug!("Succesfully connected to MPD server (unix_socket)");
                         break ("connected", Some(client), Some(idle));
                     },
-                    () = tokio::time::sleep(tokio::time::Duration::from_millis(40)) => {
+                    () = tokio::time::sleep(tokio::time::Duration::from_millis(65)) => {
                         retcount -= 1;
                         if retcount <= 0 {
                             tracing::error!("Failed to connect to MPD server");
