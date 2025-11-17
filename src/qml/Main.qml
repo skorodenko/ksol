@@ -414,7 +414,7 @@ Kirigami.ApplicationWindow {
             implicitHeight: 22
             anchors.top: infoMessage.bottom
             anchors.left: parent.left
-            anchors.right: scrollBar.left
+            anchors.right: parent.right
             z: 1
 
             model: qplaylist
@@ -430,7 +430,7 @@ Kirigami.ApplicationWindow {
             id: scrollBar
             clip: true
             width: visible ? implicitWidth : 0
-            anchors.top: infoMessage.bottom
+            anchors.top: qplaylist_header.bottom
             anchors.right: parent.right
             anchors.bottom: filterSearchBox.top
             orientation: Qt.Vertical
@@ -452,7 +452,7 @@ Kirigami.ApplicationWindow {
             retainWhileLoading: true
             mipmap: true
             visible: false
-            anchors.fill: parent
+            anchors.fill: qplaylist_view
             fillMode: Image.PreserveAspectCrop
         }
 
@@ -463,6 +463,7 @@ Kirigami.ApplicationWindow {
             anchors.left: parent.left
             anchors.right: scrollBar.left
             anchors.bottom: filterSearchBox.top
+            anchors.topMargin: rowSpacing
             rowSpacing: Kirigami.Units.smallSpacing
 
             property bool selectionTimeout: false
@@ -506,7 +507,11 @@ Kirigami.ApplicationWindow {
 
             columnWidthProvider: function (column) {
                 var item = qplaylist_header.repeater.itemAt(column);
-                return item.visible ? item.width + 2 : 0; // 2 is splitter width (which is not acounted in delegate width)
+                if (column == qplaylist_header.lastVisibleColumn) {
+                    return item.width + 2 - scrollBar.width
+                } else {
+                    return item.visible ? item.width + 2 : 0; // 2 is splitter width (which is not acounted in delegate width)
+                }
             }
 
             selectionModel: ItemSelectionModel {}

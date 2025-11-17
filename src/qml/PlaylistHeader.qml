@@ -71,8 +71,7 @@ Item {
 
     function updateFirstVisibleColumn() {
         for (var i = 0; i < root.columnCount; i++) {
-            var itemDelegate = repeater.itemAt(i);
-            if (itemDelegate.visible) {
+            if (QSettingsModel.getColumnWidth(i) != 0.0) {
                 return i;
             }
         }
@@ -81,8 +80,7 @@ Item {
 
     function updateLastVisibleColumn() {
         for (var i = root.columnCount - 1; i > 0; i--) {
-            var itemDelegate = repeater.itemAt(i);
-            if (itemDelegate.visible) {
+            if (QSettingsModel.getColumnWidth(i) != 0.0) {
                 return i;
             }
         }
@@ -92,8 +90,7 @@ Item {
     function visibleColumnCount() {
         var k = 0;
         for (var i = 0; i < root.columnCount; i++) {
-            var itemDelegate = repeater.itemAt(i);
-            if (itemDelegate.visible) {
+            if (QSettingsModel.getColumnWidth(i) != 0.0) {
                 k++;
             }
         }

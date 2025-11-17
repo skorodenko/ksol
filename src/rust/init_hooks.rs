@@ -1,7 +1,7 @@
 use crate::rust::settings::{InternalSettings, Settings};
-use tracing;
 use std::{fs::File, io::Write};
 use tinytemplate::TinyTemplate;
+use tracing;
 
 static MPD_CONFIG_TEMPLATE: &str = r#"
 music_directory "{s.native_music_dir}"
@@ -10,13 +10,13 @@ bind_to_address "{is.app_data_dir}mpd/socket"
 db_file "{is.app_cache_dir}mpd/tag_cache"
 pid_file "{is.app_cache_dir}mpd/pid"
 state_file "{is.app_cache_dir}mpd/state"
+audio_buffer_size "8192"
 log_file "/dev/null"
+restore_paused "yes"
 audio_output \{
     type "pipewire"
-    name "ksol"
+    name "Ksol"
 }
-audio_buffer_size "8192"
-restore_paused "yes"
 "#;
 
 #[derive(serde::Serialize, serde::Deserialize)]
