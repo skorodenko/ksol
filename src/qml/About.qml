@@ -20,6 +20,7 @@ Kirigami.Dialog {
         aboutData: {
             "displayName": "Ksol",
             "productName": "skorodenko/ksol",
+            "componentName": "ksol",
             "shortDescription": "Lightweight, keyboard oriented Rust+Qtquick mpd client",
             "homepage": "",
             "bugAddress": "",
@@ -30,6 +31,8 @@ Kirigami.Dialog {
                     "name": "skorodenko",
                     "task": "Main developer",
                     "emailAddress": "mskorodenko@gmail.com",
+                    "webAddress": "",
+                    "ocsUsername": ""
                 }
             ],
             "credits": [],
