@@ -131,6 +131,7 @@ use tokio::runtime::{Builder, Runtime};
 use tokio::sync::Notify;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::time::Duration;
+use tokio_util::sync::CancellationToken;
 use tracing;
 use which::which;
 
@@ -138,6 +139,7 @@ pub struct MPDConnector {
     pub client: Option<ClientController>,
     pub idle_client: Option<ClientIdler>,
     pub server: Option<Child>,
+    pub cancel: Option<CancellationToken>,
     pub repeat: bool,
     pub single: bool,
     pub shuffle: bool,
@@ -151,6 +153,7 @@ impl qobject::QMPDConnector {
     fn idle(mut self: Pin<&mut QMPDConnector>) {
         let mut mpd_idle = self.as_mut().rust_mut().idle_client.take();
         let qt_thread = self.qt_thread();
+        let cancel_token = self.cancel.clone().expect("Cancel token is None");
         let tx_actions = self.tx_actions.clone();
         let rt_idle = &self.rt_idle;
         tracing::debug!("Starting idle");
@@ -216,6 +219,10 @@ impl qobject::QMPDConnector {
                             tracing::warn!("Connection not available (timeline)");
                         }
                     },
+                    _ = cancel_token.cancelled() => {
+                        tracing::warn!("Gracefully closing idle task");
+                        break;
+                    },
                 };
             }
         });
@@ -246,285 +253,294 @@ impl qobject::QMPDConnector {
     fn init_actions(mut self: Pin<&mut Self>) {
         let mut rx_actions = self.as_mut().rust_mut().rx_actions.take();
         let mpd_client = self.client.clone().expect("mpd client is None");
+        let cancel_token = self.cancel.clone().expect("Cancel token is None");
         let qt_thread = self.qt_thread();
         let rt_action = &self.rt_action;
         tracing::debug!("Starting init_actions");
         rt_action.spawn(async move {
             let rx_actions = rx_actions.as_mut().expect("actions reciever is None");
             loop {
-                match rx_actions.recv().await {
-                    Some(MPSCCommand::Next) => {
-                        let command = commands::Next;
-                        let _ = mpd_client.command(command).await;
-                    }
-                    Some(MPSCCommand::Previous) => {
-                        let command = commands::Previous;
-                        let _ = mpd_client.command(command).await;
-                    }
-                    Some(MPSCCommand::PlaySong(id)) => {
-                        let command = commands::Play::song(commands::SongId::from(id));
-                        let _ = mpd_client.command(command).await;
-                    }
-                    Some(MPSCCommand::PlayToggle) => {
-                        let command = commands::Status;
-                        match mpd_client.command(command).await {
-                            Ok(rsp) => match rsp.state {
-                                PlayState::Paused => {
-                                    let command = commands::SetPause(false);
-                                    let _ = mpd_client.command(command).await;
-                                }
-                                PlayState::Playing => {
-                                    let command = commands::SetPause(true);
-                                    let _ = mpd_client.command(command).await;
-                                }
-                                PlayState::Stopped => {
-                                    let command = commands::Play::current();
-                                    let _ = mpd_client.command(command).await;
-                                }
-                            },
-                            Err(e) => {
-                                tracing::error!("{}", e);
+                tokio::select! {
+                    response = rx_actions.recv() => {
+                        match response {
+                            Some(MPSCCommand::Next) => {
+                                let command = commands::Next;
+                                let _ = mpd_client.command(command).await;
                             }
-                        };
-                    }
-                    Some(MPSCCommand::UpdateDb) => {
-                        let command = commands::Update::new();
-                        let _ = mpd_client.command(command).await;
-                        let _ = qt_thread.queue(|mut qobject| {
-                            qobject.as_mut().db_updated(false);
-                        });
-                    }
-                    Some(MPSCCommand::GetPlaylists(group)) => {
-                        let group = Tag::from(group);
-                        let mut result: Vec<String> = match group {
-                            Tag::Other(value) if value == "Directory".into() => {
-                                let command = commands::ListDirs::root();
-                                if let Ok(rsp) = mpd_client.command(command).await {
-                                    rsp
-                                } else {
-                                    tracing::warn!("Connection not available");
-                                    vec![]
-                                }
+                            Some(MPSCCommand::Previous) => {
+                                let command = commands::Previous;
+                                let _ = mpd_client.command(command).await;
                             }
-                            _ => {
-                                let command = commands::List::new(group);
-                                if let Ok(rsp) = mpd_client.command(command).await {
-                                    rsp.values().map(|x| x.to_string()).collect()
-                                } else {
-                                    tracing::warn!("Connection not available");
-                                    vec![]
-                                }
+                            Some(MPSCCommand::PlaySong(id)) => {
+                                let command = commands::Play::song(commands::SongId::from(id));
+                                let _ = mpd_client.command(command).await;
                             }
-                        };
-                        result.sort();
-                        let bcode: &[u8] = &encode_to_vec(result, config::standard()).expect("failed to encode to bcode");
-                        let bcode = QByteArray::from(bcode);
-                        let _ = qt_thread.queue(|mut qobject| {
-                            qobject.as_mut().get_playlists_result(bcode);
-                        });
-                    }
-                    Some(MPSCCommand::SortPlaylist(sort_order)) => {
-                        let command = commands::Queue::all();
-                        match mpd_client.command(command).await {
-                            Ok(songs) => {
-                                let mut songs: Vec<QSong> = songs.into_iter().map(QSong::from).collect();
-                                match sort_order {
-                                    ColumnSort::Inactive => (),
-                                    ColumnSort::Ascending(col) => match col {
-                                        SongField::Track => songs.sort_by(|a, b| a.track.cmp(&b.track)),
-                                        SongField::Title => songs.sort_by(|a, b| a.title.cmp(&b.title)),
-                                        SongField::Artist => songs.sort_by(|a, b| a.artist.cmp(&b.artist)),
-                                        SongField::Album => songs.sort_by(|a, b| a.album.cmp(&b.album)),
-                                        SongField::Date => songs.sort_by(|a, b| a.date.cmp(&b.date)),
-                                        SongField::Genre => songs.sort_by(|a, b| a.genre.cmp(&b.genre)),
-                                        SongField::Disc => songs.sort_by(|a, b| a.disc.cmp(&b.disc)),
-                                        SongField::Composer => songs.sort_by(|a, b| a.composer.cmp(&b.composer)),
-                                        SongField::Albumartist => songs.sort_by(|a, b| a.artist.cmp(&b.artist)),
-                                        SongField::File => songs.sort_by(|a, b| a.file.cmp(&b.file)),
-                                        SongField::Format => songs.sort_by(|a, b| a.format.cmp(&b.format)),
-                                        SongField::Lastmodified => songs.sort_by(|a, b| a.lastmodified.cmp(&b.lastmodified)),
-                                        SongField::Duration => songs.sort_by(|a, b| a.duration.cmp(&b.duration)),
-                                        SongField::Directory => songs.sort_by(|a, b| a.directory.cmp(&b.directory)),
+                            Some(MPSCCommand::PlayToggle) => {
+                                let command = commands::Status;
+                                match mpd_client.command(command).await {
+                                    Ok(rsp) => match rsp.state {
+                                        PlayState::Paused => {
+                                            let command = commands::SetPause(false);
+                                            let _ = mpd_client.command(command).await;
+                                        }
+                                        PlayState::Playing => {
+                                            let command = commands::SetPause(true);
+                                            let _ = mpd_client.command(command).await;
+                                        }
+                                        PlayState::Stopped => {
+                                            let command = commands::Play::current();
+                                            let _ = mpd_client.command(command).await;
+                                        }
                                     },
-                                    ColumnSort::Descending(col) => match col {
-                                        SongField::Track => songs.sort_by(|b, a| a.track.cmp(&b.track)),
-                                        SongField::Title => songs.sort_by(|b, a| a.title.cmp(&b.title)),
-                                        SongField::Artist => songs.sort_by(|b, a| a.artist.cmp(&b.artist)),
-                                        SongField::Album => songs.sort_by(|b, a| a.album.cmp(&b.album)),
-                                        SongField::Date => songs.sort_by(|b, a| a.date.cmp(&b.date)),
-                                        SongField::Genre => songs.sort_by(|b, a| a.genre.cmp(&b.genre)),
-                                        SongField::Disc => songs.sort_by(|b, a| a.disc.cmp(&b.disc)),
-                                        SongField::Composer => songs.sort_by(|b, a| a.composer.cmp(&b.composer)),
-                                        SongField::Albumartist => songs.sort_by(|b, a| a.artist.cmp(&b.artist)),
-                                        SongField::File => songs.sort_by(|b, a| a.file.cmp(&b.file)),
-                                        SongField::Format => songs.sort_by(|b, a| a.format.cmp(&b.format)),
-                                        SongField::Lastmodified => songs.sort_by(|b, a| a.lastmodified.cmp(&b.lastmodified)),
-                                        SongField::Duration => songs.sort_by(|b, a| a.duration.cmp(&b.duration)),
-                                        SongField::Directory => songs.sort_by(|b, a| a.directory.cmp(&b.directory)),
-                                    },
+                                    Err(e) => {
+                                        tracing::error!("{}", e);
+                                    }
                                 };
-                                let move_commands: Vec<commands::Move> = songs
-                                    .iter()
-                                    .enumerate()
-                                    .map(|(i, x)| commands::Move::id(x.id.into()).to_position(i.into()))
-                                    .collect();
-                                let _ = mpd_client.command_list(move_commands).await;
                             }
-                            Err(e) => {
-                                tracing::error!("{}", e);
-                            }
-                        }
-                    }
-                    Some(MPSCCommand::StagePlaylist(name, group)) => {
-                        let tag = Tag::from(group);
-                        // Query playlist
-                        let songs: Vec<Song> = match tag {
-                            Tag::Other(value) if value == "Directory".into() => {
-                                let command = commands::ListAllIn::directory(&name);
-                                mpd_client.command(command).await.unwrap_or(Vec::default())
-                            }
-                            _ => {
-                                let filter = Filter::tag(tag, name);
-                                let command = commands::Find::new(filter);
-                                mpd_client.command(command).await.unwrap_or(Vec::default())
-                            }
-                        };
-                        // Clear current queue
-                        let clear_command = commands::ClearQueue;
-                        let _ = mpd_client.command(clear_command).await;
-                        // Populate new queue
-                        let add_commands: Vec<commands::Add> = songs.iter().map(|x| commands::Add::uri(x.url.as_str())).collect();
-                        let _ = mpd_client.command_list(add_commands).await;
-                    }
-                    Some(MPSCCommand::Seek(seek_to)) => {
-                        let command = commands::Seek(commands::SeekMode::Absolute(seek_to));
-                        let _ = mpd_client.command(command).await;
-                    }
-                    Some(MPSCCommand::ShuffleToggle(current_state)) => {
-                        let command = commands::SetRandom(!current_state);
-                        let _ = mpd_client.command(command).await;
-                    }
-                    Some(MPSCCommand::RepeatToggle(current_repeat, current_single)) => {
-                        match (current_repeat, current_single) {
-                            (false, false) | (false, true) => {
-                                let command = commands::SetRepeat(true);
+                            Some(MPSCCommand::UpdateDb) => {
+                                let command = commands::Update::new();
                                 let _ = mpd_client.command(command).await;
-                                let command = commands::SetSingle(commands::SingleMode::Disabled);
-                                let _ = mpd_client.command(command).await;
-                            }
-                            (true, false) => {
-                                let command = commands::SetRepeat(true);
-                                let _ = mpd_client.command(command).await;
-                                let command = commands::SetSingle(commands::SingleMode::Enabled);
-                                let _ = mpd_client.command(command).await;
-                            }
-                            (true, true) => {
-                                let command = commands::SetRepeat(false);
-                                let _ = mpd_client.command(command).await;
-                                let command = commands::SetSingle(commands::SingleMode::Disabled);
-                                let _ = mpd_client.command(command).await;
-                            }
-                        };
-                    }
-                    Some(MPSCCommand::IdlePlayer) => {
-                        let command = commands::Status;
-                        match mpd_client.command(command).await {
-                            Ok(rsp) => {
-                                let play_state = QString::from(format!("{:#?}", rsp.state));
-                                let (song_pos, song_id) = match rsp.current_song {
-                                    Some(song) => (song.0.0, song.1.0),
-                                    None => (0, 0),
-                                };
-                                let _ = qt_thread.queue(move |mut qobject| {
-                                    qobject.as_mut().play_state_changed(play_state);
-                                    qobject.as_mut().active_song_changed(song_pos, song_id);
+                                let _ = qt_thread.queue(|mut qobject| {
+                                    qobject.as_mut().db_updated(false);
                                 });
                             }
-                            Err(e) => {
-                                tracing::error!("{}", e);
-                            }
-                        };
-                    }
-                    Some(MPSCCommand::IdleQueue) => {
-                        // Propagate playlist to other components
-                        let command = commands::Queue::all();
-                        match mpd_client.command(command).await {
-                            Ok(rsp) => {
-                                let songs: Vec<QSong> = rsp.into_iter().map(QSong::from).collect();
-                                let bcode: &[u8] = &encode_to_vec(songs, config::standard()).expect("failed to encode to bcode");
+                            Some(MPSCCommand::GetPlaylists(group)) => {
+                                let group = Tag::from(group);
+                                let mut result: Vec<String> = match group {
+                                    Tag::Other(value) if value == "Directory".into() => {
+                                        let command = commands::ListDirs::root();
+                                        if let Ok(rsp) = mpd_client.command(command).await {
+                                            rsp
+                                        } else {
+                                            tracing::warn!("Connection not available");
+                                            vec![]
+                                        }
+                                    }
+                                    _ => {
+                                        let command = commands::List::new(group);
+                                        if let Ok(rsp) = mpd_client.command(command).await {
+                                            rsp.values().map(|x| x.to_string()).collect()
+                                        } else {
+                                            tracing::warn!("Connection not available");
+                                            vec![]
+                                        }
+                                    }
+                                };
+                                result.sort();
+                                let bcode: &[u8] = &encode_to_vec(result, config::standard()).expect("failed to encode to bcode");
                                 let bcode = QByteArray::from(bcode);
                                 let _ = qt_thread.queue(|mut qobject| {
-                                    qobject.as_mut().stage_playlist_result(bcode);
+                                    qobject.as_mut().get_playlists_result(bcode);
                                 });
                             }
-                            Err(e) => {
-                                tracing::error!("{}", e);
-                            }
-                        };
-                    }
-                    Some(MPSCCommand::IdleOptions) => {
-                        let command = commands::Status;
-                        match mpd_client.command(command).await {
-                            Ok(rsp) => {
-                                let repeat = rsp.repeat;
-                                let shuffle = rsp.random;
-                                let single = !matches!(rsp.single, commands::SingleMode::Disabled);
-                                let _ = qt_thread.queue(move |mut qobject| {
-                                    qobject.as_mut().rust_mut().repeat = repeat;
-                                    qobject.as_mut().rust_mut().single = single;
-                                    qobject.as_mut().rust_mut().shuffle = shuffle;
-                                    qobject.update_options();
-                                });
-                            }
-                            Err(e) => {
-                                tracing::error!("{}", e);
-                            }
-                        }
-                    }
-                    Some(MPSCCommand::IdleTimeline) => {
-                        let command = commands::Status;
-                        match mpd_client.command(command).await {
-                            Ok(rsp) => {
-                                let duration = rsp.duration.unwrap_or(Duration::new(0, 0));
-                                let elapsed = rsp.elapsed.unwrap_or(Duration::new(0, 0));
-                                let _ = qt_thread.queue(move |mut qobject| {
-                                    qobject.as_mut().timeline_update(duration.as_secs(), elapsed.as_secs());
-                                });
-                            }
-                            Err(e) => {
-                                tracing::error!("{}", e);
-                            }
-                        };
-                    }
-                    Some(MPSCCommand::UpdateArt) => {
-                        let command = commands::CurrentSong;
-                        if let Ok(Some(song)) = mpd_client.command(command).await {
-                            let command = commands::AlbumArtEmbedded::new(&song.song.url);
-                            if let Ok(Some(art)) = mpd_client.command(command).await {
-                                let mut image = art.data;
-                                let mut offset = image.len();
-                                let mime = art.mime.unwrap();
-                                while image.len() < art.size {
-                                    let command = commands::AlbumArtEmbedded::new(&song.song.url).offset(offset);
-                                    if let Ok(Some(art)) = mpd_client.command(command).await {
-                                        offset += art.data.len();
-                                        image.extend_from_slice(&art.data);
+                            Some(MPSCCommand::SortPlaylist(sort_order)) => {
+                                let command = commands::Queue::all();
+                                match mpd_client.command(command).await {
+                                    Ok(songs) => {
+                                        let mut songs: Vec<QSong> = songs.into_iter().map(QSong::from).collect();
+                                        match sort_order {
+                                            ColumnSort::Inactive => (),
+                                            ColumnSort::Ascending(col) => match col {
+                                                SongField::Track => songs.sort_by(|a, b| a.track.cmp(&b.track)),
+                                                SongField::Title => songs.sort_by(|a, b| a.title.cmp(&b.title)),
+                                                SongField::Artist => songs.sort_by(|a, b| a.artist.cmp(&b.artist)),
+                                                SongField::Album => songs.sort_by(|a, b| a.album.cmp(&b.album)),
+                                                SongField::Date => songs.sort_by(|a, b| a.date.cmp(&b.date)),
+                                                SongField::Genre => songs.sort_by(|a, b| a.genre.cmp(&b.genre)),
+                                                SongField::Disc => songs.sort_by(|a, b| a.disc.cmp(&b.disc)),
+                                                SongField::Composer => songs.sort_by(|a, b| a.composer.cmp(&b.composer)),
+                                                SongField::Albumartist => songs.sort_by(|a, b| a.artist.cmp(&b.artist)),
+                                                SongField::File => songs.sort_by(|a, b| a.file.cmp(&b.file)),
+                                                SongField::Format => songs.sort_by(|a, b| a.format.cmp(&b.format)),
+                                                SongField::Lastmodified => songs.sort_by(|a, b| a.lastmodified.cmp(&b.lastmodified)),
+                                                SongField::Duration => songs.sort_by(|a, b| a.duration.cmp(&b.duration)),
+                                                SongField::Directory => songs.sort_by(|a, b| a.directory.cmp(&b.directory)),
+                                            },
+                                            ColumnSort::Descending(col) => match col {
+                                                SongField::Track => songs.sort_by(|b, a| a.track.cmp(&b.track)),
+                                                SongField::Title => songs.sort_by(|b, a| a.title.cmp(&b.title)),
+                                                SongField::Artist => songs.sort_by(|b, a| a.artist.cmp(&b.artist)),
+                                                SongField::Album => songs.sort_by(|b, a| a.album.cmp(&b.album)),
+                                                SongField::Date => songs.sort_by(|b, a| a.date.cmp(&b.date)),
+                                                SongField::Genre => songs.sort_by(|b, a| a.genre.cmp(&b.genre)),
+                                                SongField::Disc => songs.sort_by(|b, a| a.disc.cmp(&b.disc)),
+                                                SongField::Composer => songs.sort_by(|b, a| a.composer.cmp(&b.composer)),
+                                                SongField::Albumartist => songs.sort_by(|b, a| a.artist.cmp(&b.artist)),
+                                                SongField::File => songs.sort_by(|b, a| a.file.cmp(&b.file)),
+                                                SongField::Format => songs.sort_by(|b, a| a.format.cmp(&b.format)),
+                                                SongField::Lastmodified => songs.sort_by(|b, a| a.lastmodified.cmp(&b.lastmodified)),
+                                                SongField::Duration => songs.sort_by(|b, a| a.duration.cmp(&b.duration)),
+                                                SongField::Directory => songs.sort_by(|b, a| a.directory.cmp(&b.directory)),
+                                            },
+                                        };
+                                        let move_commands: Vec<commands::Move> = songs
+                                            .iter()
+                                            .enumerate()
+                                            .map(|(i, x)| commands::Move::id(x.id.into()).to_position(i.into()))
+                                            .collect();
+                                        let _ = mpd_client.command_list(move_commands).await;
+                                    }
+                                    Err(e) => {
+                                        tracing::error!("{}", e);
                                     }
                                 }
-                                let image = format!("data:{};base64,{}", mime, BASE64_STANDARD.encode(image));
-                                let _ = qt_thread.queue(move |qobject| {
-                                    qobject.album_art_update(QString::from(image));
-                                });
                             }
-                        } else {
-                            tracing::warn!("Album art absent");
-                            let _ = qt_thread.queue(move |qobject| {
-                                qobject.album_art_update(QString::from(""));
-                            });
+                            Some(MPSCCommand::StagePlaylist(name, group)) => {
+                                let tag = Tag::from(group);
+                                // Query playlist
+                                let songs: Vec<Song> = match tag {
+                                    Tag::Other(value) if value == "Directory".into() => {
+                                        let command = commands::ListAllIn::directory(&name);
+                                        mpd_client.command(command).await.unwrap_or(Vec::default())
+                                    }
+                                    _ => {
+                                        let filter = Filter::tag(tag, name);
+                                        let command = commands::Find::new(filter);
+                                        mpd_client.command(command).await.unwrap_or(Vec::default())
+                                    }
+                                };
+                                // Clear current queue
+                                let clear_command = commands::ClearQueue;
+                                let _ = mpd_client.command(clear_command).await;
+                                // Populate new queue
+                                let add_commands: Vec<commands::Add> = songs.iter().map(|x| commands::Add::uri(x.url.as_str())).collect();
+                                let _ = mpd_client.command_list(add_commands).await;
+                            }
+                            Some(MPSCCommand::Seek(seek_to)) => {
+                                let command = commands::Seek(commands::SeekMode::Absolute(seek_to));
+                                let _ = mpd_client.command(command).await;
+                            }
+                            Some(MPSCCommand::ShuffleToggle(current_state)) => {
+                                let command = commands::SetRandom(!current_state);
+                                let _ = mpd_client.command(command).await;
+                            }
+                            Some(MPSCCommand::RepeatToggle(current_repeat, current_single)) => {
+                                match (current_repeat, current_single) {
+                                    (false, false) | (false, true) => {
+                                        let command = commands::SetRepeat(true);
+                                        let _ = mpd_client.command(command).await;
+                                        let command = commands::SetSingle(commands::SingleMode::Disabled);
+                                        let _ = mpd_client.command(command).await;
+                                    }
+                                    (true, false) => {
+                                        let command = commands::SetRepeat(true);
+                                        let _ = mpd_client.command(command).await;
+                                        let command = commands::SetSingle(commands::SingleMode::Enabled);
+                                        let _ = mpd_client.command(command).await;
+                                    }
+                                    (true, true) => {
+                                        let command = commands::SetRepeat(false);
+                                        let _ = mpd_client.command(command).await;
+                                        let command = commands::SetSingle(commands::SingleMode::Disabled);
+                                        let _ = mpd_client.command(command).await;
+                                    }
+                                };
+                            }
+                            Some(MPSCCommand::IdlePlayer) => {
+                                let command = commands::Status;
+                                match mpd_client.command(command).await {
+                                    Ok(rsp) => {
+                                        let play_state = QString::from(format!("{:#?}", rsp.state));
+                                        let (song_pos, song_id) = match rsp.current_song {
+                                            Some(song) => (song.0.0, song.1.0),
+                                            None => (0, 0),
+                                        };
+                                        let _ = qt_thread.queue(move |mut qobject| {
+                                            qobject.as_mut().play_state_changed(play_state);
+                                            qobject.as_mut().active_song_changed(song_pos, song_id);
+                                        });
+                                    }
+                                    Err(e) => {
+                                        tracing::error!("{}", e);
+                                    }
+                                };
+                            }
+                            Some(MPSCCommand::IdleQueue) => {
+                                // Propagate playlist to other components
+                                let command = commands::Queue::all();
+                                match mpd_client.command(command).await {
+                                    Ok(rsp) => {
+                                        let songs: Vec<QSong> = rsp.into_iter().map(QSong::from).collect();
+                                        let bcode: &[u8] = &encode_to_vec(songs, config::standard()).expect("failed to encode to bcode");
+                                        let bcode = QByteArray::from(bcode);
+                                        let _ = qt_thread.queue(|mut qobject| {
+                                            qobject.as_mut().stage_playlist_result(bcode);
+                                        });
+                                    }
+                                    Err(e) => {
+                                        tracing::error!("{}", e);
+                                    }
+                                };
+                            }
+                            Some(MPSCCommand::IdleOptions) => {
+                                let command = commands::Status;
+                                match mpd_client.command(command).await {
+                                    Ok(rsp) => {
+                                        let repeat = rsp.repeat;
+                                        let shuffle = rsp.random;
+                                        let single = !matches!(rsp.single, commands::SingleMode::Disabled);
+                                        let _ = qt_thread.queue(move |mut qobject| {
+                                            qobject.as_mut().rust_mut().repeat = repeat;
+                                            qobject.as_mut().rust_mut().single = single;
+                                            qobject.as_mut().rust_mut().shuffle = shuffle;
+                                            qobject.update_options();
+                                        });
+                                    }
+                                    Err(e) => {
+                                        tracing::error!("{}", e);
+                                    }
+                                }
+                            }
+                            Some(MPSCCommand::IdleTimeline) => {
+                                let command = commands::Status;
+                                match mpd_client.command(command).await {
+                                    Ok(rsp) => {
+                                        let duration = rsp.duration.unwrap_or(Duration::new(0, 0));
+                                        let elapsed = rsp.elapsed.unwrap_or(Duration::new(0, 0));
+                                        let _ = qt_thread.queue(move |mut qobject| {
+                                            qobject.as_mut().timeline_update(duration.as_secs(), elapsed.as_secs());
+                                        });
+                                    }
+                                    Err(e) => {
+                                        tracing::error!("{}", e);
+                                    }
+                                };
+                            }
+                            Some(MPSCCommand::UpdateArt) => {
+                                let command = commands::CurrentSong;
+                                if let Ok(Some(song)) = mpd_client.command(command).await {
+                                    let command = commands::AlbumArtEmbedded::new(&song.song.url);
+                                    if let Ok(Some(art)) = mpd_client.command(command).await {
+                                        let mut image = art.data;
+                                        let mut offset = image.len();
+                                        let mime = art.mime.unwrap();
+                                        while image.len() < art.size {
+                                            let command = commands::AlbumArtEmbedded::new(&song.song.url).offset(offset);
+                                            if let Ok(Some(art)) = mpd_client.command(command).await {
+                                                offset += art.data.len();
+                                                image.extend_from_slice(&art.data);
+                                            }
+                                        }
+                                        let image = format!("data:{};base64,{}", mime, BASE64_STANDARD.encode(image));
+                                        let _ = qt_thread.queue(move |qobject| {
+                                            qobject.album_art_update(QString::from(image));
+                                        });
+                                    }
+                                } else {
+                                    tracing::warn!("Album art absent");
+                                    let _ = qt_thread.queue(move |qobject| {
+                                        qobject.album_art_update(QString::from(""));
+                                    });
+                                }
+                            }
+                            None => {}
                         }
-                    }
-                    None => {}
-                }
+                    },
+                    _ = cancel_token.cancelled() => {
+                        tracing::warn!("Gracefully closing actions task");
+                        break;
+                    },
+                };
             }
         });
     }
@@ -647,13 +663,24 @@ impl qobject::QMPDConnector {
         }
     }
 
+    fn spawn_server_instance(self: Pin<&mut Self>, mpd_binary: &PathBuf, native_config: &String) {
+        let qt_thread = self.qt_thread();
+        let mpd_binary = mpd_binary.clone();
+        let native_config = native_config.clone();
+        std::thread::spawn(move || {
+            let mut command = Command::new(mpd_binary);
+            command.args(["--no-daemon", &native_config]);
+            let handle = command.spawn().expect("Failed to start mpd server");
+            let _ = qt_thread.queue(move |mut qobject| {
+                qobject.as_mut().rust_mut().server.replace(handle);
+            });
+        });
+    }
+
     fn start_native_server(mut self: Pin<&mut Self>, mpd_binary: &PathBuf, native_config: &String) {
         tracing::debug!("Starting native mpd server");
-        let qt_thread = self.qt_thread();
-        let cmpd_binary = mpd_binary.clone();
-        let cnative_config = native_config.clone();
         let native_server = self.as_mut().rust_mut().server.take();
-        if !Path::new(&cnative_config).exists() {
+        if !Path::new(&native_config).exists() {
             let settings = Settings::load().blocking_read().clone();
             let isettings = InternalSettings::load().clone();
             init_native_mpd_config(settings, isettings);
@@ -663,14 +690,7 @@ impl qobject::QMPDConnector {
                 match server.try_wait() {
                     // Previous server instance exited
                     Ok(Some(_)) => {
-                        std::thread::spawn(move || {
-                            let mut command = Command::new(cmpd_binary);
-                            command.args(["--no-daemon", &cnative_config]);
-                            let handle = command.spawn().expect("Failed to start mpd server");
-                            let _ = qt_thread.queue(move |mut qobject| {
-                                qobject.as_mut().rust_mut().server.replace(handle);
-                            });
-                        });
+                        self.spawn_server_instance(mpd_binary, native_config);
                     }
                     // Previous server is alive
                     Ok(None) => {}
@@ -681,14 +701,7 @@ impl qobject::QMPDConnector {
                 }
             }
             None => {
-                std::thread::spawn(move || {
-                    let mut command = Command::new(cmpd_binary);
-                    command.args(["--no-daemon", &cnative_config]);
-                    let handle = command.spawn().expect("Failed to start mpd server");
-                    let _ = qt_thread.queue(move |mut qobject| {
-                        qobject.as_mut().rust_mut().server.replace(handle);
-                    });
-                });
+                self.spawn_server_instance(mpd_binary, native_config);
             }
         }
     }
@@ -738,6 +751,10 @@ impl qobject::QMPDConnector {
 
     pub fn connect(self: Pin<&mut Self>) {
         tracing::debug!("Connecting to mpd");
+        if let Some(ref cancel) = self.cancel {
+            tracing::debug!("Gracefully stopping previous connection");
+            cancel.cancel();
+        }
         self.connection_update(QString::from("disconnected"));
     }
 }
@@ -749,16 +766,23 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                 "disconnected" => {
                     let settings = Settings::load().blocking_read();
                     let isettings = InternalSettings::load();
+                    let cancel_token = CancellationToken::new();
+                    qobject.as_mut().rust_mut().cancel = Some(cancel_token);
                     if settings.mpd_socket == isettings.native_socket {
                         tracing::debug!("Using native mpd server");
                         match which("mpd") {
-                            Ok(v) => {
-                                tracing::debug!("Found mpd binary {:?}", v);
-                                qobject.as_mut().start_native_server(&v, &isettings.native_config);
+                            Ok(mpd_binary) => {
+                                tracing::debug!("Found mpd binary {:?}", mpd_binary);
+                                qobject.as_mut().start_native_server(&mpd_binary, &isettings.native_config);
                             }
                             Err(err) => panic!("Using native socket, but no mpd binary was found, {:?}", err),
                         };
-                    }
+                    } else {
+                        // ensure server is down
+                        if let Some(mut server) = qobject.as_mut().rust_mut().server.take() {
+                            server.kill().expect("Failed to kill native server");
+                        };
+                    };
                     qobject.as_mut().connection_update(QString::from("connecting"));
                 }
                 "connected" => {
@@ -807,6 +831,7 @@ impl Default for MPDConnector {
             client: None,
             idle_client: None,
             server: None,
+            cancel: None,
             rt_idle,
             rt_action,
             tx_actions: None,

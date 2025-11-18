@@ -13,18 +13,18 @@ Kirigami.ApplicationWindow {
     pageStack.initialPage: mainPage
 
     Component.onCompleted: {
-        initDelay.start();
+        if (QSettingsModel.initWizard) {
+            initWizardDelay.start();
+        } else {
+            mpd_connector.connect();
+        }
     }
 
     Timer {
-        id: initDelay
+        id: initWizardDelay
         interval: 150
         onTriggered: {
-            if (QSettingsModel.initWizard) {
-                initWizard.visible = true;
-            } else {
-                mpd_connector.connect();
-            }
+            initWizard.visible = true;
         }
     }
 
@@ -209,8 +209,17 @@ Kirigami.ApplicationWindow {
 
     Settings {
         id: settings
-        width: 0.5 * root.width
-        height: 0.5 * root.height
+        visible: false
+        onBackRequest: function (restartMpd) {
+            root.pageStack.replace(mainPage);
+            if (restartMpd) {
+                mpd_connector.connect();
+            }
+        }
+    }
+
+    About {
+        id: aboutPage
     }
 
     header: QQC2.ToolBar {
@@ -306,7 +315,7 @@ Kirigami.ApplicationWindow {
                         text: qsTr("Settings")
                         icon.name: "settings"
                         onClicked: {
-                            settings.visible = true;
+                            root.pageStack.replace(settings);
                         }
                     }
                     QQC2.MenuItem {
@@ -382,10 +391,6 @@ Kirigami.ApplicationWindow {
         }
     }
 
-    About {
-        id: aboutPage
-    }
-
     Kirigami.Page {
         id: mainPage
 
@@ -452,7 +457,7 @@ Kirigami.ApplicationWindow {
             retainWhileLoading: true
             mipmap: true
             visible: false
-            anchors.fill: qplaylist_view
+            anchors.fill: parent
             fillMode: Image.PreserveAspectCrop
         }
 
@@ -508,7 +513,7 @@ Kirigami.ApplicationWindow {
             columnWidthProvider: function (column) {
                 var item = qplaylist_header.repeater.itemAt(column);
                 if (column == qplaylist_header.lastVisibleColumn) {
-                    return item.width + 2 - scrollBar.width
+                    return item.width + 2 - scrollBar.width;
                 } else {
                     return item.visible ? item.width + 2 : 0; // 2 is splitter width (which is not acounted in delegate width)
                 }

@@ -178,7 +178,7 @@ Window {
                     anchors.right: parent.right
                     text: "Check connection"
                     onClicked: {
-                        var result = QSettingsModel.checkServerConnection(root.customServerUrl);
+                        let result = QSettingsModel.checkServerConnection(root.customServerUrl);
                         infoMessage.visible = false;
                         infoMessage.visible = true;
                         infoMessage.text = result ? "Successfully connected to server" : "Failed to connect to server";
@@ -231,7 +231,7 @@ Window {
                     anchors.top: fpHeading.bottom
                     anchors.topMargin: Kirigami.Units.largeSpacing
                     anchors.right: parent.right
-                    text: "Check connection"
+                    icon.name: "folder"
                     onClicked: folderDialog.open()
                 }
             }

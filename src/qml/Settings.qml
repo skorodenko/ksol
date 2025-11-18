@@ -1,176 +1,89 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
 import github.skorodenko.ksol 1.0
 
-Window {
+Kirigami.Page {
     id: root
-    title: "Settings"
-    visible: false
+    padding: 0
+    globalToolBarStyle: Kirigami.ApplicationHeaderStyle.None
 
-    flags: Qt.Dialog
-    modality: Qt.WindowModal
+    signal backRequest(restartMpd: bool)
 
-    property string customServerUrl: ""
-    property string nativeMpdSocket: QSettingsModel.getNativeMpdSocket()
-
-    onBeforeRendering: {
-        root.customServerUrl = "";
-    }
+    property string selectedPage: "General"
+    property bool restartMpd: false
 
     Connections {
         target: QSettingsModel
 
-        function onCheckServerConnectionResult(result) {
-            infoMessage.visible = false;
-            infoMessage.visible = true;
-            infoMessage.text = result ? "Successfully connected to server" : "Failed to connect to server";
-            infoMessage.type = result ? Kirigami.MessageType.Positive : Kirigami.MessageType.Error;
+        function onMpdSettingsUpdate() {
+            root.restartMpd = true;
         }
     }
 
-    Kirigami.InlineMessage {
-        id: infoMessage
+    onVisibleChanged: {
+        root.restartMpd = false;
+        mpdPage.reset();
+    }
 
-        visible: false
-        anchors.bottom: footer.top
-        anchors.left: parent.left
-        anchors.right: parent.right
-        onVisibleChanged: tmr.restart()
-
-        Timer {
-            id: tmr
-            interval: Kirigami.Units.humanMoment
-            onTriggered: infoMessage.visible = false
+    onSelectedPageChanged: {
+        switch (root.selectedPage) {
+        case "General":
+            view.pop();
+            view.push(mpdPage);
+            break;
+        case "Appearence":
+            view.pop();
+            view.push(appearencePage);
+            break;
         }
     }
 
-    QQC2.TabBar {
-        id: tabBar
-
-        QQC2.TabButton {
-            text: qsTr("Appearance")
-        }
-        QQC2.TabButton {
-            text: qsTr("Connection")
-        }
-        QQC2.TabButton {
-            text: qsTr("Native server")
-        }
-    }
-
-    StackLayout {
+    Kirigami.PageRow {
         id: view
 
-        currentIndex: tabBar.currentIndex
+        initialPage: [selectionMenu, mpdPage]
 
-        anchors {
-            top: tabBar.bottom
-            left: parent.left
-            right: parent.right
-            bottom: infoMessage.top
-        }
+        anchors.fill: parent
+        defaultColumnWidth: 10 * Kirigami.Units.gridUnit
 
-        Item {
-            id: appearencePage
-        }
+        Kirigami.ScrollablePage {
+            id: selectionMenu
+            padding: 0
 
-        Item {
-            id: connectionPage
-            Item {
-                anchors.fill: parent
-                anchors.margins: 18
-
-                Kirigami.Heading {
-                    id: tpHeading
-                    anchors.top: parent.top
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    wrapMode: Text.WordWrap
-                    text: "Enter uri to connect to mpd server"
+            ColumnLayout {
+                SidebarDelegate {
+                    text: "Back"
+                    iconName: "go-previous-symbolic"
+                    Layout.fillWidth: true
+                    onClicked: root.backRequest(root.restartMpd)
                 }
-
-                QQC2.TextField {
-                    id: tpAdressField
-                    anchors.top: tpHeading.bottom
-                    anchors.topMargin: Kirigami.Units.largeSpacing
-                    anchors.left: parent.left
-                    anchors.right: tpAddressCheck.left
-                    anchors.rightMargin: Kirigami.Units.mediumSpacing
-                    Binding {
-                        target: root
-                        property: "customServerUrl"
-                        value: tpAdressField.text
-                    }
-                    placeholderText: QSettingsModel.mpdSocket
+                SidebarDelegate {
+                    text: "General"
+                    iconName: "preferences-desktop-multimedia"
+                    Layout.fillWidth: true
+                    highlighted: root.selectedPage == text
+                    onClicked: root.selectedPage = text
                 }
-
-                QQC2.Button {
-                    id: tpAddressCheck
-                    anchors.top: tpHeading.bottom
-                    anchors.topMargin: Kirigami.Units.largeSpacing
-                    anchors.right: parent.right
-                    text: "Check connection"
-                    onClicked: QSettingsModel.checkServerConnection(root.customServerUrl)
+                SidebarDelegate {
+                    text: "Appearence"
+                    iconName: "preferences-desktop-theme"
+                    Layout.fillWidth: true
+                    highlighted: root.selectedPage == text
+                    onClicked: root.selectedPage = text
                 }
             }
         }
 
-        Item {
-            id: nativeMpdConfig
-        }
-    }
-
-    QQC2.Control {
-        id: footer
-        implicitHeight: 48
-        padding: 12
-
-        anchors {
-            left: parent.left
-            right: parent.right
-            bottom: parent.bottom
+        SettingsMPDPage {
+            id: mpdPage
         }
 
-        QQC2.Button {
-            id: cancelButton
-            text: "Cancel"
-
-            anchors.left: parent.left
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            anchors.margins: 6
-
-            onClicked: root.visible = false
+        Kirigami.Page {
+            id: appearencePage
         }
-
-        QQC2.Button {
-            id: finishButton
-            text: "Apply"
-
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            anchors.margins: 6
-
-            onClicked:
-            //                root.visible = false;
-            //                QSettingsModel.initWizard = false;
-            //                if (root.selectedOption == 1) {
-            //                    QSettingsModel.mpdSocket = root.customServerUrl;
-            //                }
-            //                root.finished();
-            {}
-        }
-    }
-
-    Rectangle {
-        z: -1
-        anchors.fill: parent
-        color: Kirigami.Theme.backgroundColor
     }
 }

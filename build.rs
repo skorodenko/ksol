@@ -19,6 +19,8 @@ fn main() {
                 "src/qml/About.qml",
                 "src/qml/InitWizard.qml",
                 "src/qml/Settings.qml",
+                "src/qml/SettingsMPDPage.qml",
+                "src/qml/SidebarDelegate.qml",
             ],
             ..Default::default()
         })
