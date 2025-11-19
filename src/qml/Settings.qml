@@ -56,7 +56,7 @@ Kirigami.Page {
 
             ColumnLayout {
                 SidebarDelegate {
-                    text: "Back"
+                    text: "Return"
                     iconName: "go-previous-symbolic"
                     Layout.fillWidth: true
                     onClicked: root.backRequest(root.restartMpd)

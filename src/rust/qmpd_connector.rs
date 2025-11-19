@@ -124,9 +124,9 @@ use mpd_client::client::{ConnectionEvent, Subsystem};
 use mpd_client::{ClientController, ClientIdler, commands, filter::Filter, responses::PlayState, responses::Song, tag::Tag};
 use num_traits::FromPrimitive;
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command};
 use std::sync::Arc;
 use tokio::net::{TcpStream, UnixStream};
+use tokio::process::Command;
 use tokio::runtime::{Builder, Runtime};
 use tokio::sync::Notify;
 use tokio::sync::mpsc::{Receiver, Sender};
@@ -138,7 +138,6 @@ use which::which;
 pub struct MPDConnector {
     pub client: Option<ClientController>,
     pub idle_client: Option<ClientIdler>,
-    pub server: Option<Child>,
     pub cancel: Option<CancellationToken>,
     pub repeat: bool,
     pub single: bool,
@@ -664,46 +663,30 @@ impl qobject::QMPDConnector {
     }
 
     fn spawn_server_instance(self: Pin<&mut Self>, mpd_binary: &PathBuf, native_config: &String) {
-        let qt_thread = self.qt_thread();
+        let rt_idle = &self.rt_idle;
         let mpd_binary = mpd_binary.clone();
         let native_config = native_config.clone();
-        std::thread::spawn(move || {
+        let cancel_token = self.cancel.clone().expect("Cancel token is None");
+        rt_idle.spawn(async move {
             let mut command = Command::new(mpd_binary);
             command.args(["--no-daemon", &native_config]);
-            let handle = command.spawn().expect("Failed to start mpd server");
-            let _ = qt_thread.queue(move |mut qobject| {
-                qobject.as_mut().rust_mut().server.replace(handle);
-            });
+            let mut handle = command.spawn().expect("Failed to start mpd server");
+            cancel_token.cancelled().await;
+            match handle.kill().await {
+                Ok(_) => tracing::warn!("Gracefully closed native mpd server"),
+                Err(e) => tracing::error!("Failed to gracefully close native mpd sever {}", e),
+            };
         });
     }
 
-    fn start_native_server(mut self: Pin<&mut Self>, mpd_binary: &PathBuf, native_config: &String) {
+    fn start_native_server(self: Pin<&mut Self>, mpd_binary: &PathBuf, native_config: &String) {
         tracing::debug!("Starting native mpd server");
-        let native_server = self.as_mut().rust_mut().server.take();
         if !Path::new(&native_config).exists() {
             let settings = Settings::load().blocking_read().clone();
             let isettings = InternalSettings::load().clone();
             init_native_mpd_config(settings, isettings);
         };
-        match native_server {
-            Some(mut server) => {
-                match server.try_wait() {
-                    // Previous server instance exited
-                    Ok(Some(_)) => {
-                        self.spawn_server_instance(mpd_binary, native_config);
-                    }
-                    // Previous server is alive
-                    Ok(None) => {}
-                    // No idea what is here)
-                    Err(err) => {
-                        panic!("{}", err)
-                    }
-                }
-            }
-            None => {
-                self.spawn_server_instance(mpd_binary, native_config);
-            }
-        }
+        self.spawn_server_instance(mpd_binary, native_config);
     }
 
     fn connect_client(self: Pin<&mut Self>) {
@@ -777,11 +760,6 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                             }
                             Err(err) => panic!("Using native socket, but no mpd binary was found, {:?}", err),
                         };
-                    } else {
-                        // ensure server is down
-                        if let Some(mut server) = qobject.as_mut().rust_mut().server.take() {
-                            server.kill().expect("Failed to kill native server");
-                        };
                     };
                     qobject.as_mut().connection_update(QString::from("connecting"));
                 }
@@ -830,7 +808,6 @@ impl Default for MPDConnector {
         Self {
             client: None,
             idle_client: None,
-            server: None,
             cancel: None,
             rt_idle,
             rt_action,
@@ -845,8 +822,8 @@ impl Default for MPDConnector {
 
 impl Drop for MPDConnector {
     fn drop(&mut self) {
-        if let Some(server) = self.server.as_mut() {
-            server.kill().unwrap();
+        if let Some(token) = self.cancel.clone() {
+            token.cancel();
         }
     }
 }

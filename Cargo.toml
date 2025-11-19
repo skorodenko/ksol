@@ -14,7 +14,7 @@ which = "8.0.0"
 xdg = "3.0.0"
 num-traits = "0.2"
 num-derive = "0.4"
-tokio = { version = "1.47.1", features = ["full"] }
+tokio = { version = "1.47.1", features = ["time", "sync", "process", "rt-multi-thread"] }
 mpd_client = { git = "https://github.com/skorodenko/mpd_client", branch = "refactoring" }
 regex = "1.11.2"
 strum = { version = "0.27", features = ["derive"] }
