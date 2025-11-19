@@ -128,11 +128,11 @@ Kirigami.ApplicationWindow {
         }
         onActiveSongChanged: function (songPos, songId) {
             if (qplaylist_view.songPos != songPos) {
-                if (songPos < qplaylist_view.topRow) {
-                    qplaylist_view.positionViewAtRow(songPos, Qt.AlignTop, 0);
+                if (songPos < qplaylist_view.topRow + 1) {
+                    qplaylist_view.positionViewAtRow(songPos, Qt.AlignTop, -30)
                 }
-                if (songPos > qplaylist_view.bottomRow) {
-                    qplaylist_view.positionViewAtRow(songPos, Qt.AlignBottom, 0);
+                if (songPos > qplaylist_view.bottomRow - 1) {
+                    qplaylist_view.positionViewAtRow(songPos, Qt.AlignBottom, 30);
                 }
             }
             qplaylist.activeSongId = songId;
