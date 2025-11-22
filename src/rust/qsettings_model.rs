@@ -1,95 +1,3 @@
-#[cxx_qt::bridge]
-mod qobject {
-    extern "C++" {
-        include!("cxx-qt-lib/qvariant.h");
-        type QVariant = cxx_qt_lib::QVariant;
-
-        include!("cxx-qt-lib/qstring.h");
-        type QString = cxx_qt_lib::QString;
-    }
-
-    extern "RustQt" {
-        #[qobject]
-        #[qml_element]
-        #[qml_singleton]
-        #[qproperty(QString, mpdSocket, READ = get_mpd_socket, WRITE = set_mpd_socket, NOTIFY = mpd_settings_update)]
-        #[qproperty(QString, nativeMpdMusicDir, READ = get_native_mpd_music_dir, WRITE = set_native_mpd_music_dir, NOTIFY = mpd_settings_update)]
-        #[qproperty(QString, outputPluginType, READ = get_output_plugin_type, WRITE = set_output_plugin_type, NOTIFY = mpd_settings_update)]
-        #[qproperty(bool, initWizard, READ = get_init_wizard, WRITE = set_init_wizard, NOTIFY = init_wizard_changed)]
-        #[qproperty(i32, sortOrder, READ = get_sort_order, NOTIFY = update_sort_column)]
-        #[qproperty(i32, sortColumn, READ = get_sort_column, NOTIFY = update_sort_column)]
-        type QSettingsModel = super::SettingsModel;
-
-        #[qsignal]
-        #[cxx_name = "mpdSettingsUpdate"]
-        fn mpd_settings_update(self: Pin<&mut QSettingsModel>);
-
-        #[qsignal]
-        fn native_mpd_music_dir_changed(self: Pin<&mut QSettingsModel>);
-
-        #[qsignal]
-        fn init_wizard_changed(self: Pin<&mut QSettingsModel>);
-
-        #[qsignal]
-        #[cxx_name = "updateSortColumn"]
-        fn update_sort_column(self: Pin<&mut QSettingsModel>);
-
-        #[qinvokable]
-        fn get_mpd_socket(self: Pin<&mut QSettingsModel>) -> QString;
-
-        #[qinvokable]
-        fn set_mpd_socket(self: Pin<&mut QSettingsModel>, value: QString);
-
-        #[qinvokable]
-        #[cxx_name = "getNativeMpdSocket"]
-        fn get_native_mpd_socket(self: Pin<&mut QSettingsModel>) -> QString;
-
-        #[qinvokable]
-        fn get_native_mpd_music_dir(self: Pin<&mut QSettingsModel>) -> QString;
-
-        #[qinvokable]
-        fn set_native_mpd_music_dir(self: Pin<&mut QSettingsModel>, value: QString);
-
-        #[qinvokable]
-        fn get_output_plugin_type(self: Pin<&mut QSettingsModel>) -> QString;
-
-        #[qinvokable]
-        fn set_output_plugin_type(self: Pin<&mut QSettingsModel>, value: QString);
-
-        #[qinvokable]
-        fn get_init_wizard(self: Pin<&mut QSettingsModel>) -> bool;
-
-        #[qinvokable]
-        fn set_init_wizard(self: Pin<&mut QSettingsModel>, value: bool);
-
-        #[qinvokable]
-        #[cxx_name = "getColumnWidth"]
-        fn get_column_width(self: Pin<&mut QSettingsModel>, column: usize) -> f64;
-
-        #[qinvokable]
-        #[cxx_name = "setColumnWidth"]
-        fn set_column_width(self: Pin<&mut QSettingsModel>, column: usize, value: f64);
-
-        #[qinvokable]
-        fn get_sort_order(self: &QSettingsModel) -> i32;
-
-        #[qinvokable]
-        fn get_sort_column(self: &QSettingsModel) -> i32;
-
-        #[qinvokable]
-        #[cxx_name = "toggleSortColumn"]
-        fn toggle_sort_column(self: Pin<&mut QSettingsModel>, column: i32);
-
-        #[qinvokable]
-        #[cxx_name = "mpdBinaryAvailable"]
-        fn mpd_binary_available(self: Pin<&mut QSettingsModel>) -> bool;
-
-        #[qinvokable]
-        #[cxx_name = "checkServerConnection"]
-        fn check_server_connection(self: Pin<&mut QSettingsModel>, url: QString) -> bool;
-    }
-}
-
 use qobject::*;
 
 use crate::rust::entities::{ColumnSort, SongField};
@@ -208,5 +116,97 @@ impl qobject::QSettingsModel {
 
     pub fn check_server_connection(self: Pin<&mut QSettingsModel>, url: QString) -> bool {
         UnixStream::connect(url.to_string()).is_ok()
+    }
+}
+
+#[cxx_qt::bridge]
+mod qobject {
+    extern "C++" {
+        include!("cxx-qt-lib/qvariant.h");
+        type QVariant = cxx_qt_lib::QVariant;
+
+        include!("cxx-qt-lib/qstring.h");
+        type QString = cxx_qt_lib::QString;
+    }
+
+    extern "RustQt" {
+        #[qobject]
+        #[qml_element]
+        #[qml_singleton]
+        #[qproperty(QString, mpdSocket, READ = get_mpd_socket, WRITE = set_mpd_socket, NOTIFY = mpd_settings_update)]
+        #[qproperty(QString, nativeMpdMusicDir, READ = get_native_mpd_music_dir, WRITE = set_native_mpd_music_dir, NOTIFY = mpd_settings_update)]
+        #[qproperty(QString, outputPluginType, READ = get_output_plugin_type, WRITE = set_output_plugin_type, NOTIFY = mpd_settings_update)]
+        #[qproperty(bool, initWizard, READ = get_init_wizard, WRITE = set_init_wizard, NOTIFY = init_wizard_changed)]
+        #[qproperty(i32, sortOrder, READ = get_sort_order, NOTIFY = update_sort_column)]
+        #[qproperty(i32, sortColumn, READ = get_sort_column, NOTIFY = update_sort_column)]
+        type QSettingsModel = super::SettingsModel;
+
+        #[qsignal]
+        #[cxx_name = "mpdSettingsUpdate"]
+        fn mpd_settings_update(self: Pin<&mut QSettingsModel>);
+
+        #[qsignal]
+        fn native_mpd_music_dir_changed(self: Pin<&mut QSettingsModel>);
+
+        #[qsignal]
+        fn init_wizard_changed(self: Pin<&mut QSettingsModel>);
+
+        #[qsignal]
+        #[cxx_name = "updateSortColumn"]
+        fn update_sort_column(self: Pin<&mut QSettingsModel>);
+
+        #[qinvokable]
+        fn get_mpd_socket(self: Pin<&mut QSettingsModel>) -> QString;
+
+        #[qinvokable]
+        fn set_mpd_socket(self: Pin<&mut QSettingsModel>, value: QString);
+
+        #[qinvokable]
+        #[cxx_name = "getNativeMpdSocket"]
+        fn get_native_mpd_socket(self: Pin<&mut QSettingsModel>) -> QString;
+
+        #[qinvokable]
+        fn get_native_mpd_music_dir(self: Pin<&mut QSettingsModel>) -> QString;
+
+        #[qinvokable]
+        fn set_native_mpd_music_dir(self: Pin<&mut QSettingsModel>, value: QString);
+
+        #[qinvokable]
+        fn get_output_plugin_type(self: Pin<&mut QSettingsModel>) -> QString;
+
+        #[qinvokable]
+        fn set_output_plugin_type(self: Pin<&mut QSettingsModel>, value: QString);
+
+        #[qinvokable]
+        fn get_init_wizard(self: Pin<&mut QSettingsModel>) -> bool;
+
+        #[qinvokable]
+        fn set_init_wizard(self: Pin<&mut QSettingsModel>, value: bool);
+
+        #[qinvokable]
+        #[cxx_name = "getColumnWidth"]
+        fn get_column_width(self: Pin<&mut QSettingsModel>, column: usize) -> f64;
+
+        #[qinvokable]
+        #[cxx_name = "setColumnWidth"]
+        fn set_column_width(self: Pin<&mut QSettingsModel>, column: usize, value: f64);
+
+        #[qinvokable]
+        fn get_sort_order(self: &QSettingsModel) -> i32;
+
+        #[qinvokable]
+        fn get_sort_column(self: &QSettingsModel) -> i32;
+
+        #[qinvokable]
+        #[cxx_name = "toggleSortColumn"]
+        fn toggle_sort_column(self: Pin<&mut QSettingsModel>, column: i32);
+
+        #[qinvokable]
+        #[cxx_name = "mpdBinaryAvailable"]
+        fn mpd_binary_available(self: Pin<&mut QSettingsModel>) -> bool;
+
+        #[qinvokable]
+        #[cxx_name = "checkServerConnection"]
+        fn check_server_connection(self: Pin<&mut QSettingsModel>, url: QString) -> bool;
     }
 }

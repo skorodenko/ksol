@@ -1,3 +1,71 @@
+use qobject::*;
+
+use bincode::config;
+use bincode::serde::decode_from_slice;
+use core::pin::Pin;
+use cxx_qt::CxxQtType;
+use regex;
+
+#[derive(Default)]
+pub struct PlaylistsListModel {
+    pub filter: String,
+    pub queue: Vec<String>,
+    queue_proxy: Vec<usize>,
+}
+
+impl qobject::QPlaylistsListModel {
+    pub fn role_names(&self) -> QHash_i32_QByteArray {
+        let mut roles = QHash_i32_QByteArray::default();
+        roles.insert(QPlaylistsListRoles::Name.repr, "name".into());
+        roles
+    }
+
+    pub fn row_count(&self, _index: &QModelIndex) -> i32 {
+        self.queue_proxy.len() as i32
+    }
+
+    pub fn data(&self, index: &QModelIndex, role: i32) -> QVariant {
+        let role = QPlaylistsListRoles { repr: role };
+        let index = self.queue_proxy[index.row() as usize];
+        match role {
+            QPlaylistsListRoles::Name => (&QString::from(&self.queue[index])).into(),
+            _ => QVariant::default(),
+        }
+    }
+
+    pub fn set_queue(mut self: Pin<&mut QPlaylistsListModel>, value: QByteArray) {
+        let (value, _): (Vec<String>, usize) = decode_from_slice(value.as_slice(), config::standard()).unwrap();
+        self.as_mut().rust_mut().queue = value;
+        self.as_mut().update();
+    }
+
+    pub fn get_filter(self: &QPlaylistsListModel) -> QString {
+        QString::from(&self.filter)
+    }
+
+    pub fn set_filter(mut self: Pin<&mut QPlaylistsListModel>, value: QString) {
+        self.as_mut().rust_mut().filter = value.into();
+        self.as_mut().update();
+    }
+}
+
+impl cxx_qt::Initialize for qobject::QPlaylistsListModel {
+    fn initialize(self: Pin<&mut Self>) {
+        self.on_update(|mut qobject| {
+            let filter = regex::escape(&qobject.filter);
+            let pattern = regex::RegexBuilder::new(&filter).case_insensitive(true).build().unwrap();
+            let proxy: Vec<usize> = (0..qobject.queue.len()).collect();
+            qobject.as_mut().layout_about_to_be_changed();
+            qobject.as_mut().rust_mut().queue_proxy = proxy
+                .into_iter()
+                .filter(|&x| pattern.is_match(&qobject.queue[x]) || pattern.is_match(&qobject.queue[x]))
+                .collect();
+            qobject.as_mut().layout_changed();
+        })
+        .release();
+    }
+}
+
 #[cxx_qt::bridge]
 mod qobject {
     extern "C++" {
@@ -68,72 +136,4 @@ mod qobject {
     }
 
     impl cxx_qt::Initialize for QPlaylistsListModel {}
-}
-
-use bincode::config;
-use bincode::serde::decode_from_slice;
-use core::pin::Pin;
-use cxx_qt::CxxQtType;
-use regex;
-
-use qobject::*;
-
-#[derive(Default)]
-pub struct PlaylistsListModel {
-    pub filter: String,
-    pub queue: Vec<String>,
-    queue_proxy: Vec<usize>,
-}
-
-impl qobject::QPlaylistsListModel {
-    pub fn role_names(&self) -> QHash_i32_QByteArray {
-        let mut roles = QHash_i32_QByteArray::default();
-        roles.insert(QPlaylistsListRoles::Name.repr, "name".into());
-        roles
-    }
-
-    pub fn row_count(&self, _index: &QModelIndex) -> i32 {
-        self.queue_proxy.len() as i32
-    }
-
-    pub fn data(&self, index: &QModelIndex, role: i32) -> QVariant {
-        let role = QPlaylistsListRoles { repr: role };
-        let index = self.queue_proxy[index.row() as usize];
-        match role {
-            QPlaylistsListRoles::Name => (&QString::from(&self.queue[index])).into(),
-            _ => QVariant::default(),
-        }
-    }
-
-    pub fn set_queue(mut self: Pin<&mut QPlaylistsListModel>, value: QByteArray) {
-        let (value, _): (Vec<String>, usize) = decode_from_slice(value.as_slice(), config::standard()).unwrap();
-        self.as_mut().rust_mut().queue = value;
-        self.as_mut().update();
-    }
-
-    pub fn get_filter(self: &QPlaylistsListModel) -> QString {
-        QString::from(&self.filter)
-    }
-
-    pub fn set_filter(mut self: Pin<&mut QPlaylistsListModel>, value: QString) {
-        self.as_mut().rust_mut().filter = value.into();
-        self.as_mut().update();
-    }
-}
-
-impl cxx_qt::Initialize for qobject::QPlaylistsListModel {
-    fn initialize(self: Pin<&mut Self>) {
-        self.on_update(|mut qobject| {
-            let filter = regex::escape(&qobject.filter);
-            let pattern = regex::RegexBuilder::new(&filter).case_insensitive(true).build().unwrap();
-            let proxy: Vec<usize> = (0..qobject.queue.len()).collect();
-            qobject.as_mut().layout_about_to_be_changed();
-            qobject.as_mut().rust_mut().queue_proxy = proxy
-                .into_iter()
-                .filter(|&x| pattern.is_match(&qobject.queue[x]) || pattern.is_match(&qobject.queue[x]))
-                .collect();
-            qobject.as_mut().layout_changed();
-        })
-        .release();
-    }
 }

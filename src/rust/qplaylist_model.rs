@@ -1,122 +1,3 @@
-#[cxx_qt::bridge]
-mod qobject {
-    unsafe extern "C++" {
-        include!(<QAbstractTableModel>);
-        type QAbstractTableModel;
-
-        include!("cxx-qt-lib/qvariant.h");
-        type QVariant = cxx_qt_lib::QVariant;
-
-        include!("cxx-qt-lib/qstring.h");
-        type QString = cxx_qt_lib::QString;
-
-        include!("cxx-qt-lib/qbytearray.h");
-        type QByteArray = cxx_qt_lib::QByteArray;
-
-        include!("cxx-qt-lib/qhash.h");
-        type QHash_i32_QByteArray = cxx_qt_lib::QHash<cxx_qt_lib::QHashPair_i32_QByteArray>;
-
-        include!("cxx-qt-lib/qmodelindex.h");
-        type QModelIndex = cxx_qt_lib::QModelIndex;
-    }
-
-    #[namespace = "Qt"]
-    unsafe extern "C++" {
-        include!("cxx-qt-lib/qt.h");
-        type Orientation = crate::rust::qt::Orientation;
-    }
-
-    #[qenum(QPlaylistModel)]
-    enum QPlaylistRoles {
-        SongId,
-        SongDisplay,
-        SongActive,
-        ColumnName,
-    }
-
-    unsafe extern "RustQt" {
-        #[qobject]
-        #[qml_element]
-        #[base = QAbstractTableModel]
-        #[qproperty(QString, filter, READ = get_filter, WRITE = set_filter, NOTIFY = update_filter)]
-        #[qproperty(u64, active_song_id, cxx_name="activeSongId", READ, WRITE, NOTIFY = update_info)]
-        #[qproperty(QString, activeSongTitle, READ = get_active_song_title, NOTIFY = update_info)]
-        #[qproperty(QString, activeSongArtist, READ = get_active_song_artist, NOTIFY = update_info)]
-        type QPlaylistModel = super::PlaylistModel;
-
-        #[qsignal]
-        #[cxx_name = "updateFilter"]
-        fn update_filter(self: Pin<&mut QPlaylistModel>);
-
-        #[qsignal]
-        #[cxx_name = "updateInfo"]
-        fn update_info(self: Pin<&mut QPlaylistModel>);
-
-        #[qsignal]
-        #[cxx_name = "updateHeader"]
-        fn update_header(self: Pin<&mut QPlaylistModel>);
-
-        #[cxx_override]
-        #[cxx_name = "roleNames"]
-        fn role_names(self: &QPlaylistModel) -> QHash_i32_QByteArray;
-
-        #[cxx_override]
-        #[cxx_name = "rowCount"]
-        fn row_count(self: &QPlaylistModel, index: &QModelIndex) -> i32;
-
-        #[cxx_override]
-        #[cxx_name = "columnCount"]
-        fn column_count(self: &QPlaylistModel, index: &QModelIndex) -> i32;
-
-        #[cxx_override]
-        fn data(self: &QPlaylistModel, index: &QModelIndex, role: i32) -> QVariant;
-
-        #[cxx_override]
-        #[cxx_name = "headerData"]
-        fn header_data(self: &QPlaylistModel, section: i32, orientation: Orientation, role: i32) -> QVariant;
-
-        #[qinvokable]
-        #[cxx_virtual]
-        #[cxx_name = "setQueue"]
-        fn set_queue(self: Pin<&mut QPlaylistModel>, value: QByteArray);
-
-        #[qinvokable]
-        fn get_filter(self: &QPlaylistModel) -> QString;
-
-        #[qinvokable]
-        fn set_filter(self: Pin<&mut QPlaylistModel>, value: QString);
-
-        #[qinvokable]
-        fn get_active_song_title(self: &QPlaylistModel) -> QString;
-
-        #[qinvokable]
-        fn get_active_song_artist(self: &QPlaylistModel) -> QString;
-
-        #[inherit]
-        #[cxx_name = "headerDataChanged"]
-        fn header_data_changed(self: Pin<&mut QPlaylistModel>, orientation: Orientation, start: i32, end: i32);
-
-        #[inherit]
-        #[cxx_name = "beginResetModel"]
-        fn begin_reset_model(self: Pin<&mut QPlaylistModel>);
-
-        #[inherit]
-        #[cxx_name = "endResetModel"]
-        fn end_reset_model(self: Pin<&mut QPlaylistModel>);
-
-        #[inherit]
-        #[cxx_name = "layoutAboutToBeChanged"]
-        fn layout_about_to_be_changed(self: Pin<&mut QPlaylistModel>);
-
-        #[inherit]
-        #[cxx_name = "layoutChanged"]
-        fn layout_changed(self: Pin<&mut QPlaylistModel>);
-    }
-
-    impl cxx_qt::Initialize for QPlaylistModel {}
-    impl cxx_qt::Threading for QPlaylistModel {}
-}
-
 use qobject::*;
 
 use crate::rust::entities::{QSong, SongField};
@@ -254,4 +135,123 @@ impl cxx_qt::Initialize for qobject::QPlaylistModel {
         })
         .release();
     }
+}
+
+#[cxx_qt::bridge]
+mod qobject {
+    unsafe extern "C++" {
+        include!(<QAbstractTableModel>);
+        type QAbstractTableModel;
+
+        include!("cxx-qt-lib/qvariant.h");
+        type QVariant = cxx_qt_lib::QVariant;
+
+        include!("cxx-qt-lib/qstring.h");
+        type QString = cxx_qt_lib::QString;
+
+        include!("cxx-qt-lib/qbytearray.h");
+        type QByteArray = cxx_qt_lib::QByteArray;
+
+        include!("cxx-qt-lib/qhash.h");
+        type QHash_i32_QByteArray = cxx_qt_lib::QHash<cxx_qt_lib::QHashPair_i32_QByteArray>;
+
+        include!("cxx-qt-lib/qmodelindex.h");
+        type QModelIndex = cxx_qt_lib::QModelIndex;
+    }
+
+    #[namespace = "Qt"]
+    unsafe extern "C++" {
+        include!("cxx-qt-lib/qt.h");
+        type Orientation = crate::rust::qt::Orientation;
+    }
+
+    #[qenum(QPlaylistModel)]
+    enum QPlaylistRoles {
+        SongId,
+        SongDisplay,
+        SongActive,
+        ColumnName,
+    }
+
+    unsafe extern "RustQt" {
+        #[qobject]
+        #[qml_element]
+        #[base = QAbstractTableModel]
+        #[qproperty(QString, filter, READ = get_filter, WRITE = set_filter, NOTIFY = update_filter)]
+        #[qproperty(u64, active_song_id, cxx_name="activeSongId", READ, WRITE, NOTIFY = update_info)]
+        #[qproperty(QString, activeSongTitle, READ = get_active_song_title, NOTIFY = update_info)]
+        #[qproperty(QString, activeSongArtist, READ = get_active_song_artist, NOTIFY = update_info)]
+        type QPlaylistModel = super::PlaylistModel;
+
+        #[qsignal]
+        #[cxx_name = "updateFilter"]
+        fn update_filter(self: Pin<&mut QPlaylistModel>);
+
+        #[qsignal]
+        #[cxx_name = "updateInfo"]
+        fn update_info(self: Pin<&mut QPlaylistModel>);
+
+        #[qsignal]
+        #[cxx_name = "updateHeader"]
+        fn update_header(self: Pin<&mut QPlaylistModel>);
+
+        #[cxx_override]
+        #[cxx_name = "roleNames"]
+        fn role_names(self: &QPlaylistModel) -> QHash_i32_QByteArray;
+
+        #[cxx_override]
+        #[cxx_name = "rowCount"]
+        fn row_count(self: &QPlaylistModel, index: &QModelIndex) -> i32;
+
+        #[cxx_override]
+        #[cxx_name = "columnCount"]
+        fn column_count(self: &QPlaylistModel, index: &QModelIndex) -> i32;
+
+        #[cxx_override]
+        fn data(self: &QPlaylistModel, index: &QModelIndex, role: i32) -> QVariant;
+
+        #[cxx_override]
+        #[cxx_name = "headerData"]
+        fn header_data(self: &QPlaylistModel, section: i32, orientation: Orientation, role: i32) -> QVariant;
+
+        #[qinvokable]
+        #[cxx_virtual]
+        #[cxx_name = "setQueue"]
+        fn set_queue(self: Pin<&mut QPlaylistModel>, value: QByteArray);
+
+        #[qinvokable]
+        fn get_filter(self: &QPlaylistModel) -> QString;
+
+        #[qinvokable]
+        fn set_filter(self: Pin<&mut QPlaylistModel>, value: QString);
+
+        #[qinvokable]
+        fn get_active_song_title(self: &QPlaylistModel) -> QString;
+
+        #[qinvokable]
+        fn get_active_song_artist(self: &QPlaylistModel) -> QString;
+
+        #[inherit]
+        #[cxx_name = "headerDataChanged"]
+        fn header_data_changed(self: Pin<&mut QPlaylistModel>, orientation: Orientation, start: i32, end: i32);
+
+        #[inherit]
+        #[cxx_name = "beginResetModel"]
+        fn begin_reset_model(self: Pin<&mut QPlaylistModel>);
+
+        #[inherit]
+        #[cxx_name = "endResetModel"]
+        fn end_reset_model(self: Pin<&mut QPlaylistModel>);
+
+        #[inherit]
+        #[cxx_name = "layoutAboutToBeChanged"]
+        fn layout_about_to_be_changed(self: Pin<&mut QPlaylistModel>);
+
+        #[inherit]
+        #[cxx_name = "layoutChanged"]
+        fn layout_changed(self: Pin<&mut QPlaylistModel>);
+    }
+
+    impl cxx_qt::Initialize for QPlaylistModel {}
+    impl cxx_qt::Threading for QPlaylistModel {}
 }

@@ -50,13 +50,17 @@ impl Settings {
     fn init_dirs() {
         let xdg_dirs = BaseDirectories::with_prefix("ksol");
         let app_config = xdg_dirs.get_config_home().unwrap();
+        let app_cache = xdg_dirs.get_cache_home().unwrap();
         let app_data = xdg_dirs.get_data_home().unwrap();
         let mpd_config = app_config.join("mpd");
+        let mpd_cache = app_cache.join("mpd");
         let mpd_data = app_data.join("mpd");
 
         let _ = fs::create_dir(app_config);
+        let _ = fs::create_dir(app_cache);
         let _ = fs::create_dir(app_data);
         let _ = fs::create_dir(mpd_config);
+        let _ = fs::create_dir(mpd_cache);
         let _ = fs::create_dir(mpd_data);
     }
 }
