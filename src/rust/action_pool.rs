@@ -13,7 +13,6 @@ use tokio_util::sync::CancellationToken;
 use tracing;
 
 pub(crate) struct ActionPool {
-    pool: Vec<Sender<MPSCCommand>>,
     num_workers: usize,
     pub rt_handle: Handle,
     pub mpd_client: ClientController,
@@ -31,15 +30,16 @@ impl ActionPool {
         rx_actions: Receiver<MPSCCommand>,
     ) -> ActionPool {
         let num_workers = rt_handle.metrics().num_workers();
-        let pool = Vec::with_capacity(num_workers);
-        ActionPool { pool, num_workers, mpd_client, rt_handle, cancel_token, qt_thread, rx_actions }
+        ActionPool { num_workers, mpd_client, rt_handle, cancel_token, qt_thread, rx_actions }
     }
 
-    pub fn spawn_workers(mut self) {
-        for _ in 0..self.num_workers {
-            let (wtx, wrx) = mpsc::channel::<MPSCCommand>(4);
-            self.pool.push(wtx);
+    pub fn spawn_workers(self) {
+        let mut pool: Vec<Sender<MPSCCommand>> = Vec::with_capacity(self.num_workers);
+        for id in 0..self.num_workers {
+            let (wtx, wrx) = mpsc::channel::<MPSCCommand>(36);
+            pool.push(wtx);
             self.rt_handle.spawn(ActionPool::worker(
+                id,
                 wrx,
                 self.mpd_client.clone(),
                 self.cancel_token.clone(),
@@ -47,21 +47,25 @@ impl ActionPool {
             ));
         }
         let mut rx = self.rx_actions;
-        let pool = self.pool;
+        let mpd_client = self.mpd_client.clone();
         self.rt_handle.spawn(async move {
             let mut idx = 0;
+            let _ = mpd_client.command(commands::SetBinaryLimit(131072)).await;
             while let Some(cmd) = rx.recv().await {
                 let mut forward = cmd;
                 loop {
                     match pool[idx].try_send(forward) {
-                        Ok(_) => break,
+                        Ok(_) => {
+                            idx = (idx + 1) % self.num_workers;
+                            break;
+                        }
                         Err(mpsc::error::TrySendError::Full(cmd)) => {
                             forward = cmd;
                             idx = (idx + 1) % self.num_workers;
                             tokio::task::yield_now().await;
                         }
                         Err(mpsc::error::TrySendError::Closed(_)) => {
-                            tracing::warn!("Gracefullt closed action workers");
+                            tracing::warn!("Gracefully closed action workers");
                             return;
                         }
                     }
@@ -71,6 +75,7 @@ impl ActionPool {
     }
 
     async fn worker(
+        id: usize,
         mut rx: Receiver<MPSCCommand>,
         mpd_client: ClientController,
         cancel_token: CancellationToken,
@@ -312,34 +317,14 @@ impl ActionPool {
                         MPSCCommand::UpdateArt => {
                             let command = commands::CurrentSong;
                             if let Ok(Some(song)) = mpd_client.command(command).await {
-                                let command = commands::AlbumArtEmbedded::new(&song.song.url);
-                                if let Ok(Some(art)) = mpd_client.command(command).await {
-                                    tracing::debug!("Requesting album art for {}", &song.song.url);
-                                    let mut image = art.data;
-                                    let mime = art.mime.unwrap();
-                                    //let indicator = Some(image.clone());
-                                    //if indicator == last_album_art {
-                                    //    tracing::debug!("Album art request already fulfilled (same first chunk)");
-                                    //    continue;
-                                    //};
-                                    //last_album_art = indicator;
-                                    for offset in (image.len()..art.size).step_by(image.len()) {
-                                        tracing::debug!("{offset}");
-                                        let command = commands::AlbumArtEmbedded::new(&song.song.url).offset(offset);
-                                        if let Ok(Some(art)) = mpd_client.command(command).await {
-                                            tracing::debug!("Got reponse");
-                                            image.extend_from_slice(&art.data);
-                                            tracing::debug!("Extend from slice");
-                                        };
-                                    };
-                                    tracing::debug!("Recieved album art ({}) for {}", &art.size, &song.song.url);
+                                if let Ok(Some((image, Some(mime)))) = mpd_client.album_art(&song.song.url).await {
+                                    tracing::debug!("Recieved album art ({}) for {}", &image.len(), &song.song.url);
                                     let image = format!("data:{};base64,{}", mime, BASE64_STANDARD.encode(image));
                                     let _ = qt_thread.queue(move |qobject| {
                                         qobject.album_art_update(QString::from(image));
                                     });
-                                }
+                                };
                             } else {
-                                tracing::warn!("Album art absent");
                                 let _ = qt_thread.queue(move |qobject| {
                                     qobject.album_art_update(QString::from(""));
                                 });
@@ -348,7 +333,7 @@ impl ActionPool {
                     }
                 },
                 _ = cancel_token.cancelled() => {
-                    tracing::warn!("Gracefully closing actions task");
+                    tracing::warn!("Gracefully closing actions task {}", id);
                     break;
                 },
             };
