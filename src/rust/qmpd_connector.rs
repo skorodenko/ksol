@@ -293,11 +293,9 @@ impl qobject::QMPDConnector {
 
     fn start_native_server(self: Pin<&mut Self>, mpd_binary: &PathBuf, native_config: &String) {
         tracing::debug!("Starting native mpd server");
-        if !Path::new(&native_config).exists() {
-            let settings = Settings::load().blocking_read().clone();
-            let isettings = InternalSettings::load().clone();
-            init_native_mpd_config(settings, isettings);
-        };
+        let settings = Settings::load().blocking_read().clone();
+        let isettings = InternalSettings::load().clone();
+        init_native_mpd_config(settings, isettings);
         self.spawn_server_instance(mpd_binary, native_config);
     }
 
@@ -362,6 +360,10 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                     let settings = Settings::load().blocking_read();
                     let isettings = InternalSettings::load();
                     let cancel_token = CancellationToken::new();
+                    if let Some(token) = qobject.cancel.clone() {
+                        tracing::debug!("Issuing cancel on disconnect");
+                        token.cancel();
+                    }; 
                     qobject.as_mut().rust_mut().cancel.replace(cancel_token);
                     if settings.mpd_socket == isettings.native_socket {
                         tracing::debug!("Using native mpd server");
