@@ -46,6 +46,7 @@
               llvmPackages.bintools
               pkgs-unstable.rust-analyzer
               rust-bin.beta.latest.default
+              pkgs-unstable.sccache
             ];
             shellHook = ''
               export QML_IMPORT_PATH=$NIXPKGS_QT6_QML_IMPORT_PATH

@@ -1,0 +1,4 @@
+[build]
+incremental = true
+rustflags = ["-C", "codegen-units=8"]
+rustc-wrapper = "sccache"
