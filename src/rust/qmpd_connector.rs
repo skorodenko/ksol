@@ -9,7 +9,7 @@ use core::pin::Pin;
 use cxx_qt::{CxxQtType, Threading};
 use mpd_client::client::{ConnectionEvent, Subsystem};
 use mpd_client::{ClientController, ClientIdler, commands};
-use mpris_server::{PlaybackStatus, Property, Server};
+use mpris_server::{LoopStatus, PlaybackStatus, Property, Server};
 use num_traits::FromPrimitive;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -53,9 +53,10 @@ impl qobject::QMPDConnector {
             let notify_queue = notify.clone();
             let mpd_idle = mpd_idle.as_mut().expect("idle client is None");
             let mut interval = tokio::time::interval(Duration::from_secs(1));
-            //let mpris_server = Server::new("ksol", Player { action_sender: tx_actions.clone().expect("Actions sender is None") }).await.unwrap();
+            let mpris_server =
+                Server::new("ksol", Player { action_sender: tx_actions.clone().expect("Actions sender is None") }).await.unwrap();
             loop {
-                //let mpris = &mpris_server;
+                let mpris = &mpris_server;
                 tokio::select! {
                     response = mpd_idle.next() => {
                         match response {
@@ -97,9 +98,9 @@ impl qobject::QMPDConnector {
                             _ => {},
                         }
                     },
-                    //Some(response) = rx_mpris.recv() => {
-                    //    let _ = mpris.properties_changed(response).await;
-                    //},
+                    Some(response) = rx_mpris.recv() => {
+                        let _ = mpris.properties_changed(response).await;
+                    },
                     _ = notify.notified() => {
                         if let Some(ref sender) = tx_actions {
                             let _ = sender.send(MPSCCommand::IdleTimeline).await;
@@ -324,7 +325,7 @@ impl qobject::QMPDConnector {
                         tracing::debug!("Succesfully connected to MPD server (unix_socket)");
                         break ("connected", Some(client), Some(idle));
                     },
-                    () = tokio::time::sleep(tokio::time::Duration::from_millis(65)) => {
+                    () = tokio::time::sleep(tokio::time::Duration::from_millis(80)) => {
                         retcount -= 1;
                         if retcount <= 0 {
                             tracing::error!("Failed to connect to MPD server");
@@ -358,7 +359,7 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
             .on_connection_update(|mut qobject, msg| match String::from(msg).as_str() {
                 "disconnected-action" => {
                     tracing::debug!("Exhausted all reconnection attempts");
-                },
+                }
                 "disconnected" => {
                     let settings = Settings::load().blocking_read();
                     let isettings = InternalSettings::load();
@@ -366,7 +367,7 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                     if let Some(token) = qobject.cancel.clone() {
                         tracing::debug!("Issuing cancel on disconnect");
                         token.cancel();
-                    }; 
+                    };
                     qobject.as_mut().rust_mut().cancel.replace(cancel_token);
                     if settings.mpd_socket == isettings.native_socket {
                         tracing::debug!("Using native mpd server");
@@ -419,15 +420,53 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
             })
             .release();
         // Mpris interface
-        //        self.as_mut()
-        //            .on_play_state_changed(|qobject, state| {
-        //                let tx_mpris = qobject.tx_mpris.clone();
-        //                if let Some(ref mpris) = tx_mpris {
-        //                    let mpris_changes = vec![Property::PlaybackStatus(PlaybackStatus::Playing)];
-        //                    let _ = mpris.blocking_send(mpris_changes);
-        //                };
-        //            })
-        //            .release();
+        self.as_mut()
+            .on_play_state_changed(|qobject, state| {
+                let tx_mpris = qobject.tx_mpris.clone();
+                if let Some(ref mpris) = tx_mpris {
+                    let mpris_changes = match String::from(state).as_str() {
+                        "Playing" => vec![
+                            Property::PlaybackStatus(PlaybackStatus::Playing),
+                            Property::CanGoNext(true),
+                            Property::CanGoPrevious(true),
+                        ],
+                        "Paused" => vec![
+                            Property::PlaybackStatus(PlaybackStatus::Paused),
+                            Property::CanGoNext(true),
+                            Property::CanGoPrevious(true),
+                        ],
+                        "Stopper" => vec![
+                            Property::PlaybackStatus(PlaybackStatus::Stopped),
+                            Property::CanGoNext(false),
+                            Property::CanGoPrevious(false),
+                        ],
+                        _ => unreachable!(),
+                    };
+                    let _ = mpris.blocking_send(mpris_changes);
+                };
+            })
+            .release();
+        self.as_mut()
+            .on_update_options(|qobject| {
+                let tx_mpris = qobject.tx_mpris.clone();
+                if let Some(ref mpris) = tx_mpris {
+                    let repeat = qobject.repeat;
+                    let single = qobject.single;
+                    let shuffle = qobject.shuffle;
+                    let mut mpris_changes = Vec::new();
+                    match (repeat, single) {
+                        (false, false) | (false, true) => mpris_changes.push(Property::LoopStatus(LoopStatus::None)),
+                        (true, false) => mpris_changes.push(Property::LoopStatus(LoopStatus::Playlist)),
+                        (true, true) => mpris_changes.push(Property::LoopStatus(LoopStatus::Track)),
+                    };
+                    match shuffle {
+                        true => mpris_changes.push(Property::Shuffle(true)),
+                        false => mpris_changes.push(Property::Shuffle(false)),
+                    };
+                    let _ = mpris.blocking_send(mpris_changes);
+                }
+            })
+            .release();
     }
 }
 
