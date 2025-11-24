@@ -72,14 +72,22 @@ Kirigami.ApplicationWindow {
             case "connected":
                 connectionStateLabel.text = "Connected";
                 connectionStateLabelBackground.color = Kirigami.Theme.positiveBackgroundColor;
+                connectionStateRestart.visible = false;
                 break;
-            case "connecting":
+            case "connecting" || "disconnected":
                 connectionStateLabel.text = "Connecting";
                 connectionStateLabelBackground.color = Kirigami.Theme.neutralBackgroundColor;
+                connectionStateRestart.visible = false;
                 break;
-            case "disconnected":
+//            case "disconnected":
+//                connectionStateLabel.text = "Disconnected";
+//                connectionStateLabelBackground.color = Kirigami.Theme.negativeBackgroundColor;
+//                connectionStateRestart.visible = true;
+//                break;
+            case "disconnected-action":
                 connectionStateLabel.text = "Disconnected";
                 connectionStateLabelBackground.color = Kirigami.Theme.negativeBackgroundColor;
+                connectionStateRestart.visible = true;
                 break;
             }
         }
@@ -344,23 +352,44 @@ Kirigami.ApplicationWindow {
         Item {
             anchors.fill: parent
 
-            QQC2.Label {
-                id: connectionStateLabel
+            Item {
                 anchors.left: parent.left
                 anchors.leftMargin: Kirigami.Units.largeSpacing
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
-                topPadding: 2
-                leftPadding: Kirigami.Units.smallSpacing
-                rightPadding: Kirigami.Units.smallSpacing
 
-                text: "Disconnected"
-
-                background: Rectangle {
+                Rectangle {
                     id: connectionStateLabelBackground
+                    anchors.fill: parent
                     Kirigami.Theme.inherit: false
                     Kirigami.Theme.colorSet: Kirigami.Theme.Window
                     color: Kirigami.Theme.negativeBackgroundColor
+                }
+                
+                QQC2.Label {
+                    id: connectionStateLabel
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    topPadding: 2
+                    leftPadding: Kirigami.Units.smallSpacing
+                    rightPadding: Kirigami.Units.smallSpacing
+
+                    text: "Disconnected"
+                }
+
+                QQC2.Button {
+                    id: connectionStateRestart
+                    visible: false
+                    flat: true
+                    focusPolicy: Qt.NoFocus
+                    icon.name: "media-repeat-all"
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    anchors.left: connectionStateLabel.right
+                    onClicked: {
+                        mpd_connector.connect();
+                    }
                 }
             }
 

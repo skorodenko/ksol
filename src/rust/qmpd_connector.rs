@@ -301,7 +301,7 @@ impl qobject::QMPDConnector {
 
     fn connect_client(self: Pin<&mut Self>) {
         let qt_thread = self.qt_thread();
-        let mut retcount = 3;
+        let mut retcount = 5;
         let rt_idle = &self.rt_idle;
         rt_idle.spawn(async move {
             let (state, mpd_client, mpd_idle) = loop {
@@ -328,7 +328,7 @@ impl qobject::QMPDConnector {
                         retcount -= 1;
                         if retcount <= 0 {
                             tracing::error!("Failed to connect to MPD server");
-                            break ("disconnected", None, None);
+                            break ("disconnected-action", None, None);
                         }
                         tracing::warn!("Failed to connect to MPD server, retrying");
                     },
@@ -356,6 +356,9 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
     fn initialize(mut self: Pin<&mut Self>) {
         self.as_mut()
             .on_connection_update(|mut qobject, msg| match String::from(msg).as_str() {
+                "disconnected-action" => {
+                    tracing::debug!("Exhausted all reconnection attempts");
+                },
                 "disconnected" => {
                     let settings = Settings::load().blocking_read();
                     let isettings = InternalSettings::load();
