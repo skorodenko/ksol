@@ -473,7 +473,7 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
 impl Default for MPDConnector {
     fn default() -> Self {
         let rt_idle = Builder::new_multi_thread().worker_threads(1).enable_io().enable_time().build().unwrap();
-        let rt_action = Builder::new_multi_thread().worker_threads(2).build().unwrap();
+        let rt_action = Builder::new_multi_thread().worker_threads(3).build().unwrap();
         Self {
             client: None,
             idle_client: None,
