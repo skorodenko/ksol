@@ -180,7 +180,7 @@ impl PlayerInterface for Player {
     }
 
     async fn can_seek(&self) -> fdo::Result<bool> {
-        Ok(false)
+        Ok(true)
     }
 
     async fn can_control(&self) -> fdo::Result<bool> {
