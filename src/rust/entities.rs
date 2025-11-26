@@ -5,6 +5,7 @@ use serde;
 use std::fmt::{Display, Formatter, Result};
 use std::path::Path;
 use strum::EnumIter;
+use mpris_server::{Property, Signal};
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct QSong {
@@ -43,6 +44,12 @@ pub enum MPSCCommand {
     IdleQueue,
     IdleOptions,
     IdleTimeline,
+}
+
+#[derive(Debug)]
+pub enum MPRISCommand {
+    Property(Vec<Property>),
+    Signal(Signal),
 }
 
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, EnumIter, FromPrimitive, ToPrimitive, Copy, Clone, Debug)]

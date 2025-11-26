@@ -1,7 +1,7 @@
 use qobject::*;
 
 use crate::rust::action_pool::ActionPool;
-use crate::rust::entities::{ColumnSort, MPSCCommand, QSong, SongField};
+use crate::rust::entities::{ColumnSort, MPRISCommand, MPSCCommand, QSong, SongField};
 use crate::rust::init_hooks::init_native_mpd_config;
 use crate::rust::mpris_interface::Player;
 use crate::rust::settings::{InternalSettings, Settings};
@@ -9,7 +9,7 @@ use core::pin::Pin;
 use cxx_qt::{CxxQtType, Threading};
 use mpd_client::client::{ConnectionEvent, Subsystem};
 use mpd_client::{ClientController, ClientIdler, commands};
-use mpris_server::{LoopStatus, Metadata, PlaybackStatus, Property, Server};
+use mpris_server::{LoopStatus, Metadata, PlaybackStatus, Property, Server, Signal, Time};
 use num_traits::FromPrimitive;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -33,8 +33,8 @@ pub struct MPDConnector {
     pub shuffle: bool,
     pub rt_idle: Runtime,
     pub rt_action: Runtime,
-    pub tx_mpris: Option<Sender<Vec<Property>>>,
-    pub rx_mpris: Option<Receiver<Vec<Property>>>,
+    pub tx_mpris: Option<Sender<MPRISCommand>>,
+    pub rx_mpris: Option<Receiver<MPRISCommand>>,
     pub tx_actions: Option<Sender<MPSCCommand>>,
     pub rx_actions: Option<Receiver<MPSCCommand>>,
 }
@@ -100,7 +100,10 @@ impl qobject::QMPDConnector {
                         }
                     },
                     Some(response) = rx_mpris.recv() => {
-                        let _ = mpris.properties_changed(response).await;
+                        let _ = match response {
+                            MPRISCommand::Property(val) => mpris.properties_changed(val).await,
+                            MPRISCommand::Signal(val) => mpris.emit(val).await,
+                        };
                     },
                     _ = notify.notified() => {
                         if let Some(ref sender) = tx_actions {
@@ -460,7 +463,8 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                         ],
                         _ => unreachable!(),
                     };
-                    let _ = mpris.blocking_send(mpris_changes);
+                    let command = MPRISCommand::Property(mpris_changes);
+                    let _ = mpris.blocking_send(command);
                 };
             })
             .release();
@@ -481,7 +485,8 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                         true => mpris_changes.push(Property::Shuffle(true)),
                         false => mpris_changes.push(Property::Shuffle(false)),
                     };
-                    let _ = mpris.blocking_send(mpris_changes);
+                    let command = MPRISCommand::Property(mpris_changes);
+                    let _ = mpris.blocking_send(command);
                 }
             })
             .release();
@@ -490,10 +495,25 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                 let tx_mpris = qobject.tx_mpris.clone();
                 if let Some(ref mpris) = tx_mpris {
                     if let Some(ref song) = qobject.active_song {
-                        let metadata = Metadata::builder().title(&song.title).build();
-                        let _ = mpris.blocking_send(vec![Property::Metadata(metadata)]);
+                        let metadata = Metadata::builder()
+                            .title(&song.title)
+                            .artist([&song.artist])
+                            .album(&song.album)
+                            .length(Time::from_secs(song.duration.as_secs() as i64))
+                            .build();
+                        let command = MPRISCommand::Property(vec![Property::Metadata(metadata)]);
+                        let _ = mpris.blocking_send(command);
                     };
                 }
+            })
+            .release();
+        self.as_mut()
+            .on_timeline_update(|qobject, _, elapsed| {
+                let tx_mpris = qobject.tx_mpris.clone();
+                if let Some(ref mpris) = tx_mpris {
+                    let command = MPRISCommand::Signal(Signal::Seeked { position: Time::from_secs(elapsed as i64) });
+                    let _ = mpris.blocking_send(command);
+                };
             })
             .release();
     }
