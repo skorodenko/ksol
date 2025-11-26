@@ -1,7 +1,7 @@
 use qobject::*;
 
 use crate::rust::action_pool::ActionPool;
-use crate::rust::entities::{ColumnSort, MPSCCommand, SongField, QSong};
+use crate::rust::entities::{ColumnSort, MPSCCommand, QSong, SongField};
 use crate::rust::init_hooks::init_native_mpd_config;
 use crate::rust::mpris_interface::Player;
 use crate::rust::settings::{InternalSettings, Settings};
@@ -9,7 +9,7 @@ use core::pin::Pin;
 use cxx_qt::{CxxQtType, Threading};
 use mpd_client::client::{ConnectionEvent, Subsystem};
 use mpd_client::{ClientController, ClientIdler, commands};
-use mpris_server::{LoopStatus, PlaybackStatus, Property, Server};
+use mpris_server::{LoopStatus, Metadata, PlaybackStatus, Property, Server};
 use num_traits::FromPrimitive;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -354,37 +354,20 @@ impl qobject::QMPDConnector {
     }
 
     pub fn get_active_song_id(self: Pin<&mut Self>) -> u64 {
-        if let Some(ref song) = self.active_song {
-            song.id
-        } else {
-            0
-        }
+        if let Some(ref song) = self.active_song { song.id } else { 0 }
     }
 
     pub fn get_active_song_position(self: Pin<&mut Self>) -> usize {
-        if let Some(ref song) = self.active_song {
-            song.position
-        } else {
-            0
-        }
+        if let Some(ref song) = self.active_song { song.position } else { 0 }
     }
 
     pub fn get_active_song_title(self: Pin<&mut QMPDConnector>) -> QString {
-        if let Some(ref song) = self.active_song {
-            QString::from(&song.title)
-        } else {
-            QString::default()
-        }
+        if let Some(ref song) = self.active_song { QString::from(&song.title) } else { QString::default() }
     }
 
     pub fn get_active_song_artist(self: Pin<&mut QMPDConnector>) -> QString {
-        if let Some(ref song) = self.active_song {
-            QString::from(&song.artist)
-        } else {
-            QString::default()
-        }
+        if let Some(ref song) = self.active_song { QString::from(&song.artist) } else { QString::default() }
     }
-
 }
 
 impl cxx_qt::Initialize for qobject::QMPDConnector {
@@ -453,6 +436,7 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                 }
             })
             .release();
+
         // Mpris interface
         self.as_mut()
             .on_play_state_changed(|qobject, state| {
@@ -498,6 +482,17 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                         false => mpris_changes.push(Property::Shuffle(false)),
                     };
                     let _ = mpris.blocking_send(mpris_changes);
+                }
+            })
+            .release();
+        self.as_mut()
+            .on_active_song_changed(|qobject| {
+                let tx_mpris = qobject.tx_mpris.clone();
+                if let Some(ref mpris) = tx_mpris {
+                    if let Some(ref song) = qobject.active_song {
+                        let metadata = Metadata::builder().title(&song.title).build();
+                        let _ = mpris.blocking_send(vec![Property::Metadata(metadata)]);
+                    };
                 }
             })
             .release();
