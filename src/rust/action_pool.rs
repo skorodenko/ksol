@@ -253,17 +253,14 @@ impl ActionPool {
                             let _ = mpd_client.command_list(commands).await;
                         }
                         MPSCCommand::IdlePlayer => {
-                            let command = commands::Status;
-                            match mpd_client.command(command).await {
+                            let command_lst = (commands::Status, commands::CurrentSong);
+                            match mpd_client.command_list(command_lst).await {
                                 Ok(rsp) => {
-                                    let play_state = QString::from(format!("{:#?}", rsp.state));
-                                    let (song_pos, song_id) = match rsp.current_song {
-                                        Some(song) => (song.0.0, song.1.0),
-                                        None => (0, 0),
-                                    };
+                                    let play_state = QString::from(format!("{:#?}", rsp.0.state));
+                                    let current_song = rsp.1.map(QSong::from);
                                     let _ = qt_thread.queue(move |mut qobject| {
                                         qobject.as_mut().play_state_changed(play_state);
-                                        qobject.as_mut().active_song_changed(song_pos, song_id);
+                                        qobject.as_mut().rust_mut().active_song = current_song;
                                     });
                                 }
                                 Err(e) => {

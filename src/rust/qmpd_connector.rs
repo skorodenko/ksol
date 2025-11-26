@@ -1,7 +1,7 @@
 use qobject::*;
 
 use crate::rust::action_pool::ActionPool;
-use crate::rust::entities::{ColumnSort, MPSCCommand, SongField};
+use crate::rust::entities::{ColumnSort, MPSCCommand, SongField, QSong};
 use crate::rust::init_hooks::init_native_mpd_config;
 use crate::rust::mpris_interface::Player;
 use crate::rust::settings::{InternalSettings, Settings};
@@ -27,6 +27,7 @@ pub struct MPDConnector {
     pub client: Option<ClientController>,
     pub idle_client: Option<ClientIdler>,
     pub cancel: Option<CancellationToken>,
+    pub active_song: Option<QSong>,
     pub repeat: bool,
     pub single: bool,
     pub shuffle: bool,
@@ -478,6 +479,7 @@ impl Default for MPDConnector {
             client: None,
             idle_client: None,
             cancel: None,
+            active_song: None,
             rt_idle,
             rt_action,
             tx_actions: None,
@@ -507,6 +509,7 @@ pub mod qobject {
         #[qproperty(bool, repeat, READ, WRITE, NOTIFY = update_options)]
         #[qproperty(bool, single, READ, WRITE, NOTIFY = update_options)]
         #[qproperty(bool, shuffle, READ, WRITE, NOTIFY = update_options)]
+        #[qproperty(u64, activeSongId, READ, WRITE, NOTIFY = active_song_changed)]
         type QMPDConnector = super::MPDConnector;
 
         #[qsignal]
@@ -523,7 +526,7 @@ pub mod qobject {
 
         #[qsignal]
         #[cxx_name = "activeSongChanged"]
-        fn active_song_changed(self: Pin<&mut QMPDConnector>, song_pos: usize, song_id: u64);
+        fn active_song_changed(self: Pin<&mut QMPDConnector>);
 
         #[qsignal]
         #[cxx_name = "albumArtUpdate"]
