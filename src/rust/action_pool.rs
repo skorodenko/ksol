@@ -40,7 +40,7 @@ impl ActionPool {
     pub fn spawn_workers(self) {
         let mut pool: Vec<Sender<MPSCCommand>> = Vec::with_capacity(self.num_workers);
         for id in 0..self.num_workers {
-            let (wtx, wrx) = mpsc::channel::<MPSCCommand>(36);
+            let (wtx, wrx) = mpsc::channel::<MPSCCommand>(128);
             pool.push(wtx);
             self.rt_handle.spawn(ActionPool::worker(
                 id,

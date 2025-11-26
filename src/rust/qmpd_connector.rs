@@ -399,8 +399,8 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                     qobject.as_mut().connection_update(QString::from("connecting"));
                 }
                 "connected" => {
-                    let (tx_actions, rx_actions) = tokio::sync::mpsc::channel(32);
-                    let (tx_mpris, rx_mpris) = tokio::sync::mpsc::channel(32);
+                    let (tx_actions, rx_actions) = tokio::sync::mpsc::channel(256);
+                    let (tx_mpris, rx_mpris) = tokio::sync::mpsc::channel(256);
                     qobject.as_mut().rust_mut().tx_actions.replace(tx_actions);
                     qobject.as_mut().rust_mut().rx_actions.replace(rx_actions);
                     qobject.as_mut().rust_mut().tx_mpris.replace(tx_mpris);
