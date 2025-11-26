@@ -3,20 +3,20 @@ use crate::rust::qmpd_connector::qobject::QMPDConnector;
 use base64::prelude::*;
 use bincode::config;
 use bincode::serde::encode_to_vec;
-use bytes::BytesMut;
+use bytes::Bytes;
 use cxx_qt::{CxxQtThread, CxxQtType};
 use cxx_qt_lib::{QByteArray, QString};
 use mpd_client::{ClientController, commands, filter::Filter, responses::PlayState, responses::Song, tag::Tag};
+use quick_cache::unsync::Cache;
 use tokio::runtime::Handle;
 use tokio::sync::mpsc::{self, Receiver, Sender};
-use tokio::sync::watch;
 use tokio::time::Duration;
 use tokio_util::sync::CancellationToken;
 use tracing;
 
 pub(crate) struct ActionPool {
     num_workers: usize,
-    art_url_watch: (watch::Sender<BytesMut>, watch::Receiver<BytesMut>),
+    art_url_cache: Cache<Bytes, String>,
     pub rt_handle: Handle,
     pub mpd_client: ClientController,
     pub cancel_token: CancellationToken,
@@ -33,8 +33,8 @@ impl ActionPool {
         rx_actions: Receiver<MPSCCommand>,
     ) -> ActionPool {
         let num_workers = rt_handle.metrics().num_workers();
-        let art_url_watch = watch::channel(BytesMut::default());
-        ActionPool { num_workers, art_url_watch, mpd_client, rt_handle, cancel_token, qt_thread, rx_actions }
+        let art_url_cache = Cache::new(16);
+        ActionPool { num_workers, art_url_cache, mpd_client, rt_handle, cancel_token, qt_thread, rx_actions }
     }
 
     pub fn spawn_workers(self) {
@@ -45,8 +45,7 @@ impl ActionPool {
             self.rt_handle.spawn(ActionPool::worker(
                 id,
                 wrx,
-                self.art_url_watch.0.clone(),
-                self.art_url_watch.1.clone(),
+                self.art_url_cache.clone(),
                 self.mpd_client.clone(),
                 self.cancel_token.clone(),
                 self.qt_thread.clone(),
@@ -56,7 +55,7 @@ impl ActionPool {
         let mpd_client = self.mpd_client.clone();
         self.rt_handle.spawn(async move {
             let mut idx = 0;
-            let _ = mpd_client.command(commands::SetBinaryLimit(131072)).await;
+            let _ = mpd_client.command(commands::SetBinaryLimit(16384)).await;
             while let Some(cmd) = rx.recv().await {
                 let mut forward = cmd;
                 loop {
@@ -83,8 +82,7 @@ impl ActionPool {
     async fn worker(
         id: usize,
         mut rx: Receiver<MPSCCommand>,
-        art_tx: watch::Sender<BytesMut>,
-        mut art_rx: watch::Receiver<BytesMut>,
+        mut art_url_cache: Cache<Bytes, String>,
         mpd_client: ClientController,
         cancel_token: CancellationToken,
         qt_thread: CxxQtThread<QMPDConnector>,
@@ -324,25 +322,22 @@ impl ActionPool {
                             let command = commands::CurrentSong;
                             if let Ok(Some(song)) = mpd_client.command(command).await {
                                 if let Ok(Some(sign)) = mpd_client.album_art_signature(&song.song.url).await {
-                                    if *art_rx.borrow() == sign {
-                                        tracing::debug!("Existing album art request for {}", &song.song.url);
-                                        continue;
+                                    if let Some(image) = art_url_cache.get(&sign) {
+                                        tracing::debug!("Using cached album art for {}", &song.song.url);
+                                        let image = QString::from(image);
+                                        let _ = qt_thread.queue(move |qobject| {
+                                            qobject.album_art_update(image);
+                                        });
                                     } else {
                                         tracing::debug!("New album art request for {}", &song.song.url);
-                                        art_tx.send_replace(sign.clone());
-                                    };
-                                    tokio::select! {
-                                        Ok(Some((image, Some(mime)))) = mpd_client.album_art(&song.song.url) => {
+                                        if let Ok(Some((image, Some(mime)))) = mpd_client.album_art(&song.song.url).await {
                                             tracing::debug!("Recieved album art for {}", &song.song.url);
                                             let image = format!("data:{};base64,{}", mime, BASE64_STANDARD.encode(image));
+                                            art_url_cache.insert(sign, image.clone());
                                             let _ = qt_thread.queue(move |qobject| {
                                                 qobject.album_art_update(QString::from(image));
                                             });
-                                        },
-                                        Ok(_) = art_rx.wait_for(|val| *val != sign) => {
-                                            tracing::warn!("Aborting album art request for {}", &song.song.url);
-                                            continue;
-                                        },
+                                        };
                                     };
                                 };
                             } else {

@@ -491,7 +491,16 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
             })
             .release();
         self.as_mut()
-            .on_active_song_changed(|qobject| {
+            .on_timeline_update(|qobject, _, elapsed| {
+                let tx_mpris = qobject.tx_mpris.clone();
+                if let Some(ref mpris) = tx_mpris {
+                    let command = MPRISCommand::Signal(Signal::Seeked { position: Time::from_secs(elapsed as i64) });
+                    let _ = mpris.blocking_send(command);
+                };
+            })
+            .release();
+        self.as_mut()
+            .on_album_art_update(|qobject, art| {
                 let tx_mpris = qobject.tx_mpris.clone();
                 if let Some(ref mpris) = tx_mpris {
                     if let Some(ref song) = qobject.active_song {
@@ -500,19 +509,11 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                             .artist([&song.artist])
                             .album(&song.album)
                             .length(Time::from_secs(song.duration.as_secs() as i64))
+                            .art_url(String::from(art))
                             .build();
                         let command = MPRISCommand::Property(vec![Property::Metadata(metadata)]);
                         let _ = mpris.blocking_send(command);
                     };
-                }
-            })
-            .release();
-        self.as_mut()
-            .on_timeline_update(|qobject, _, elapsed| {
-                let tx_mpris = qobject.tx_mpris.clone();
-                if let Some(ref mpris) = tx_mpris {
-                    let command = MPRISCommand::Signal(Signal::Seeked { position: Time::from_secs(elapsed as i64) });
-                    let _ = mpris.blocking_send(command);
                 };
             })
             .release();
