@@ -79,11 +79,6 @@ Kirigami.ApplicationWindow {
                 connectionStateLabelBackground.color = Kirigami.Theme.neutralBackgroundColor;
                 connectionStateRestart.visible = false;
                 break;
-//            case "disconnected":
-//                connectionStateLabel.text = "Disconnected";
-//                connectionStateLabelBackground.color = Kirigami.Theme.negativeBackgroundColor;
-//                connectionStateRestart.visible = true;
-//                break;
             case "disconnected-action":
                 connectionStateLabel.text = "Disconnected";
                 connectionStateLabelBackground.color = Kirigami.Theme.negativeBackgroundColor;
@@ -134,17 +129,14 @@ Kirigami.ApplicationWindow {
             var dfs = Math.floor(duration % 60).toString().padStart(2, '0');
             media_duration.text = `${efm}:${efs} / ${dfm}:${dfs}`;
         }
-        onActiveSongChanged: function (songPos, songId) {
-            if (qplaylist_view.songPos != songPos) {
-                if (songPos < qplaylist_view.topRow + 1) {
-                    qplaylist_view.positionViewAtRow(songPos, Qt.AlignTop, -30)
-                }
-                if (songPos > qplaylist_view.bottomRow - 1) {
-                    qplaylist_view.positionViewAtRow(songPos, Qt.AlignBottom, 30);
-                }
+        onActiveSongChanged: function () {
+            var songPos = mpd_connector.activeSongPosition;
+            if (songPos < qplaylist_view.topRow + 1) {
+                qplaylist_view.positionViewAtRow(songPos, Qt.AlignTop, -30);
             }
-            qplaylist.activeSongId = songId;
-            qplaylist_view.songPos = songPos;
+            if (songPos > qplaylist_view.bottomRow - 1) {
+                qplaylist_view.positionViewAtRow(songPos, Qt.AlignBottom, 30);
+            }
         }
         onUpdateOptions: function () {
             var shuffle = mpd_connector.shuffle;
@@ -278,7 +270,7 @@ Kirigami.ApplicationWindow {
                 RowLayout {
                     QQC2.Label {
                         id: media_title
-                        text: qplaylist.activeSongTitle + " | " + qplaylist.activeSongArtist
+                        text: mpd_connector.activeSongTitle + " | " + mpd_connector.activeSongArtist
                         Layout.fillWidth: true
                     }
                     QQC2.Label {
@@ -365,7 +357,7 @@ Kirigami.ApplicationWindow {
                     Kirigami.Theme.colorSet: Kirigami.Theme.Window
                     color: Kirigami.Theme.negativeBackgroundColor
                 }
-                
+
                 QQC2.Label {
                     id: connectionStateLabel
                     anchors.left: parent.left
@@ -559,7 +551,7 @@ Kirigami.ApplicationWindow {
                 required property int row
                 required property var songId
                 required property string songDisplay
-                property bool activeSongItem: qplaylist.activeSongId == songId
+                property bool activeSongItem: mpd_connector.activeSongId == songId
 
                 MouseArea {
                     anchors.fill: parent

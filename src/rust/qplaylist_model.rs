@@ -14,7 +14,6 @@ pub struct PlaylistModel {
     pub filter: String,
     pub queue: Vec<QSong>,
     queue_proxy: Vec<usize>,
-    pub active_song_id: u64,
 }
 
 impl qobject::QPlaylistModel {
@@ -102,22 +101,6 @@ impl qobject::QPlaylistModel {
         self.as_mut().rust_mut().filter = value.into();
         self.as_mut().update_filter();
     }
-
-    fn get_active_song_title(self: &QPlaylistModel) -> QString {
-        let song = &self.queue.iter().find(|&x| x.id == self.active_song_id);
-        match song {
-            Some(v) => QString::from(&v.title),
-            None => QString::from("Title"),
-        }
-    }
-
-    fn get_active_song_artist(self: &QPlaylistModel) -> QString {
-        let song = &self.queue.iter().find(|&x| x.id == self.active_song_id);
-        match song {
-            Some(v) => QString::from(&v.artist),
-            None => QString::from("Artist"),
-        }
-    }
 }
 
 impl cxx_qt::Initialize for qobject::QPlaylistModel {
@@ -178,18 +161,11 @@ mod qobject {
         #[qml_element]
         #[base = QAbstractTableModel]
         #[qproperty(QString, filter, READ = get_filter, WRITE = set_filter, NOTIFY = update_filter)]
-        #[qproperty(u64, active_song_id, cxx_name="activeSongId", READ, WRITE, NOTIFY = update_info)]
-        #[qproperty(QString, activeSongTitle, READ = get_active_song_title, NOTIFY = update_info)]
-        #[qproperty(QString, activeSongArtist, READ = get_active_song_artist, NOTIFY = update_info)]
         type QPlaylistModel = super::PlaylistModel;
 
         #[qsignal]
         #[cxx_name = "updateFilter"]
         fn update_filter(self: Pin<&mut QPlaylistModel>);
-
-        #[qsignal]
-        #[cxx_name = "updateInfo"]
-        fn update_info(self: Pin<&mut QPlaylistModel>);
 
         #[qsignal]
         #[cxx_name = "updateHeader"]
@@ -224,12 +200,6 @@ mod qobject {
 
         #[qinvokable]
         fn set_filter(self: Pin<&mut QPlaylistModel>, value: QString);
-
-        #[qinvokable]
-        fn get_active_song_title(self: &QPlaylistModel) -> QString;
-
-        #[qinvokable]
-        fn get_active_song_artist(self: &QPlaylistModel) -> QString;
 
         #[inherit]
         #[cxx_name = "headerDataChanged"]

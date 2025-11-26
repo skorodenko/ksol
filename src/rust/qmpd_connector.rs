@@ -352,6 +352,39 @@ impl qobject::QMPDConnector {
         }
         self.connection_update(QString::from("disconnected"));
     }
+
+    pub fn get_active_song_id(self: Pin<&mut Self>) -> u64 {
+        if let Some(ref song) = self.active_song {
+            song.id
+        } else {
+            0
+        }
+    }
+
+    pub fn get_active_song_position(self: Pin<&mut Self>) -> usize {
+        if let Some(ref song) = self.active_song {
+            song.position
+        } else {
+            0
+        }
+    }
+
+    pub fn get_active_song_title(self: Pin<&mut QMPDConnector>) -> QString {
+        if let Some(ref song) = self.active_song {
+            QString::from(&song.title)
+        } else {
+            QString::default()
+        }
+    }
+
+    pub fn get_active_song_artist(self: Pin<&mut QMPDConnector>) -> QString {
+        if let Some(ref song) = self.active_song {
+            QString::from(&song.artist)
+        } else {
+            QString::default()
+        }
+    }
+
 }
 
 impl cxx_qt::Initialize for qobject::QMPDConnector {
@@ -401,7 +434,7 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
             })
             .release();
         self.as_mut()
-            .on_active_song_changed(|qobject, _song_pos, _song_id| {
+            .on_active_song_changed(|qobject| {
                 let tx_actions = qobject.tx_actions.clone();
                 if let Some(ref sender) = tx_actions {
                     let _ = sender.blocking_send(MPSCCommand::UpdateArt);
@@ -509,7 +542,10 @@ pub mod qobject {
         #[qproperty(bool, repeat, READ, WRITE, NOTIFY = update_options)]
         #[qproperty(bool, single, READ, WRITE, NOTIFY = update_options)]
         #[qproperty(bool, shuffle, READ, WRITE, NOTIFY = update_options)]
-        #[qproperty(u64, activeSongId, READ, WRITE, NOTIFY = active_song_changed)]
+        #[qproperty(u64, activeSongId, READ = get_active_song_id, NOTIFY = active_song_changed)]
+        #[qproperty(usize, activeSongPosition, READ = get_active_song_position, NOTIFY = active_song_changed)]
+        #[qproperty(QString, activeSongTitle, READ = get_active_song_title, NOTIFY = active_song_changed)]
+        #[qproperty(QString, activeSongArtist, READ = get_active_song_artist, NOTIFY = active_song_changed)]
         type QMPDConnector = super::MPDConnector;
 
         #[qsignal]
@@ -551,6 +587,18 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "connect"]
         fn connect(self: Pin<&mut QMPDConnector>);
+
+        #[qinvokable]
+        fn get_active_song_id(self: Pin<&mut QMPDConnector>) -> u64;
+
+        #[qinvokable]
+        fn get_active_song_position(self: Pin<&mut QMPDConnector>) -> usize;
+
+        #[qinvokable]
+        fn get_active_song_title(self: Pin<&mut QMPDConnector>) -> QString;
+
+        #[qinvokable]
+        fn get_active_song_artist(self: Pin<&mut QMPDConnector>) -> QString;
 
         #[qinvokable]
         #[cxx_name = "syncState"]

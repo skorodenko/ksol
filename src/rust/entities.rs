@@ -9,6 +9,7 @@ use strum::EnumIter;
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct QSong {
     pub id: u64,
+    pub position: usize,
     pub track: i32,
     pub title: String,
     pub artist: String,
@@ -75,6 +76,7 @@ impl From<SongInQueue> for QSong {
     fn from(value: SongInQueue) -> Self {
         Self {
             id: value.id.0,
+            position: value.position.0,
             track: value.song.tags.get(&Tag::Track).unwrap_or(&vec![]).join(",").parse().unwrap_or(0),
             disc: value.song.tags.get(&Tag::Disc).unwrap_or(&vec![]).join(",").parse().unwrap_or(0),
             title: value.song.tags.get(&Tag::Title).unwrap_or(&vec![]).join(","),

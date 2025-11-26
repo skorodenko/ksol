@@ -259,8 +259,9 @@ impl ActionPool {
                                     let play_state = QString::from(format!("{:#?}", rsp.0.state));
                                     let current_song = rsp.1.map(QSong::from);
                                     let _ = qt_thread.queue(move |mut qobject| {
-                                        qobject.as_mut().play_state_changed(play_state);
                                         qobject.as_mut().rust_mut().active_song = current_song;
+                                        qobject.as_mut().play_state_changed(play_state);
+                                        qobject.as_mut().active_song_changed();
                                     });
                                 }
                                 Err(e) => {
