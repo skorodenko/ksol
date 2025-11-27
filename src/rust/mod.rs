@@ -1,4 +1,6 @@
 pub mod action_pool;
+pub mod action_service;
+pub mod actions;
 pub mod entities;
 pub mod init_hooks;
 pub mod mpris_interface;
