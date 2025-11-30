@@ -1,10 +1,11 @@
 use qobject::*;
 
-use crate::rust::action_service::ActionService;
-use crate::rust::actions;
-use crate::rust::entities::{ColumnSort, MPRISCommand, MPSCCommand, QSong, SongField};
+use crate::rust::entities::{ColumnSort, QSong, SongField};
 use crate::rust::init_hooks::init_native_mpd_config;
+use crate::rust::mpd_actions;
+use crate::rust::mpris_actions;
 use crate::rust::mpris_interface::Player;
+use crate::rust::services::{MPDActionService, MPRISActionService};
 use crate::rust::settings::{InternalSettings, Settings};
 use core::pin::Pin;
 use cxx_qt::{CxxQtType, Threading};
@@ -12,13 +13,12 @@ use mpd_client::client::{ConnectionEvent, Subsystem};
 use mpd_client::{ClientController, ClientIdler, commands};
 use mpris_server::{LoopStatus, Metadata, PlaybackStatus, Property, Server, Signal, Time};
 use num_traits::FromPrimitive;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::net::{TcpStream, UnixStream};
 use tokio::process::Command;
-use tokio::runtime::{Builder, Handle, Runtime};
+use tokio::runtime::{Builder, Runtime};
 use tokio::sync::Notify;
-use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::time::Duration;
 use tokio_util::sync::CancellationToken;
 use tower::{Service, ServiceBuilder};
@@ -35,9 +35,8 @@ pub struct MPDConnector {
     pub shuffle: bool,
     pub rt_idle: Runtime,
     pub rt_action: Runtime,
-    pub action_service: Option<ActionService>,
-    pub tx_mpris: Option<Sender<MPRISCommand>>,
-    pub rx_mpris: Option<Receiver<MPRISCommand>>,
+    pub mpd_service: Option<MPDActionService>,
+    pub mpris_service: Option<MPRISActionService>,
 }
 
 impl qobject::QMPDConnector {
@@ -45,8 +44,9 @@ impl qobject::QMPDConnector {
         let mut mpd_idle = self.as_mut().rust_mut().idle_client.take();
         let qt_thread = self.qt_thread();
         let cancel_token = self.cancel.clone().expect("Cancel token is None");
-        let mut rx_mpris = self.as_mut().rust_mut().rx_mpris.take().expect("mpris receiver is None");
+        let mpd_service = self.mpd_service.clone();
         let rt_idle = &self.rt_idle;
+        let rt_action = self.rt_action.handle().clone();
         tracing::debug!("Starting idle");
         rt_idle.spawn(async move {
             let notify = Arc::new(Notify::new());
@@ -54,10 +54,7 @@ impl qobject::QMPDConnector {
             let notify_queue = notify.clone();
             let mpd_idle = mpd_idle.as_mut().expect("idle client is None");
             let mut interval = tokio::time::interval(Duration::from_secs(1));
-            let mpris_server =
-                Server::new("ksol", Player { action_sender: tx_actions.clone().expect("Actions sender is None") }).await.unwrap();
             loop {
-                let mpris = &mpris_server;
                 tokio::select! {
                     response = mpd_idle.next() => {
                         match response {
@@ -68,25 +65,25 @@ impl qobject::QMPDConnector {
                             }
                             Some(ConnectionEvent::SubsystemChange(Subsystem::Queue)) => {
                                 notify_queue.notify_one();
-                                if let Some(ref sender) = tx_actions {
-                                    let _ = sender.send(MPSCCommand::IdleQueue).await;
+                                if let Some(mut service) = mpd_service.clone() {
+                                    rt_action.spawn(service.call(mpd_actions::IdleQueue::new(qt_thread.clone())));
                                 } else {
-                                    tracing::warn!("Connection not available");
+                                    tracing::error!("Action service not available");
                                 }
                             }
                             Some(ConnectionEvent::SubsystemChange(Subsystem::Player)) => {
                                 notify_player.notify_one();
-                                if let Some(ref sender) = tx_actions {
-                                    let _ = sender.send(MPSCCommand::IdlePlayer).await;
+                                if let Some(mut service) = mpd_service.clone() {
+                                    rt_action.spawn(service.call(mpd_actions::IdlePlayer::new(qt_thread.clone())));
                                 } else {
-                                    tracing::warn!("Connection not available");
+                                    tracing::error!("Action service not available");
                                 }
                             }
                             Some(ConnectionEvent::SubsystemChange(Subsystem::Options)) => {
-                                if let Some(ref sender) = tx_actions {
-                                    let _ = sender.send(MPSCCommand::IdleOptions).await;
+                                if let Some(mut service) = mpd_service.clone() {
+                                    rt_action.spawn(service.call(mpd_actions::IdleOptions::new(qt_thread.clone())));
                                 } else {
-                                    tracing::warn!("Connection not available");
+                                    tracing::error!("Action service not available");
                                 }
                             }
                             None => {
@@ -99,24 +96,18 @@ impl qobject::QMPDConnector {
                             _ => {},
                         }
                     },
-                    Some(response) = rx_mpris.recv() => {
-                        let _ = match response {
-                            MPRISCommand::Property(val) => mpris.properties_changed(val).await,
-                            MPRISCommand::Signal(val) => mpris.emit(val).await,
-                        };
-                    },
                     _ = notify.notified() => {
-                        if let Some(ref sender) = tx_actions {
-                            let _ = sender.send(MPSCCommand::IdleTimeline).await;
+                        if let Some(mut service) = mpd_service.clone() {
+                            rt_action.spawn(service.call(mpd_actions::IdleTimeline::new(qt_thread.clone())));
                         } else {
-                            tracing::warn!("Connection not available (timeline)");
+                            tracing::error!("Action service not available");
                         }
                     },
                     _ = interval.tick() => {
-                        if let Some(ref sender) = tx_actions {
-                            let _ = sender.send(MPSCCommand::IdleTimeline).await;
+                        if let Some(mut service) = mpd_service.clone() {
+                            rt_action.spawn(service.call(mpd_actions::IdleTimeline::new(qt_thread.clone())));
                         } else {
-                            tracing::warn!("Connection not available (timeline)");
+                            tracing::error!("Action service not available");
                         }
                     },
                     _ = cancel_token.cancelled() => {
@@ -150,117 +141,113 @@ impl qobject::QMPDConnector {
     }
 
     pub fn play_toggle(self: Pin<&mut Self>) {
-        let tx_actions = self.tx_actions.clone();
-        if let Some(ref sender) = tx_actions {
-            let _ = sender.blocking_send(MPSCCommand::PlayToggle);
+        if let Some(mut service) = self.mpd_service.clone() {
+            self.rt_action.spawn(service.call(mpd_actions::PlayToggle));
         } else {
-            tracing::warn!("Connection not available");
+            tracing::error!("Action service not available");
         }
     }
 
     pub fn play_song(self: Pin<&mut Self>, id: u64) {
-        let tx_actions = self.tx_actions.clone();
-        if let Some(ref sender) = tx_actions {
-            let _ = sender.blocking_send(MPSCCommand::PlaySong(id));
+        if let Some(mut service) = self.mpd_service.clone() {
+            self.rt_action.spawn(service.call(mpd_actions::PlaySong::new(id)));
         } else {
-            tracing::warn!("Connection not available");
+            tracing::error!("Action service not available");
         }
     }
 
     pub fn play_next(self: Pin<&mut Self>) {
-        let tx_actions = self.tx_actions.clone();
-        if let Some(ref sender) = tx_actions {
-            let _ = sender.blocking_send(MPSCCommand::Next);
+        if let Some(mut service) = self.mpd_service.clone() {
+            self.rt_action.spawn(service.call(mpd_actions::Next));
         } else {
-            tracing::warn!("Connection not available");
+            tracing::error!("Action service not available");
         }
     }
 
     pub fn play_previous(self: Pin<&mut Self>) {
-        let tx_actions = self.tx_actions.clone();
-        if let Some(ref sender) = tx_actions {
-            let _ = sender.blocking_send(MPSCCommand::Previous);
+        if let Some(mut service) = self.mpd_service.clone() {
+            self.rt_action.spawn(service.call(mpd_actions::Previous));
         } else {
-            tracing::warn!("Connection not available");
+            tracing::error!("Action service not available");
         }
     }
 
     pub fn play_seek(self: Pin<&mut QMPDConnector>, value: u64) {
         let seek_to = Duration::from_secs(value);
-        let tx_actions = self.tx_actions.clone();
-        if let Some(ref sender) = tx_actions {
-            let _ = sender.blocking_send(MPSCCommand::Seek(seek_to));
+        if let Some(mut service) = self.mpd_service.clone() {
+            self.rt_action.spawn(service.call(mpd_actions::Seek::new(seek_to)));
         } else {
-            tracing::warn!("Connection not available");
+            tracing::error!("Action service not available");
         }
     }
 
     pub fn update_db(self: Pin<&mut QMPDConnector>) {
         tracing::debug!("Updating MPD DB");
-        let tx_actions = self.tx_actions.clone();
-        if let Some(ref sender) = tx_actions {
-            let _ = sender.blocking_send(MPSCCommand::UpdateDb);
+        let qt_thread = self.qt_thread();
+        if let Some(mut service) = self.mpd_service.clone() {
+            self.rt_action.spawn(service.call(mpd_actions::UpdateDB::new(qt_thread)));
         } else {
-            tracing::warn!("Connection not available");
+            tracing::error!("Action service not available");
         }
     }
 
     pub fn get_playlists(self: Pin<&mut QMPDConnector>, group: i32) {
         let group = SongField::from_i32(group).expect("bad group value");
-        let tx_actions = self.tx_actions.clone();
-        if let Some(ref sender) = tx_actions {
-            let _ = sender.blocking_send(MPSCCommand::GetPlaylists(group));
+        let qt_thread = self.qt_thread();
+        if let Some(mut service) = self.mpd_service.clone() {
+            self.rt_action.spawn(service.call(mpd_actions::GetPlaylists::new(group, qt_thread)));
         } else {
-            tracing::warn!("Connection not available");
+            tracing::error!("Action service not available");
         }
     }
 
     pub fn stage_playlist(self: Pin<&mut QMPDConnector>, name: QString, group: i32) {
         let name = String::from(name);
         let group = SongField::from_i32(group).expect("bad group value");
-        let tx_actions = self.tx_actions.clone();
-        if let Some(ref sender) = tx_actions {
-            let _ = sender.blocking_send(MPSCCommand::StagePlaylist(name, group));
+        if let Some(mut service) = self.mpd_service.clone() {
+            self.rt_action.spawn(service.call(mpd_actions::StagePlaylist::new(name, group)));
         } else {
-            tracing::warn!("Connection not available");
+            tracing::error!("Action service not available");
         }
     }
 
     pub fn sort_playlist(self: Pin<&mut QMPDConnector>, sort_column: i32, sort_order: i32) {
         let sort_column = SongField::from_i32(sort_column).expect("bad sort_column value");
         let sort_order = ColumnSort::from((sort_order, sort_column));
-        if let Some(mut service) = self.action_service.clone() {
-            self.rt_action.spawn(service.call(actions::SortPlaylist::new(sort_order)));
+        if let Some(mut service) = self.mpd_service.clone() {
+            self.rt_action.spawn(service.call(mpd_actions::SortPlaylist::new(sort_order)));
         } else {
             tracing::error!("Action service not available");
         }
     }
 
     pub fn shuffle_toggle(self: Pin<&mut QMPDConnector>, current_state: bool) {
-        if let Some(mut service) = self.action_service.clone() {
-            self.rt_action.spawn(service.call(actions::ShuffleToggle::new(current_state)));
+        if let Some(mut service) = self.mpd_service.clone() {
+            self.rt_action.spawn(service.call(mpd_actions::ShuffleToggle::new(current_state)));
         } else {
             tracing::error!("Action service not available");
         }
     }
 
     fn repeat_toggle(self: Pin<&mut QMPDConnector>, current_repeat: bool, current_single: bool) {
-        if let Some(mut service) = self.action_service.clone() {
-            self.rt_action.spawn(service.call(actions::RepeatToggle::new(current_repeat, current_single)));
+        if let Some(mut service) = self.mpd_service.clone() {
+            self.rt_action.spawn(service.call(mpd_actions::RepeatToggle::new(current_repeat, current_single)));
         } else {
             tracing::error!("Action service not available");
         }
     }
 
     pub fn sync_state(self: Pin<&mut QMPDConnector>) {
-        let tx_actions = self.tx_actions.clone();
-        if let Some(ref sender) = tx_actions {
-            let _ = sender.blocking_send(MPSCCommand::IdleQueue);
-            let _ = sender.blocking_send(MPSCCommand::IdlePlayer);
-            let _ = sender.blocking_send(MPSCCommand::IdleOptions);
-            let _ = sender.blocking_send(MPSCCommand::IdleTimeline);
+        let qt_thread = self.qt_thread();
+        if let Some(mut service) = self.mpd_service.clone() {
+            self.rt_action.spawn(async move {
+                let _ = service.call(mpd_actions::IdleQueue::new(qt_thread.clone())).await;
+                let _ = service.call(mpd_actions::IdlePlayer::new(qt_thread.clone())).await;
+                let _ = service.call(mpd_actions::IdleOptions::new(qt_thread.clone())).await;
+                let _ = service.call(mpd_actions::IdleTimeline::new(qt_thread)).await;
+            });
         } else {
-            tracing::warn!("Connection not available");
+            tracing::error!("Action service not available");
         }
     }
 
@@ -387,13 +374,13 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                     qobject.as_mut().connection_update(QString::from("connecting"));
                 }
                 "connected" => {
-                    let (tx_actions, rx_actions) = tokio::sync::mpsc::channel(256);
-                    let (tx_mpris, rx_mpris) = tokio::sync::mpsc::channel(256);
-                    let action_service =
-                        ServiceBuilder::new().service(ActionService::new(qobject.client.clone().unwrap(), qobject.qt_thread()));
-                    qobject.as_mut().rust_mut().tx_mpris.replace(tx_mpris);
-                    qobject.as_mut().rust_mut().rx_mpris.replace(rx_mpris);
-                    qobject.as_mut().rust_mut().action_service.replace(action_service);
+                    let mpd_service = ServiceBuilder::new().service(MPDActionService::new(qobject.client.clone().unwrap()));
+                    let mpris = qobject
+                        .rt_action
+                        .block_on(async { Server::new("ksol", Player { mpd_service: mpd_service.clone() }).await.unwrap() });
+                    let mpris_service = ServiceBuilder::new().service(MPRISActionService::new(mpris));
+                    qobject.as_mut().rust_mut().mpd_service.replace(mpd_service);
+                    qobject.as_mut().rust_mut().mpris_service.replace(mpris_service);
                     qobject.as_mut().idle();
                     qobject.as_mut().init_ui();
                     qobject.as_mut().sync_state();
@@ -407,8 +394,9 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
             .release();
         self.as_mut()
             .on_active_song_changed(|qobject| {
-                if let Some(service) = qobject.action_service {
-                    qobject.rt_action.spawn(qobject.action_service.unwrap().call(actions::UpdateArt));
+                let qt_thread = qobject.qt_thread();
+                if let Some(mut service) = qobject.mpd_service.clone() {
+                    qobject.rt_action.spawn(service.call(mpd_actions::UpdateArt::new(qt_thread)));
                 } else {
                     tracing::error!("Action service not available");
                 }
@@ -416,11 +404,11 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
             .release();
         self.as_mut()
             .on_stage_playlist_result(|qobject, _data| {
-                let tx_actions = qobject.tx_actions.clone();
-                if let Some(ref sender) = tx_actions {
-                    let _ = sender.blocking_send(MPSCCommand::UpdateArt);
+                let qt_thread = qobject.qt_thread();
+                if let Some(mut service) = qobject.mpd_service.clone() {
+                    qobject.rt_action.spawn(service.call(mpd_actions::UpdateArt::new(qt_thread)));
                 } else {
-                    tracing::warn!("Connection not available");
+                    tracing::error!("Action service not available");
                 }
             })
             .release();
@@ -428,8 +416,7 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
         // Mpris interface
         self.as_mut()
             .on_play_state_changed(|qobject, state| {
-                let tx_mpris = qobject.tx_mpris.clone();
-                if let Some(ref mpris) = tx_mpris {
+                if let Some(mut service) = qobject.mpris_service.clone() {
                     let mpris_changes = match String::from(state).as_str() {
                         "Playing" => vec![
                             Property::PlaybackStatus(PlaybackStatus::Playing),
@@ -448,15 +435,13 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                         ],
                         _ => unreachable!(),
                     };
-                    let command = MPRISCommand::Property(mpris_changes);
-                    let _ = mpris.blocking_send(command);
+                    qobject.rt_action.spawn(service.call(mpris_actions::PropertyUpdate::new(mpris_changes)));
                 };
             })
             .release();
         self.as_mut()
             .on_update_options(|qobject| {
-                let tx_mpris = qobject.tx_mpris.clone();
-                if let Some(ref mpris) = tx_mpris {
+                if let Some(mut service) = qobject.mpris_service.clone() {
                     let repeat = qobject.repeat;
                     let single = qobject.single;
                     let shuffle = qobject.shuffle;
@@ -470,35 +455,30 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                         true => mpris_changes.push(Property::Shuffle(true)),
                         false => mpris_changes.push(Property::Shuffle(false)),
                     };
-                    let command = MPRISCommand::Property(mpris_changes);
-                    let _ = mpris.blocking_send(command);
+                    qobject.rt_action.spawn(service.call(mpris_actions::PropertyUpdate::new(mpris_changes)));
                 }
             })
             .release();
         self.as_mut()
             .on_timeline_update(|qobject, _, elapsed| {
-                let tx_mpris = qobject.tx_mpris.clone();
-                if let Some(ref mpris) = tx_mpris {
-                    let command = MPRISCommand::Signal(Signal::Seeked { position: Time::from_secs(elapsed as i64) });
-                    let _ = mpris.blocking_send(command);
-                };
+                if let Some(mut service) = qobject.mpris_service.clone() {
+                    qobject.rt_action.spawn(service.call(mpris_actions::Seeked::new(Duration::from_secs(elapsed))));
+                }
             })
             .release();
         self.as_mut()
             .on_album_art_update(|qobject, art| {
-                let tx_mpris = qobject.tx_mpris.clone();
-                if let Some(ref mpris) = tx_mpris {
-                    if let Some(ref song) = qobject.active_song {
-                        let metadata = Metadata::builder()
-                            .title(&song.title)
-                            .artist([&song.artist])
-                            .album(&song.album)
-                            .length(Time::from_secs(song.duration.as_secs() as i64))
-                            .art_url(String::from(art))
-                            .build();
-                        let command = MPRISCommand::Property(vec![Property::Metadata(metadata)]);
-                        let _ = mpris.blocking_send(command);
-                    };
+                if let Some(mut service) = qobject.mpris_service.clone()
+                    && let Some(ref song) = qobject.active_song
+                {
+                    let metadata = Metadata::builder()
+                        .title(&song.title)
+                        .artist([&song.artist])
+                        .album(&song.album)
+                        .length(Time::from_secs(song.duration.as_secs() as i64))
+                        .art_url(String::from(art))
+                        .build();
+                    qobject.rt_action.spawn(service.call(mpris_actions::PropertyUpdate::new(vec![Property::Metadata(metadata)])));
                 };
             })
             .release();
@@ -508,7 +488,7 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
 impl Default for MPDConnector {
     fn default() -> Self {
         let rt_idle = Builder::new_multi_thread().worker_threads(1).enable_io().enable_time().build().unwrap();
-        let rt_action = Builder::new_multi_thread().worker_threads(3).build().unwrap();
+        let rt_action = Builder::new_multi_thread().worker_threads(4).build().unwrap();
         Self {
             rt_idle,
             rt_action,
@@ -516,9 +496,8 @@ impl Default for MPDConnector {
             idle_client: None,
             cancel: None,
             active_song: None,
-            action_service: None,
-            tx_mpris: None,
-            rx_mpris: None,
+            mpd_service: None,
+            mpris_service: None,
             repeat: false,
             single: false,
             shuffle: false,

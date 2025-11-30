@@ -26,32 +26,6 @@ pub struct QSong {
     pub directory: String,
 }
 
-#[derive(Debug)]
-pub enum MPSCCommand {
-    Next,
-    Previous,
-    PlaySong(u64),
-    PlayToggle,
-    UpdateDb,
-    UpdateArt,
-    GetPlaylists(SongField),
-    StagePlaylist(String, SongField),
-    SortPlaylist(ColumnSort),
-    Seek(Duration),
-    ShuffleToggle(bool),
-    RepeatToggle(bool, bool),
-    IdlePlayer,
-    IdleQueue,
-    IdleOptions,
-    IdleTimeline,
-}
-
-#[derive(Debug)]
-pub enum MPRISCommand {
-    Property(Vec<Property>),
-    Signal(Signal),
-}
-
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, EnumIter, FromPrimitive, ToPrimitive, Copy, Clone, Debug)]
 #[repr(i32)]
 pub enum SongField {

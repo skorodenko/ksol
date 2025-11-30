@@ -1,18 +1,14 @@
-use std::time::Duration;
-
-use crate::rust::entities::{ColumnSort, MPSCCommand, QSong, SongField};
-use crate::rust::qmpd_connector::qobject::QMPDConnector;
-
-use cxx_qt::CxxQtThread;
+use crate::rust::mpd_actions;
+use crate::rust::services::MPDActionService;
 use mpris_server::{
-    LoopStatus, Metadata, PlaybackRate, PlaybackStatus, PlayerInterface, Playlist, PlaylistId, PlaylistOrdering,
-    PlaylistsInterface, Property, RootInterface, Server, Signal, Time, TrackId, TrackListInterface, Uri, Volume,
+    LoopStatus, Metadata, PlaybackRate, PlaybackStatus, PlayerInterface, RootInterface, Time, TrackId, Volume,
     zbus::{Result, fdo},
 };
-use tokio::sync::mpsc::{Receiver, Sender};
+use std::time::Duration;
+use tower::Service;
 
 pub struct Player {
-    pub action_sender: Sender<MPSCCommand>,
+    pub mpd_service: MPDActionService,
 }
 
 impl RootInterface for Player {
@@ -69,37 +65,44 @@ impl RootInterface for Player {
 
 impl PlayerInterface for Player {
     async fn next(&self) -> fdo::Result<()> {
-        let _ = self.action_sender.send(MPSCCommand::Next).await;
+        let mut service = self.mpd_service.clone();
+        service.call(mpd_actions::Next).await;
         Ok(())
     }
 
     async fn previous(&self) -> fdo::Result<()> {
-        let _ = self.action_sender.send(MPSCCommand::Previous).await;
+        let mut service = self.mpd_service.clone();
+        service.call(mpd_actions::Previous).await;
         Ok(())
     }
 
     async fn pause(&self) -> fdo::Result<()> {
-        let _ = self.action_sender.send(MPSCCommand::PlayToggle).await;
+        let mut service = self.mpd_service.clone();
+        service.call(mpd_actions::PlayToggle).await;
         Ok(())
     }
 
     async fn play_pause(&self) -> fdo::Result<()> {
-        let _ = self.action_sender.send(MPSCCommand::PlayToggle).await;
+        let mut service = self.mpd_service.clone();
+        service.call(mpd_actions::PlayToggle).await;
         Ok(())
     }
 
     async fn stop(&self) -> fdo::Result<()> {
-        let _ = self.action_sender.send(MPSCCommand::PlayToggle).await;
+        let mut service = self.mpd_service.clone();
+        service.call(mpd_actions::PlayToggle).await;
         Ok(())
     }
 
     async fn play(&self) -> fdo::Result<()> {
-        let _ = self.action_sender.send(MPSCCommand::PlayToggle).await;
+        let mut service = self.mpd_service.clone();
+        service.call(mpd_actions::PlayToggle).await;
         Ok(())
     }
 
     async fn seek(&self, offset: Time) -> fdo::Result<()> {
-        let _ = self.action_sender.send(MPSCCommand::Seek(Duration::from_secs(offset.as_secs() as u64))).await;
+        let mut service = self.mpd_service.clone();
+        service.call(mpd_actions::Seek::new(Duration::from_secs(offset.as_secs() as u64))).await;
         Ok(())
     }
 

@@ -1,8 +1,7 @@
-pub mod action_pool;
-pub mod action_service;
-pub mod actions;
 pub mod entities;
 pub mod init_hooks;
+pub mod mpd_actions;
+pub mod mpris_actions;
 pub mod mpris_interface;
 pub mod qmpd_connector;
 pub mod qplaylist_model;
@@ -10,4 +9,5 @@ pub mod qplaylists_group_model;
 pub mod qplaylists_list_model;
 pub mod qsettings_model;
 pub mod qt;
+pub mod services;
 pub mod settings;
