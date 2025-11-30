@@ -498,3 +498,16 @@ impl MPDAction for UpdateArt {
         })
     }
 }
+
+/// Set binary limit
+#[derive(Debug, Clone)]
+pub struct SetBinaryLimit(pub usize);
+
+impl MPDAction for SetBinaryLimit {
+    fn queue(self, mpd_client: ClientController) -> BoxSyncFuture<'static, Result<(), MPDActionError>> {
+        Box::pin(async move {
+            let command = commands::SetBinaryLimit(self.0);
+            mpd_client.command(command).await.map_err(|x| MPDActionError::MPDClientError(x.to_string()))
+        })
+    }
+}
