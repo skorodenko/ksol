@@ -123,6 +123,13 @@ impl PlayerInterface for Player {
     }
 
     async fn set_loop_status(&self, loop_status: LoopStatus) -> Result<()> {
+        let mut service = self.mpd_service.clone();
+        let (repeat, single) = match loop_status {
+            LoopStatus::None => (false, false),
+            LoopStatus::Track => (true, true),
+            LoopStatus::Playlist => (true, false),
+        };
+        service.call(mpd_actions::RepeatToggle::new(repeat, single)).await;
         Ok(())
     }
 
@@ -139,6 +146,8 @@ impl PlayerInterface for Player {
     }
 
     async fn set_shuffle(&self, shuffle: bool) -> Result<()> {
+        let mut service = self.mpd_service.clone();
+        service.call(mpd_actions::ShuffleToggle::new(!shuffle)).await;
         Ok(())
     }
 
