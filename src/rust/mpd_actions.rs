@@ -4,9 +4,12 @@ use crate::rust::services::BoxSyncFuture;
 use base64::prelude::*;
 use bincode::config;
 use bincode::serde::encode_to_vec;
+use bytes::Bytes;
 use cxx_qt::{CxxQtThread, CxxQtType};
 use cxx_qt_lib::{QByteArray, QString};
+use moka::future::Cache;
 use mpd_client::{ClientController, commands, filter::Filter, responses::PlayState, tag::Tag};
+use tokio::sync::watch;
 use tokio::time::Duration;
 use tracing;
 
@@ -353,21 +356,18 @@ impl MPDAction for IdlePlayer {
             let commands = (commands::Status, commands::CurrentSong);
             let rsp = mpd_client.command_list(commands).await.map_err(|x| MPDActionError::MPDClientError(x.to_string()))?;
             let play_state = QString::from(format!("{:#?}", rsp.0.state));
-            let current_song = rsp.1.map(QSong::from);
+            let current_song = rsp.1.map(QSong::from).unwrap_or_default();
             let _ = self.qt_thread.queue(move |mut qobject| {
-                match qobject.active_song {
-                    Some(ref prev_song) if current_song.is_some() => {
-                        if current_song.as_ref().is_some_and(|x| x.file != prev_song.file) {
-                            qobject.as_mut().rust_mut().active_song = current_song;
-                            qobject.as_mut().active_song_changed();
-                        }
+                let modified = qobject.active_song.0.send_if_modified(|song: &mut QSong| {
+                    if song.file != current_song.file {
+                        *song = current_song;
+                        return true;
                     }
-                    None => {
-                        qobject.as_mut().rust_mut().active_song = current_song;
-                        qobject.as_mut().active_song_changed();
-                    }
-                    _ => {}
-                }
+                    false
+                });
+                if modified {
+                    qobject.as_mut().active_song_changed();
+                };
                 qobject.as_mut().play_state_changed(play_state);
             });
             Ok(())
@@ -466,40 +466,54 @@ impl MPDAction for IdleTimeline {
 #[derive(Clone)]
 pub struct UpdateArt {
     qt_thread: CxxQtThread<QMPDConnector>,
+    cover_cache: Cache<Bytes, String>,
+    song_watch: watch::Receiver<QSong>,
 }
 
 impl UpdateArt {
-    pub fn new(qt_thread: CxxQtThread<QMPDConnector>) -> Self {
-        Self { qt_thread }
+    pub fn new(
+        qt_thread: CxxQtThread<QMPDConnector>,
+        cover_cache: Cache<Bytes, String>,
+        song_watch: watch::Receiver<QSong>,
+    ) -> Self {
+        Self { qt_thread, cover_cache, song_watch }
     }
 }
 
 impl MPDAction for UpdateArt {
-    fn queue(self, mpd_client: ClientController) -> BoxSyncFuture<'static, Result<(), MPDActionError>> {
+    fn queue(mut self, mpd_client: ClientController) -> BoxSyncFuture<'static, Result<(), MPDActionError>> {
         Box::pin(async move {
             let command = commands::CurrentSong;
             if let Ok(Some(song)) = mpd_client.command(command).await {
                 let sign = mpd_client
                     .album_art_signature(&song.song.url)
                     .await
-                    .map_err(|x| MPDActionError::MPDClientError(x.to_string()))?;
-                //                    if let Some(image) = art_url_cache.get(&sign) {
-                //                        tracing::debug!("Using cached album art for {}", &song.song.url);
-                //                        let image = QString::from(image);
-                //                        let _ = qt_thread.queue(move |qobject| {
-                //                            qobject.album_art_update(image);
-                //                        });
-                //                    } else {
-                tracing::debug!("New album art request for {}", &song.song.url);
-                if let Ok(Some((image, Some(mime)))) = mpd_client.album_art(&song.song.url).await {
-                    tracing::debug!("Recieved album art for {}", &song.song.url);
-                    let image = format!("data:{};base64,{}", mime, BASE64_STANDARD.encode(image));
-                    //art_url_cache.insert(sign, image.clone());
+                    .map_err(|x| MPDActionError::MPDClientError(x.to_string()))?
+                    .unwrap_or_default();
+                if let Some(cover) = self.cover_cache.get(&sign).await {
+                    tracing::debug!("Using cached art for {}", &song.song.url);
                     let _ = self.qt_thread.queue(move |qobject| {
-                        qobject.album_art_update(QString::from(image));
+                        qobject.album_art_update(QString::from(cover));
                     });
+                    return Ok(())
+                } else {
+                    tracing::debug!("New album art request for {}", &song.song.url);
+                    self.song_watch.mark_unchanged();
+                    self.cover_cache.insert(sign.clone(), String::default()).await;
                 };
-                //                   };
+                tokio::select!(
+                    Ok(Some((cover, Some(mime)))) = mpd_client.album_art(&song.song.url) => {
+                        tracing::debug!("Recieved album art for {}", &song.song.url);
+                        let cover = format!("data:{};base64,{}", mime, BASE64_STANDARD.encode(cover));
+                        self.cover_cache.insert(sign, cover.clone()).await;
+                        let _ = self.qt_thread.queue(move |qobject| {
+                            qobject.album_art_update(QString::from(cover));
+                        });
+                    },
+                    _ = self.song_watch.changed() => {
+                        tracing::debug!("Canceled album art request for {}", &song.song.url);
+                    },
+                );
             } else {
                 let _ = self.qt_thread.queue(move |qobject| {
                     qobject.album_art_update(QString::from(""));

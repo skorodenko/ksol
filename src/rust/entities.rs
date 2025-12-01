@@ -5,9 +5,8 @@ use serde;
 use std::fmt::{Display, Formatter, Result};
 use std::path::Path;
 use strum::EnumIter;
-use mpris_server::{Property, Signal};
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
 pub struct QSong {
     pub id: u64,
     pub position: usize,

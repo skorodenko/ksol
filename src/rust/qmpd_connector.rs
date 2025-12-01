@@ -7,18 +7,20 @@ use crate::rust::mpris_actions;
 use crate::rust::mpris_interface::Player;
 use crate::rust::services::{MPDActionService, MPRISActionService};
 use crate::rust::settings::{InternalSettings, Settings};
+use bytes::Bytes;
 use core::pin::Pin;
 use cxx_qt::{CxxQtType, Threading};
+use moka::future::Cache;
 use mpd_client::client::{ConnectionEvent, Subsystem};
 use mpd_client::{ClientController, ClientIdler, commands};
-use mpris_server::{LoopStatus, Metadata, PlaybackStatus, Property, Server, Signal, Time};
+use mpris_server::{LoopStatus, Metadata, PlaybackStatus, Property, Server, Time};
 use num_traits::FromPrimitive;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::net::{TcpStream, UnixStream};
 use tokio::process::Command;
 use tokio::runtime::{Builder, Runtime};
-use tokio::sync::Notify;
+use tokio::sync::{Notify, watch};
 use tokio::time::Duration;
 use tokio_util::sync::CancellationToken;
 use tower::{Service, ServiceBuilder};
@@ -29,12 +31,13 @@ pub struct MPDConnector {
     pub client: Option<ClientController>,
     pub idle_client: Option<ClientIdler>,
     pub cancel: Option<CancellationToken>,
-    pub active_song: Option<QSong>,
+    pub active_song: (watch::Sender<QSong>, watch::Receiver<QSong>),
     pub repeat: bool,
     pub single: bool,
     pub shuffle: bool,
     pub rt_idle: Runtime,
     pub rt_action: Runtime,
+    pub cover_cache: Cache<Bytes, String>,
     pub mpd_service: Option<MPDActionService>,
     pub mpris_service: Option<MPRISActionService>,
 }
@@ -330,19 +333,23 @@ impl qobject::QMPDConnector {
     }
 
     pub fn get_active_song_id(self: Pin<&mut Self>) -> u64 {
-        if let Some(ref song) = self.active_song { song.id } else { 0 }
+        let song = self.active_song.1.borrow();
+        song.id
     }
 
     pub fn get_active_song_position(self: Pin<&mut Self>) -> usize {
-        if let Some(ref song) = self.active_song { song.position } else { 0 }
+        let song = self.active_song.1.borrow();
+        song.position
     }
 
     pub fn get_active_song_title(self: Pin<&mut QMPDConnector>) -> QString {
-        if let Some(ref song) = self.active_song { QString::from(&song.title) } else { QString::default() }
+        let song = self.active_song.1.borrow();
+        QString::from(&song.title)
     }
 
     pub fn get_active_song_artist(self: Pin<&mut QMPDConnector>) -> QString {
-        if let Some(ref song) = self.active_song { QString::from(&song.artist) } else { QString::default() }
+        let song = self.active_song.1.borrow();
+        QString::from(&song.artist)
     }
 }
 
@@ -396,8 +403,10 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
         self.as_mut()
             .on_active_song_changed(|qobject| {
                 let qt_thread = qobject.qt_thread();
+                let cover_cache = qobject.cover_cache.clone();
+                let song_watch = qobject.active_song.1.clone();
                 if let Some(mut service) = qobject.mpd_service.clone() {
-                    qobject.rt_action.spawn(service.call(mpd_actions::UpdateArt::new(qt_thread)));
+                    qobject.rt_action.spawn(service.call(mpd_actions::UpdateArt::new(qt_thread, cover_cache, song_watch)));
                 } else {
                     tracing::error!("Action service not available");
                 }
@@ -406,8 +415,10 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
         self.as_mut()
             .on_stage_playlist_result(|qobject, _data| {
                 let qt_thread = qobject.qt_thread();
+                let cover_cache = qobject.cover_cache.clone();
+                let song_watch = qobject.active_song.1.clone();
                 if let Some(mut service) = qobject.mpd_service.clone() {
-                    qobject.rt_action.spawn(service.call(mpd_actions::UpdateArt::new(qt_thread)));
+                    qobject.rt_action.spawn(service.call(mpd_actions::UpdateArt::new(qt_thread, cover_cache, song_watch)));
                 } else {
                     tracing::error!("Action service not available");
                 }
@@ -469,9 +480,8 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
             .release();
         self.as_mut()
             .on_album_art_update(|qobject, art| {
-                if let Some(mut service) = qobject.mpris_service.clone()
-                    && let Some(ref song) = qobject.active_song
-                {
+                if let Some(mut service) = qobject.mpris_service.clone() {
+                    let song = qobject.active_song.1.borrow();
                     let metadata = Metadata::builder()
                         .title(&song.title)
                         .artist([&song.artist])
@@ -490,13 +500,16 @@ impl Default for MPDConnector {
     fn default() -> Self {
         let rt_idle = Builder::new_multi_thread().worker_threads(1).enable_io().enable_time().build().unwrap();
         let rt_action = Builder::new_multi_thread().worker_threads(4).build().unwrap();
+        let cover_cache = Cache::new(16);
+        let active_song = watch::channel(QSong::default());
         Self {
             rt_idle,
             rt_action,
+            cover_cache,
+            active_song,
             client: None,
             idle_client: None,
             cancel: None,
-            active_song: None,
             mpd_service: None,
             mpris_service: None,
             repeat: false,
