@@ -57,6 +57,7 @@ impl qobject::QMPDConnector {
             let notify_queue = notify.clone();
             let mpd_idle = mpd_idle.as_mut().expect("idle client is None");
             let mut interval = tokio::time::interval(Duration::from_secs(1));
+            interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
             loop {
                 tokio::select! {
                     response = mpd_idle.next() => {
@@ -76,6 +77,7 @@ impl qobject::QMPDConnector {
                             }
                             Some(ConnectionEvent::SubsystemChange(Subsystem::Player)) => {
                                 notify_player.notify_one();
+                                interval.reset_immediately();
                                 if let Some(mut service) = mpd_service.clone() {
                                     rt_action.spawn(service.call(mpd_actions::IdlePlayer::new(qt_thread.clone())));
                                 } else {
