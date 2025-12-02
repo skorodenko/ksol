@@ -454,7 +454,6 @@ Kirigami.ApplicationWindow {
 
         QQC2.ScrollBar {
             id: scrollBar
-            clip: true
             width: visible ? implicitWidth : 0
             anchors.top: qplaylist_header.bottom
             anchors.right: parent.right
@@ -622,6 +621,7 @@ Kirigami.ApplicationWindow {
 
                 onTextEdited: {
                     qplaylist_view.selectionModel.setCurrentIndex(qplaylist.index(0, 0), ItemSelectionModel.Rows);
+                    qplaylist_view.positionViewAtRow(0, Qt.AlignTop, 0);
                     qplaylist_view.selectionTimeout = true;
                     selectionTimeoutTimer.restart();
                 }
