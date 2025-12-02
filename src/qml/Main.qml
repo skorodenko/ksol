@@ -122,7 +122,9 @@ Kirigami.ApplicationWindow {
         }
         onTimelineUpdate: function (duration, elapsed) {
             media_seeker.to = duration;
-            media_seeker.value = elapsed;
+            if (!media_seeker.pressed) {
+                media_seeker.value = elapsed;
+            }
             var efm = Math.trunc(elapsed / 60).toString().padStart(2, '0');
             var efs = Math.floor(elapsed % 60).toString().padStart(2, '0');
             var dfm = Math.trunc(duration / 60).toString().padStart(2, '0');
