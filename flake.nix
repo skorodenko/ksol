@@ -55,6 +55,8 @@
               pkgs-unstable.sccache
             ];
             shellHook = ''
+              # Qmlls fix
+              export QML_IMPORT_PATH=$NIXPKGS_QT6_QML_IMPORT_PATH
               # CxxQt build fix
               export QMAKE=qmake6
               export RUST_LOG=DEBUG
