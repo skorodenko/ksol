@@ -17,13 +17,11 @@ impl RootInterface for Player {
     }
 
     async fn quit(&self) -> fdo::Result<()> {
-        println!("Quit");
-        //TODO
         Ok(())
     }
 
     async fn can_quit(&self) -> fdo::Result<bool> {
-        Ok(true)
+        Ok(false)
     }
 
     async fn fullscreen(&self) -> fdo::Result<bool> {
@@ -137,7 +135,7 @@ impl PlayerInterface for Player {
         Ok(PlaybackRate::default())
     }
 
-    async fn set_rate(&self, rate: PlaybackRate) -> Result<()> {
+    async fn set_rate(&self, _rate: PlaybackRate) -> Result<()> {
         Ok(())
     }
 
@@ -159,7 +157,7 @@ impl PlayerInterface for Player {
         Ok(Volume::default())
     }
 
-    async fn set_volume(&self, volume: Volume) -> Result<()> {
+    async fn set_volume(&self, _volume: Volume) -> Result<()> {
         Ok(())
     }
 
@@ -168,11 +166,11 @@ impl PlayerInterface for Player {
     }
 
     async fn minimum_rate(&self) -> fdo::Result<PlaybackRate> {
-        Ok(PlaybackRate::default())
+        Ok(1.0)
     }
 
     async fn maximum_rate(&self) -> fdo::Result<PlaybackRate> {
-        Ok(PlaybackRate::default())
+        Ok(1.0)
     }
 
     async fn can_go_next(&self) -> fdo::Result<bool> {
@@ -192,7 +190,8 @@ impl PlayerInterface for Player {
     }
 
     async fn can_seek(&self) -> fdo::Result<bool> {
-        Ok(true)
+        // mpris_server seek doesnt work (at least on kde)
+        Ok(false)
     }
 
     async fn can_control(&self) -> fdo::Result<bool> {
