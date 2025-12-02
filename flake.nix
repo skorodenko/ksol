@@ -2,7 +2,7 @@
   description = "Rust devshell";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     rust-overlay.url = "github:oxalica/rust-overlay";
@@ -28,19 +28,25 @@
         overlays = [
           (import rust-overlay)
         ];
+        qt6deps = pkgs.qt6.env "qt-full-${pkgs.qt6.qtbase.version}" (
+          with pkgs.qt6;
+          [
+            qtdeclarative
+            qtlanguageserver
+            qttools
+            qtwayland
+          ]
+        );
       in
       {
         devShells.default =
           with pkgs;
           mkShell {
-            buildInputs = [
+            packages = [
               mpd
-              qt6.full
-              qt6.wrapQtAppsHook
-              kdePackages.extra-cmake-modules
+              qt6deps
               kdePackages.kirigami
               kdePackages.kirigami-addons
-              kdePackages.qqc2-desktop-style
               clang
               cmake
               llvmPackages.bintools
@@ -49,7 +55,7 @@
               pkgs-unstable.sccache
             ];
             shellHook = ''
-              export QML_IMPORT_PATH=$NIXPKGS_QT6_QML_IMPORT_PATH
+              # CxxQt build fix
               export QMAKE=qmake6
               export RUST_LOG=DEBUG
             '';
