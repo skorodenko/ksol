@@ -37,7 +37,7 @@ pub struct MPDConnector {
     pub shuffle: bool,
     pub rt_idle: Runtime,
     pub rt_action: Runtime,
-    pub cover_cache: Cache<Bytes, String>,
+    pub cover_cache: Cache<Bytes, Arc<String>>,
     pub mpd_service: Option<MPDActionService>,
     pub mpris_service: Option<MPRISActionService>,
 }
@@ -481,7 +481,7 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
             })
             .release();
         self.as_mut()
-            .on_album_art_update(|qobject, art| {
+            .on_album_art_update(|qobject, cover| {
                 if let Some(mut service) = qobject.mpris_service.clone() {
                     let song = qobject.active_song.1.borrow();
                     let metadata = Metadata::builder()
@@ -489,7 +489,7 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                         .artist([&song.artist])
                         .album(&song.album)
                         .length(Time::from_secs(song.duration.as_secs() as i64))
-                        .art_url(String::from(art))
+                        .art_url(String::from(cover))
                         .build();
                     qobject.rt_action.spawn(service.call(mpris_actions::PropertyUpdate::new(vec![Property::Metadata(metadata)])));
                 };

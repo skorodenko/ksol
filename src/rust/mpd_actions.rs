@@ -9,6 +9,7 @@ use cxx_qt::{CxxQtThread, CxxQtType};
 use cxx_qt_lib::{QByteArray, QString};
 use moka::future::Cache;
 use mpd_client::{ClientController, commands, filter::Filter, responses::PlayState, tag::Tag};
+use std::sync::Arc;
 use tokio::sync::watch;
 use tokio::time::Duration;
 use tracing;
@@ -466,14 +467,14 @@ impl MPDAction for IdleTimeline {
 #[derive(Clone)]
 pub struct UpdateArt {
     qt_thread: CxxQtThread<QMPDConnector>,
-    cover_cache: Cache<Bytes, String>,
+    cover_cache: Cache<Bytes, Arc<String>>,
     song_watch: watch::Receiver<QSong>,
 }
 
 impl UpdateArt {
     pub fn new(
         qt_thread: CxxQtThread<QMPDConnector>,
-        cover_cache: Cache<Bytes, String>,
+        cover_cache: Cache<Bytes, Arc<String>>,
         song_watch: watch::Receiver<QSong>,
     ) -> Self {
         Self { qt_thread, cover_cache, song_watch }
@@ -492,22 +493,24 @@ impl MPDAction for UpdateArt {
                     .unwrap_or_default();
                 if let Some(cover) = self.cover_cache.get(&sign).await {
                     tracing::debug!("Using cached art for {}", &song.song.url);
-                    let _ = self.qt_thread.queue(move |qobject| {
-                        qobject.album_art_update(QString::from(cover));
-                    });
-                    return Ok(())
+                    if self.song_watch.has_changed().unwrap_or(false) {
+                        let _ = self.qt_thread.queue(move |qobject| {
+                            qobject.album_art_update(QString::from(cover.as_ref()));
+                        });
+                    }
+                    return Ok(());
                 } else {
                     tracing::debug!("New album art request for {}", &song.song.url);
                     self.song_watch.mark_unchanged();
-                    self.cover_cache.insert(sign.clone(), String::default()).await;
+                    self.cover_cache.insert(sign.clone(), Arc::new(String::default())).await;
                 };
                 tokio::select!(
                     Ok(Some((cover, Some(mime)))) = mpd_client.album_art(&song.song.url) => {
                         tracing::debug!("Recieved album art for {}", &song.song.url);
-                        let cover = format!("data:{};base64,{}", mime, BASE64_STANDARD.encode(cover));
+                        let cover = Arc::new(format!("data:{};base64,{}", mime, BASE64_STANDARD.encode(cover)));
                         self.cover_cache.insert(sign, cover.clone()).await;
                         let _ = self.qt_thread.queue(move |qobject| {
-                            qobject.album_art_update(QString::from(cover));
+                            qobject.album_art_update(QString::from(cover.as_ref()));
                         });
                     },
                     _ = self.song_watch.changed() => {
