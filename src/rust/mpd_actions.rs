@@ -485,37 +485,37 @@ impl MPDAction for UpdateArt {
     fn queue(mut self, mpd_client: ClientController) -> BoxSyncFuture<'static, Result<(), MPDActionError>> {
         Box::pin(async move {
             let command = commands::CurrentSong;
+            self.song_watch.mark_unchanged();
             if let Ok(Some(song)) = mpd_client.command(command).await {
-                let sign = mpd_client
-                    .album_art_signature(&song.song.url)
-                    .await
-                    .map_err(|x| MPDActionError::MPDClientError(x.to_string()))?
-                    .unwrap_or_default();
-                if let Some(cover) = self.cover_cache.get(&sign).await {
-                    tracing::debug!("Using cached art for {}", &song.song.url);
-                    if self.song_watch.has_changed().unwrap_or(false) {
-                        let _ = self.qt_thread.queue(move |qobject| {
-                            qobject.album_art_update(QString::from(cover.as_ref()));
-                        });
-                    }
-                    return Ok(());
-                } else {
-                    tracing::debug!("New album art request for {}", &song.song.url);
-                    self.song_watch.mark_unchanged();
-                    self.cover_cache.insert(sign.clone(), Arc::new(String::default())).await;
-                };
                 tokio::select!(
-                    Ok(Some((cover, Some(mime)))) = mpd_client.album_art(&song.song.url) => {
-                        tracing::debug!("Recieved album art for {}", &song.song.url);
-                        let cover = Arc::new(format!("data:{};base64,{}", mime, BASE64_STANDARD.encode(cover)));
-                        self.cover_cache.insert(sign, cover.clone()).await;
-                        let _ = self.qt_thread.queue(move |qobject| {
-                            qobject.album_art_update(QString::from(cover.as_ref()));
-                        });
+                    Ok(Some(sign)) = mpd_client.album_art_signature(&song.song.url) => {
+                        if let Some(cover) = self.cover_cache.get(&sign).await {
+                            tracing::debug!("Using cached art for {}", &song.song.url);
+                            if self.song_watch.has_changed().unwrap_or(false) {
+                                let _ = self.qt_thread.queue(move |qobject| {
+                                    qobject.album_art_update(QString::from(cover.as_ref()));
+                                });
+                            }
+                            return Ok(());
+                        };
+                        tracing::debug!("New album art request for {}", &song.song.url);
+                        tokio::select!(
+                            Ok(Some((cover, Some(mime)))) = mpd_client.album_art(&song.song.url) => {
+                                tracing::debug!("Recieved album art for {}", &song.song.url);
+                                let cover = Arc::new(format!("data:{};base64,{}", mime, BASE64_STANDARD.encode(cover)));
+                                self.cover_cache.insert(sign, cover.clone()).await;
+                                let _ = self.qt_thread.queue(move |qobject| {
+                                    qobject.album_art_update(QString::from(cover.as_ref()));
+                                });
+                            },
+                            _ = self.song_watch.changed() => {
+                                tracing::debug!("Canceled album art request for {}", &song.song.url);
+                            },
+                        );
                     },
                     _ = self.song_watch.changed() => {
-                        tracing::debug!("Canceled album art request for {}", &song.song.url);
-                    },
+                        tracing::debug!("Canceled album art signature request for {}", &song.song.url);
+                    }
                 );
             } else {
                 let _ = self.qt_thread.queue(move |qobject| {
