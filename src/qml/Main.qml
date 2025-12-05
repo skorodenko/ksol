@@ -134,10 +134,10 @@ Kirigami.ApplicationWindow {
         onActiveSongChanged: function () {
             var songPos = mpd_connector.activeSongPosition;
             if (songPos < qplaylist_view.topRow + 1) {
-                qplaylist_view.positionViewAtRow(songPos, Qt.AlignTop, -30);
+                qplaylist_view.positionViewAtRow(songPos, Qt.AlignTop, -90);
             }
             if (songPos > qplaylist_view.bottomRow - 1) {
-                qplaylist_view.positionViewAtRow(songPos, Qt.AlignBottom, 30);
+                qplaylist_view.positionViewAtRow(songPos, Qt.AlignBottom, 90);
             }
         }
         onUpdateOptions: function () {
