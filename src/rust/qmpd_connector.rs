@@ -495,7 +495,7 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
 
 impl Default for MPDConnector {
     fn default() -> Self {
-        let runtime = Builder::new_multi_thread().enable_io().enable_time().global_queue_interval(121).build().unwrap();
+        let runtime = Builder::new_multi_thread().enable_io().enable_time().global_queue_interval(1).event_interval(121).build().unwrap();
         let cover_cache = Cache::new(16);
         let active_song = watch::channel(QSong::default());
         Self {
