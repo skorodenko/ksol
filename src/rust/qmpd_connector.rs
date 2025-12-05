@@ -36,7 +36,7 @@ pub struct MPDConnector {
     pub single: bool,
     pub shuffle: bool,
     pub runtime: Runtime,
-    pub cover_cache: Cache<Bytes, Arc<String>>,
+    pub cover_cache: Cache<String, Arc<String>>,
     pub mpd_service: Option<MPDActionService>,
     pub mpris_service: Option<MPRISActionService>,
 }
@@ -495,7 +495,7 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
 
 impl Default for MPDConnector {
     fn default() -> Self {
-        let runtime = Builder::new_multi_thread().enable_io().enable_time().global_queue_interval(1).event_interval(121).build().unwrap();
+        let runtime = Builder::new_multi_thread().enable_io().enable_time().event_interval(11).build().unwrap();
         let cover_cache = Cache::new(16);
         let active_song = watch::channel(QSong::default());
         Self {

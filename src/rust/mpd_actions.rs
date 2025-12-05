@@ -467,14 +467,14 @@ impl MPDAction for IdleTimeline {
 #[derive(Clone)]
 pub struct UpdateArt {
     qt_thread: CxxQtThread<QMPDConnector>,
-    cover_cache: Cache<Bytes, Arc<String>>,
+    cover_cache: Cache<String, Arc<String>>,
     song_watch: watch::Receiver<QSong>,
 }
 
 impl UpdateArt {
     pub fn new(
         qt_thread: CxxQtThread<QMPDConnector>,
-        cover_cache: Cache<Bytes, Arc<String>>,
+        cover_cache: Cache<String, Arc<String>>,
         song_watch: watch::Receiver<QSong>,
     ) -> Self {
         Self { qt_thread, cover_cache, song_watch }
@@ -485,37 +485,28 @@ impl MPDAction for UpdateArt {
     fn queue(mut self, mpd_client: ClientController) -> BoxSyncFuture<'static, Result<(), MPDActionError>> {
         Box::pin(async move {
             let command = commands::CurrentSong;
-            self.song_watch.mark_unchanged();
             if let Ok(Some(song)) = mpd_client.command(command).await {
+                tracing::debug!("New album art request for {}", &song.song.url);
+                self.song_watch.mark_unchanged();
                 tokio::select!(
-                    Ok(Some(sign)) = mpd_client.album_art_signature(&song.song.url) => {
-                        if let Some(cover) = self.cover_cache.get(&sign).await {
-                            tracing::debug!("Using cached art for {}", &song.song.url);
-                            if self.song_watch.has_changed().unwrap_or(false) {
-                                let _ = self.qt_thread.queue(move |qobject| {
-                                    qobject.album_art_update(QString::from(cover.as_ref()));
-                                });
-                            }
-                            return Ok(());
-                        };
-                        tracing::debug!("New album art request for {}", &song.song.url);
-                        tokio::select!(
-                            Ok(Some((cover, Some(mime)))) = mpd_client.album_art(&song.song.url) => {
-                                tracing::debug!("Recieved album art for {}", &song.song.url);
-                                let cover = Arc::new(format!("data:{};base64,{}", mime, BASE64_STANDARD.encode(cover)));
-                                self.cover_cache.insert(sign, cover.clone()).await;
-                                let _ = self.qt_thread.queue(move |qobject| {
-                                    qobject.album_art_update(QString::from(cover.as_ref()));
-                                });
-                            },
-                            _ = self.song_watch.changed() => {
-                                tracing::debug!("Canceled album art request for {}", &song.song.url);
-                            },
-                        );
+                    Some(cover) = self.cover_cache.get(&song.song.url) => {
+                        tracing::debug!("Using cached art for {}", &song.song.url);
+                        let _ = self.qt_thread.queue(move |qobject| {
+                            qobject.album_art_update(QString::from(cover.as_ref()));
+                        });
+                        return Ok(());
+                    },
+                    Ok(Some((cover, Some(mime)))) = mpd_client.album_art(&song.song.url) => {
+                        tracing::debug!("Recieved album art for {}", &song.song.url);
+                        let cover = Arc::new(format!("data:{};base64,{}", mime, BASE64_STANDARD.encode(cover)));
+                        self.cover_cache.insert(song.song.url.clone(), cover.clone()).await;
+                        let _ = self.qt_thread.queue(move |qobject| {
+                            qobject.album_art_update(QString::from(cover.as_ref()));
+                        });
                     },
                     _ = self.song_watch.changed() => {
-                        tracing::debug!("Canceled album art signature request for {}", &song.song.url);
-                    }
+                        tracing::debug!("Canceled album art request for {}", &song.song.url);
+                    },
                 );
             } else {
                 let _ = self.qt_thread.queue(move |qobject| {
