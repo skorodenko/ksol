@@ -4,7 +4,9 @@ use crate::rust::entities::{ColumnSort, SongField};
 use crate::rust::settings::{InternalSettings, Settings};
 use core::pin::Pin;
 use num_traits::{FromPrimitive, ToPrimitive};
+use std::net::TcpStream;
 use std::os::unix::net::UnixStream;
+use tracing;
 
 #[derive(Default)]
 pub struct SettingsModel {}
@@ -35,6 +37,7 @@ impl qobject::QSettingsModel {
     fn set_native_mpd_music_dir(self: Pin<&mut QSettingsModel>, value: QString) {
         let mut settings = Settings::load().blocking_write();
         settings.native_music_dir = value.into();
+        std::mem::drop(settings);
         self.mpd_settings_update();
     }
 
@@ -46,6 +49,7 @@ impl qobject::QSettingsModel {
     fn set_output_plugin_type(self: Pin<&mut QSettingsModel>, value: QString) {
         let mut settings = Settings::load().blocking_write();
         settings.output_plugin_type = value.into();
+        std::mem::drop(settings);
         self.mpd_settings_update();
     }
 
@@ -115,7 +119,8 @@ impl qobject::QSettingsModel {
     }
 
     pub fn check_server_connection(self: Pin<&mut QSettingsModel>, url: QString) -> bool {
-        UnixStream::connect(url.to_string()).is_ok()
+        tracing::debug!("Checking server connection for url: {}", url);
+        UnixStream::connect(url.to_string()).is_ok() || TcpStream::connect(url.to_string()).is_ok()
     }
 }
 

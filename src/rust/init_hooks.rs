@@ -14,7 +14,7 @@ audio_buffer_size "8192"
 log_file "/dev/null"
 restore_paused "yes"
 audio_output \{
-    type "pipewire"
+    type "{s.output_plugin_type}"
     name "Ksol"
 }
 "#;
