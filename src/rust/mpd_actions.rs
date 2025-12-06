@@ -4,7 +4,6 @@ use crate::rust::services::BoxSyncFuture;
 use base64::prelude::*;
 use bincode::config;
 use bincode::serde::encode_to_vec;
-use bytes::Bytes;
 use cxx_qt::{CxxQtThread, CxxQtType};
 use cxx_qt_lib::{QByteArray, QString};
 use moka::future::Cache;

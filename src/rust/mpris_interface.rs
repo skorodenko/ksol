@@ -1,4 +1,4 @@
-use crate::rust::mpd_actions;
+use crate::rust::mpd_actions::{self, Seek};
 use crate::rust::services::MPDActionService;
 use mpris_server::{
     LoopStatus, Metadata, PlaybackRate, PlaybackStatus, PlayerInterface, RootInterface, Time, TrackId, Volume,
@@ -64,43 +64,43 @@ impl RootInterface for Player {
 impl PlayerInterface for Player {
     async fn next(&self) -> fdo::Result<()> {
         let mut service = self.mpd_service.clone();
-        service.call(mpd_actions::Next).await;
+        let _ = service.call(mpd_actions::Next).await;
         Ok(())
     }
 
     async fn previous(&self) -> fdo::Result<()> {
         let mut service = self.mpd_service.clone();
-        service.call(mpd_actions::Previous).await;
+        let _ = service.call(mpd_actions::Previous).await;
         Ok(())
     }
 
     async fn pause(&self) -> fdo::Result<()> {
         let mut service = self.mpd_service.clone();
-        service.call(mpd_actions::PlayToggle).await;
+        let _ = service.call(mpd_actions::PlayToggle).await;
         Ok(())
     }
 
     async fn play_pause(&self) -> fdo::Result<()> {
         let mut service = self.mpd_service.clone();
-        service.call(mpd_actions::PlayToggle).await;
+        let _ = service.call(mpd_actions::PlayToggle).await;
         Ok(())
     }
 
     async fn stop(&self) -> fdo::Result<()> {
         let mut service = self.mpd_service.clone();
-        service.call(mpd_actions::PlayToggle).await;
+        let _ = service.call(mpd_actions::PlayToggle).await;
         Ok(())
     }
 
     async fn play(&self) -> fdo::Result<()> {
         let mut service = self.mpd_service.clone();
-        service.call(mpd_actions::PlayToggle).await;
+        let _ = service.call(mpd_actions::PlayToggle).await;
         Ok(())
     }
 
     async fn seek(&self, offset: Time) -> fdo::Result<()> {
         let mut service = self.mpd_service.clone();
-        service.call(mpd_actions::Seek::new(Duration::from_secs(offset.as_secs() as u64))).await;
+        let _ = service.call(Seek::new(Duration::from_secs(offset.as_secs() as u64))).await;
         Ok(())
     }
 
@@ -127,7 +127,7 @@ impl PlayerInterface for Player {
             LoopStatus::Track => (true, true),
             LoopStatus::Playlist => (true, false),
         };
-        service.call(mpd_actions::RepeatToggle::new(repeat, single)).await;
+        let _ = service.call(mpd_actions::RepeatToggle::new(repeat, single)).await;
         Ok(())
     }
 
@@ -145,7 +145,7 @@ impl PlayerInterface for Player {
 
     async fn set_shuffle(&self, shuffle: bool) -> Result<()> {
         let mut service = self.mpd_service.clone();
-        service.call(mpd_actions::ShuffleToggle::new(!shuffle)).await;
+        let _ = service.call(mpd_actions::ShuffleToggle::new(!shuffle)).await;
         Ok(())
     }
 

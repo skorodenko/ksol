@@ -7,7 +7,6 @@ use crate::rust::mpris_actions;
 use crate::rust::mpris_interface::Player;
 use crate::rust::services::{MPDActionService, MPRISActionService};
 use crate::rust::settings::{InternalSettings, Settings};
-use bytes::Bytes;
 use core::pin::Pin;
 use cxx_qt::{CxxQtType, Threading};
 use moka::future::Cache;
