@@ -243,7 +243,7 @@ impl qobject::QMPDConnector {
         let qt_thread = self.qt_thread();
         if let Some(mut service) = self.mpd_service.clone() {
             self.runtime.spawn(async move {
-                let _ = service.call(mpd_actions::SetBinaryLimit(1048576)).await;
+                let _ = service.call(mpd_actions::SetBinaryLimit(5_252_880)).await;
                 let _ = service.call(mpd_actions::IdleQueue::new(qt_thread.clone())).await;
                 let _ = service.call(mpd_actions::IdlePlayer::new(qt_thread.clone())).await;
                 let _ = service.call(mpd_actions::IdleOptions::new(qt_thread.clone())).await;
