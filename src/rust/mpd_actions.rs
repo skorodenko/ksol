@@ -11,6 +11,7 @@ use moka::future::Cache;
 use mpd_client::{ClientController, commands, filter::Filter, responses::PlayState, tag::Tag};
 use std::sync::Arc;
 use tokio::sync::watch;
+use tokio::task;
 use tokio::time::Duration;
 use tracing;
 
@@ -509,10 +510,12 @@ impl MPDAction for UpdateArt {
                 },
                 Ok(Some((cover, Some(mime)))) = mpd_client.album_art(&song.file) => {
                     tracing::debug!("Recieved album art for {}", song.file);
-                    let image = image::load_from_memory(&cover).expect("Failed to load image from memory");
-                    let mut buffer = vec![];
-                    let _ = image.write_with_encoder(JpegEncoder::new_with_quality(&mut buffer, 50));
-                    let cover = Arc::new(format!("data:{};base64,{}", mime, BASE64_STANDARD.encode(buffer)));
+                    let cover = task::spawn_blocking(move || {
+                        let image = image::load_from_memory(&cover).expect("Failed to load image from memory");
+                        let mut buffer = vec![];
+                        let _ = image.write_with_encoder(JpegEncoder::new_with_quality(&mut buffer, 25));
+                        Arc::new(format!("data:{};base64,{}", mime, BASE64_STANDARD.encode(buffer)))
+                    }).await.unwrap_or(Arc::new(String::default()));
                     self.cover_cache.insert(ckey, cover.clone()).await;
                     let _ = self.qt_thread.queue(move |qobject| {
                         qobject.album_art_update(QString::from(cover.as_ref()));
