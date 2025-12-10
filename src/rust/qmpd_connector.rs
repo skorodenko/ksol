@@ -286,30 +286,38 @@ impl qobject::QMPDConnector {
                 tracing::debug!("Trying to connect to server {}", settings.mpd_socket);
                 tokio::select! {
                     Ok(connection) = TcpStream::connect(&settings.mpd_socket) => {
-                        let client = ClientController::connect(connection).await.expect("failed to init controller");
-                        let connection_2 =
-                            TcpStream::connect(&settings.mpd_socket).await.expect("failed to establish 2nd connection");
-                        let idle = ClientIdler::connect(connection_2).await.expect("failed to init idler");
-                        tracing::debug!("Succesfully connected to MPD server (tcp)");
-                        break ("connected", Some(client), Some(idle));
+                        if let Ok(client) = ClientController::connect(connection).await {
+                            let connection_2 =
+                                TcpStream::connect(&settings.mpd_socket).await.expect("failed to establish 2nd connection");
+                            let idle = ClientIdler::connect(connection_2).await.expect("failed to init idler");
+                            tracing::debug!("Succesfully connected to MPD server (tcp)");
+                            break ("connected", Some(client), Some(idle));
+                        } else {
+                            retcount -= 1;
+                            tracing::warn!("Failed to connect to MPD server, retrying");
+                        };
                     },
                     Ok(connection) = UnixStream::connect(&settings.mpd_socket) => {
-                        let client = ClientController::connect(connection).await.expect("failed to init controller");
-                        let connection_2 =
-                            UnixStream::connect(&settings.mpd_socket).await.expect("failed to establish 2nd connection");
-                        let idle = ClientIdler::connect(connection_2).await.expect("failed to init idler");
-                        tracing::debug!("Succesfully connected to MPD server (unix_socket)");
-                        break ("connected", Some(client), Some(idle));
+                        if let Ok(client) = ClientController::connect(connection).await {
+                            let connection_2 =
+                                UnixStream::connect(&settings.mpd_socket).await.expect("failed to establish 2nd connection");
+                            let idle = ClientIdler::connect(connection_2).await.expect("failed to init idler");
+                            tracing::debug!("Succesfully connected to MPD server (unix_socket)");
+                            break ("connected", Some(client), Some(idle));
+                        } else {
+                            retcount -= 1;
+                            tracing::warn!("Failed to connect to MPD server, retrying");
+                        }
                     },
                     () = tokio::time::sleep(tokio::time::Duration::from_millis(80)) => {
                         retcount -= 1;
-                        if retcount <= 0 {
-                            tracing::error!("Failed to connect to MPD server");
-                            break ("disconnected-action", None, None);
-                        }
                         tracing::warn!("Failed to connect to MPD server, retrying");
                     },
                 };
+                if retcount <= 0 {
+                    tracing::error!("Failed to connect to MPD server");
+                    break ("disconnected-action", None, None);
+                }
             };
             let _ = qt_thread.queue(move |mut qobject| {
                 qobject.as_mut().rust_mut().client = mpd_client;

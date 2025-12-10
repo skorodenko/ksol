@@ -485,6 +485,13 @@ impl MPDAction for UpdateArt {
         Box::pin(async move {
             let song = self.song_watch.borrow().clone();
             tracing::debug!("New album art request for {}", song.file);
+            if song.file == "" {
+                tracing::debug!("Using empty art for {}", song.file);
+                let _ = self.qt_thread.queue(move |qobject| {
+                    qobject.album_art_update(QString::from(""));
+                });
+                return Ok(());
+            };
             if let Some(cover) = self.cover_cache.get(&song.file).await {
                 tracing::debug!("Using cached art for {}", song.file);
                 let _ = self.qt_thread.queue(move |qobject| {
