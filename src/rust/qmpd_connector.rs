@@ -242,7 +242,7 @@ impl qobject::QMPDConnector {
         let qt_thread = self.qt_thread();
         if let Some(mut service) = self.mpd_service.clone() {
             self.runtime.spawn(async move {
-                let _ = service.call(mpd_actions::SetBinaryLimit(5_252_880)).await;
+                let _ = service.call(mpd_actions::SetBinaryLimit(2usize.pow(22))).await;
                 let _ = service.call(mpd_actions::IdleQueue::new(qt_thread.clone())).await;
                 let _ = service.call(mpd_actions::IdlePlayer::new(qt_thread.clone())).await;
                 let _ = service.call(mpd_actions::IdleOptions::new(qt_thread.clone())).await;
@@ -414,6 +414,7 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                 let cover_cache = qobject.cover_cache.clone();
                 let song_watch = qobject.active_song.1.clone();
                 if let Some(mut service) = qobject.mpd_service.clone() {
+                    qobject.runtime.spawn(service.call(mpd_actions::IdlePlayer::new(qt_thread.clone())));
                     qobject.runtime.spawn(service.call(mpd_actions::UpdateArt::new(qt_thread, cover_cache, song_watch)));
                 } else {
                     tracing::error!("Action service not available");
@@ -436,7 +437,7 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                             Property::CanGoNext(true),
                             Property::CanGoPrevious(true),
                         ],
-                        "Stopper" => vec![
+                        "Stopped" => vec![
                             Property::PlaybackStatus(PlaybackStatus::Stopped),
                             Property::CanGoNext(false),
                             Property::CanGoPrevious(false),
@@ -494,9 +495,9 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
 
 impl Default for MPDConnector {
     fn default() -> Self {
-        let runtime = Builder::new_multi_thread().enable_io().enable_time().event_interval(11).build().unwrap();
-        let cover_cache = Cache::new(16);
+        let cover_cache = Cache::new(128);
         let active_song = watch::channel(QSong::default());
+        let runtime = Builder::new_multi_thread().enable_io().enable_time().build().unwrap();
         Self {
             runtime,
             cover_cache,
