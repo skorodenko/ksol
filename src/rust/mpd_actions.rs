@@ -6,6 +6,7 @@ use bincode::config;
 use bincode::serde::encode_to_vec;
 use cxx_qt::{CxxQtThread, CxxQtType};
 use cxx_qt_lib::{QByteArray, QString};
+use image::{self, codecs::jpeg::JpegEncoder};
 use moka::future::Cache;
 use mpd_client::{ClientController, commands, filter::Filter, responses::PlayState, tag::Tag};
 use std::sync::Arc;
@@ -484,7 +485,8 @@ impl MPDAction for UpdateArt {
     fn queue(mut self, mpd_client: ClientController) -> BoxSyncFuture<'static, Result<(), MPDActionError>> {
         Box::pin(async move {
             let song = self.song_watch.borrow().clone();
-            tracing::debug!("New album art request for {}", song.file);
+            let ckey = format!("{}/{}", song.artist, song.album);
+            tracing::debug!("New album art request for {}", &ckey);
             if song.file == "" {
                 tracing::debug!("Using empty art for {}", song.file);
                 let _ = self.qt_thread.queue(move |qobject| {
@@ -492,7 +494,7 @@ impl MPDAction for UpdateArt {
                 });
                 return Ok(());
             };
-            if let Some(cover) = self.cover_cache.get(&song.file).await {
+            if let Some(cover) = self.cover_cache.get(&ckey).await {
                 tracing::debug!("Using cached art for {}", song.file);
                 let _ = self.qt_thread.queue(move |qobject| {
                     qobject.album_art_update(QString::from(cover.as_ref()));
@@ -507,8 +509,11 @@ impl MPDAction for UpdateArt {
                 },
                 Ok(Some((cover, Some(mime)))) = mpd_client.album_art(&song.file) => {
                     tracing::debug!("Recieved album art for {}", song.file);
-                    let cover = Arc::new(format!("data:{};base64,{}", mime, BASE64_STANDARD.encode(cover)));
-                    self.cover_cache.insert(song.file.clone(), cover.clone()).await;
+                    let image = image::load_from_memory(&cover).expect("Failed to load image from memory");
+                    let mut buffer = vec![];
+                    let _ = image.write_with_encoder(JpegEncoder::new_with_quality(&mut buffer, 50));
+                    let cover = Arc::new(format!("data:{};base64,{}", mime, BASE64_STANDARD.encode(buffer)));
+                    self.cover_cache.insert(ckey, cover.clone()).await;
                     let _ = self.qt_thread.queue(move |qobject| {
                         qobject.album_art_update(QString::from(cover.as_ref()));
                     });
