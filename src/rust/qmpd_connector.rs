@@ -486,15 +486,19 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
         self.as_mut()
             .on_album_art_update(|qobject, cover| {
                 if let Some(mut service) = qobject.mpris_service.clone() {
-                    let song = qobject.active_song.1.borrow();
-                    let metadata = Metadata::builder()
-                        .title(&song.title)
-                        .artist([&song.artist])
-                        .album(&song.album)
-                        .length(Time::from_secs(song.duration.as_secs() as i64))
-                        .art_url(String::from(cover))
-                        .build();
-                    qobject.runtime.spawn(service.call(mpris_actions::PropertyUpdate::new(vec![Property::Metadata(metadata)])));
+                    if qobject.active_song.1.has_changed().expect("Channel closed") {
+                        let song = qobject.active_song.1.borrow();
+                        let metadata = Metadata::builder()
+                            .title(&song.title)
+                            .artist([&song.artist])
+                            .album(&song.album)
+                            .length(Time::from_secs(song.duration.as_secs() as i64))
+                            .art_url(String::from(cover))
+                            .build();
+                        qobject
+                            .runtime
+                            .spawn(service.call(mpris_actions::PropertyUpdate::new(vec![Property::Metadata(metadata)])));
+                    };
                 };
             })
             .release();
