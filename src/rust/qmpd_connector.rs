@@ -9,7 +9,7 @@ use crate::rust::services::{MPDActionService, MPRISActionService};
 use crate::rust::settings::{InternalSettings, Settings};
 use core::pin::Pin;
 use cxx_qt::{CxxQtType, Threading};
-use moka::future::Cache;
+use foyer::{BlockEngineBuilder, DeviceBuilder, FsDeviceBuilder, HybridCache, HybridCacheBuilder};
 use mpd_client::client::{ConnectionEvent, Subsystem};
 use mpd_client::{ClientController, ClientIdler, commands};
 use mpris_server::{LoopStatus, Metadata, PlaybackStatus, Property, Server, Time};
@@ -35,7 +35,7 @@ pub struct MPDConnector {
     pub single: bool,
     pub shuffle: bool,
     pub runtime: Runtime,
-    pub cover_cache: Cache<String, Arc<String>>,
+    pub cover_cache: HybridCache<String, String>,
     pub mpd_service: Option<MPDActionService>,
     pub mpris_service: Option<MPRISActionService>,
 }
@@ -507,9 +507,23 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
 
 impl Default for MPDConnector {
     fn default() -> Self {
-        let cover_cache = Cache::new(128);
+        let isettings = InternalSettings::load().clone();
+        let device = FsDeviceBuilder::new(isettings.app_cover_cache)
+            .with_capacity(256 * 1024 * 1024)
+            .build()
+            .expect("Failed to build cache fs");
         let active_song = watch::channel(QSong::default());
         let runtime = Builder::new_multi_thread().enable_io().enable_time().build().unwrap();
+        let cover_cache = runtime
+            .block_on(
+                HybridCacheBuilder::new()
+                    .memory(256 * 1024 * 1024)
+                    .with_shards(16)
+                    .storage()
+                    .with_engine_config(BlockEngineBuilder::new(device))
+                    .build(),
+            )
+            .expect("Failed to start hybrid cache");
         Self {
             runtime,
             cover_cache,

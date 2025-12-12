@@ -6,8 +6,8 @@ use bincode::config;
 use bincode::serde::encode_to_vec;
 use cxx_qt::{CxxQtThread, CxxQtType};
 use cxx_qt_lib::{QByteArray, QString};
+use foyer::HybridCache;
 use image::{self, codecs::jpeg::JpegEncoder};
-use moka::future::Cache;
 use mpd_client::{ClientController, commands, filter::Filter, responses::PlayState, tag::Tag};
 use std::sync::Arc;
 use tokio::sync::watch;
@@ -468,14 +468,14 @@ impl MPDAction for IdleTimeline {
 #[derive(Clone)]
 pub struct UpdateArt {
     qt_thread: CxxQtThread<QMPDConnector>,
-    cover_cache: Cache<String, Arc<String>>,
+    cover_cache: HybridCache<String, String>,
     song_watch: watch::Receiver<QSong>,
 }
 
 impl UpdateArt {
     pub fn new(
         qt_thread: CxxQtThread<QMPDConnector>,
-        cover_cache: Cache<String, Arc<String>>,
+        cover_cache: HybridCache<String, String>,
         song_watch: watch::Receiver<QSong>,
     ) -> Self {
         Self { qt_thread, cover_cache, song_watch }
@@ -495,18 +495,14 @@ impl MPDAction for UpdateArt {
                 });
                 return Ok(());
             };
-            if let Some(cover) = self.cover_cache.get(&ckey).await {
-                tracing::debug!("Using cached art for {}", song.file);
-                let _ = self.qt_thread.queue(move |qobject| {
-                    qobject.album_art_update(QString::from(cover.as_ref()));
-                });
-                return Ok(());
-            };
             self.song_watch.mark_unchanged();
             tokio::select!(
-                _ = self.song_watch.changed() => {
-                    tracing::debug!("Canceled album art request for {}", song.file);
-                    return Ok(())
+                biased;
+                Ok(Some(entry)) = self.cover_cache.get(&ckey) => {
+                    tracing::debug!("Using cached art for {}", song.file);
+                    let _ = self.qt_thread.queue(move |qobject| {
+                        qobject.album_art_update(QString::from(entry.value()));
+                    });
                 },
                 Ok(Some((cover, Some(mime)))) = mpd_client.album_art(&song.file) => {
                     tracing::debug!("Recieved album art for {}", song.file);
@@ -514,12 +510,16 @@ impl MPDAction for UpdateArt {
                         let image = image::load_from_memory(&cover).expect("Failed to load image from memory");
                         let mut buffer = vec![];
                         let _ = image.write_with_encoder(JpegEncoder::new_with_quality(&mut buffer, 25));
-                        Arc::new(format!("data:{};base64,{}", mime, BASE64_STANDARD.encode(buffer)))
-                    }).await.unwrap_or(Arc::new(String::default()));
-                    self.cover_cache.insert(ckey, cover.clone()).await;
+                        let cover = format!("data:{};base64,{}", mime, BASE64_STANDARD.encode(buffer));
+                        self.cover_cache.insert(ckey, cover.clone());
+                        cover
+                    }).await.unwrap_or_default();
                     let _ = self.qt_thread.queue(move |qobject| {
-                        qobject.album_art_update(QString::from(cover.as_ref()));
+                        qobject.album_art_update(QString::from(cover));
                     });
+                },
+                _ = self.song_watch.changed() => {
+                    tracing::debug!("Canceled album art request for {}", song.file);
                 },
             );
             Ok(())

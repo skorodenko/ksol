@@ -12,6 +12,7 @@ use xdg::BaseDirectories;
 pub struct InternalSettings {
     pub app_data_dir: PathBuf,
     pub app_cache_dir: PathBuf,
+    pub app_cover_cache: PathBuf,
     pub app_config_dir: PathBuf,
     pub app_config_file: String,
     pub mpd_binary: PathBuf,
@@ -82,7 +83,8 @@ impl Default for InternalSettings {
 
         Self {
             app_data_dir: app_data,
-            app_cache_dir: app_cache,
+            app_cache_dir: app_cache.clone(),
+            app_cover_cache: app_cache.join("covers"),
             app_config_dir: app_config.clone(),
             app_config_file: app_config.join("settings.toml").to_str().unwrap().to_string(),
             mpd_binary: which("mpd").unwrap_or_default(),
