@@ -513,7 +513,7 @@ impl Default for MPDConnector {
             .build()
             .expect("Failed to build cache fs");
         let active_song = watch::channel(QSong::default());
-        let runtime = Builder::new_multi_thread().enable_io().enable_time().build().unwrap();
+        let runtime = Builder::new_multi_thread().worker_threads(1).event_interval(4).enable_io().enable_time().build().unwrap();
         let cover_cache = runtime
             .block_on(
                 HybridCacheBuilder::new()

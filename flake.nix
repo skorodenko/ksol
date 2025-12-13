@@ -53,6 +53,7 @@
               pkgs-unstable.rust-analyzer
               rust-bin.beta.latest.default
               pkgs-unstable.sccache
+              nasm
             ];
             shellHook = ''
               # Qmlls fix

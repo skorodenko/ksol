@@ -2,6 +2,7 @@ use crate::rust::entities::{ColumnSort, QSong, SongField};
 use crate::rust::qmpd_connector::qobject::QMPDConnector;
 use crate::rust::services::BoxSyncFuture;
 use base64::prelude::*;
+use bytes::BytesMut;
 use bincode::config;
 use bincode::serde::encode_to_vec;
 use cxx_qt::{CxxQtThread, CxxQtType};
@@ -9,7 +10,6 @@ use cxx_qt_lib::{QByteArray, QString};
 use foyer::HybridCache;
 use image::{self, codecs::jpeg::JpegEncoder};
 use mpd_client::{ClientController, commands, filter::Filter, responses::PlayState, tag::Tag};
-use std::sync::Arc;
 use tokio::sync::watch;
 use tokio::task;
 use tokio::time::Duration;
@@ -506,17 +506,23 @@ impl MPDAction for UpdateArt {
                 },
                 Ok(Some((cover, Some(mime)))) = mpd_client.album_art(&song.file) => {
                     tracing::debug!("Recieved album art for {}", song.file);
-                    let cover = task::spawn_blocking(move || {
+                    let cover_processing = task::spawn_blocking(move || {
                         let image = image::load_from_memory(&cover).expect("Failed to load image from memory");
-                        let mut buffer = vec![];
-                        let _ = image.write_with_encoder(JpegEncoder::new_with_quality(&mut buffer, 25));
-                        let cover = format!("data:{};base64,{}", mime, BASE64_STANDARD.encode(buffer));
-                        self.cover_cache.insert(ckey, cover.clone());
+                        let image = turbojpeg::compress(image.as_bytes(), 50, turbojpeg::Subsamp::Sub2x2);
+                        let image = format!("data:{};base64,{}", mime, BASE64_STANDARD.encode(buffer));
+                        self.cover_cache.insert(ckey, image.clone());
                         cover
-                    }).await.unwrap_or_default();
-                    let _ = self.qt_thread.queue(move |qobject| {
-                        qobject.album_art_update(QString::from(cover));
                     });
+                    tokio::select!(
+                        Ok(cover) = cover_processing => {
+                            let _ = self.qt_thread.queue(move |qobject| {
+                                qobject.album_art_update(QString::from(cover));
+                            });
+                        },
+                        _ = self.song_watch.changed() => {
+                            tracing::debug!("Canceled album art processing for {}", song.file);
+                        },
+                    );
                 },
                 _ = self.song_watch.changed() => {
                     tracing::debug!("Canceled album art request for {}", song.file);
