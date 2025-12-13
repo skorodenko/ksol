@@ -2,13 +2,12 @@ use crate::rust::entities::{ColumnSort, QSong, SongField};
 use crate::rust::qmpd_connector::qobject::QMPDConnector;
 use crate::rust::services::BoxSyncFuture;
 use base64::prelude::*;
-use bytes::BytesMut;
 use bincode::config;
 use bincode::serde::encode_to_vec;
 use cxx_qt::{CxxQtThread, CxxQtType};
 use cxx_qt_lib::{QByteArray, QString};
 use foyer::HybridCache;
-use image::{self, codecs::jpeg::JpegEncoder};
+use image;
 use mpd_client::{ClientController, commands, filter::Filter, responses::PlayState, tag::Tag};
 use tokio::sync::watch;
 use tokio::task;
@@ -508,10 +507,10 @@ impl MPDAction for UpdateArt {
                     tracing::debug!("Recieved album art for {}", song.file);
                     let cover_processing = task::spawn_blocking(move || {
                         let image = image::load_from_memory(&cover).expect("Failed to load image from memory");
-                        let image = turbojpeg::compress(image.as_bytes(), 50, turbojpeg::Subsamp::Sub2x2);
-                        let image = format!("data:{};base64,{}", mime, BASE64_STANDARD.encode(buffer));
+                        let image = turbojpeg::compress_image(&image.to_rgb8(), 50, turbojpeg::Subsamp::Sub2x2).unwrap();
+                        let image = format!("data:{};base64,{}", mime, BASE64_STANDARD.encode(image));
                         self.cover_cache.insert(ckey, image.clone());
-                        cover
+                        image
                     });
                     tokio::select!(
                         Ok(cover) = cover_processing => {
