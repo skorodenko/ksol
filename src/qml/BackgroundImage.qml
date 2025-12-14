@@ -10,57 +10,67 @@ import github.skorodenko.ksol 1.0
 Item {
     id: root
 
-    required property string imageSource
+    property string source
+    property string sourceTmp
 
-    states: [
-        State {
-            name: "main"
-            PropertyChanges { mainImage { opacity: 1 } }
-            PropertyChanges { altImage { opacity: 0 } }
-        },
-        State {
-            name: "alt"
-            PropertyChanges { mainImage { opacity: 0 } }
-            PropertyChanges { altImage { opacity: 1 } }
-        }
-    ]
+    onSourceChanged: {
+        destroyAnimation.start();
+        createAnimation.start();
+    }
 
     MultiEffect {
-        source: root.state == "main" ? mainImage : altImage
+        source: mainImage
         anchors.fill: root
         brightness: -0.15
         blurEnabled: true
         blurMax: 64
         blur: 0.75
+
+        NumberAnimation on opacity {
+            id: createAnimation
+            from: 0
+            to: 1
+            duration: 800
+
+            onRunningChanged: {
+                if (!running) {
+                    root.sourceTmp = root.source;
+                }
+            }
+        }
+    }
+
+    MultiEffect {
+        source: altImage
+        anchors.fill: root
+        brightness: -0.15
+        blurEnabled: true
+        blurMax: 64
+        blur: 0.75
+
+        NumberAnimation on opacity {
+            id: destroyAnimation
+            to: 0.5
+            duration: 400
+            onRunningChanged: {
+                if (!running) {}
+            }
+        }
     }
 
     Image {
         id: mainImage
-        cache: false
-        asynchronous: true
-        retainWhileLoading: true
-        mipmap: true
+        source: root.source
         visible: false
         anchors.fill: parent
         fillMode: Image.PreserveAspectCrop
-        
-        transitions: Transition {
-            NumberAnimation { properties: "opacity"; easing.type: Easing.InOutQuad }
-        }
     }
 
     Image {
         id: altImage
-        cache: false
-        asynchronous: true
-        retainWhileLoading: true
-        mipmap: true
         visible: false
+        source: root.sourceTmp
         anchors.fill: parent
         fillMode: Image.PreserveAspectCrop
-
-        transitions: Transition {
-            NumberAnimation { properties: "opacity"; easing.type: Easing.InOutQuad }
-        }
     }
 }

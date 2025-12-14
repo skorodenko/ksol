@@ -15,6 +15,7 @@ fn main() {
             qml_files: &[
                 "src/qml/Main.qml",
                 "src/qml/Drun.qml",
+                "src/qml/BackgroundImage.qml",
                 "src/qml/PlaylistHeader.qml",
                 "src/qml/About.qml",
                 "src/qml/InitWizard.qml",

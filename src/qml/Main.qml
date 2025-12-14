@@ -463,24 +463,9 @@ Kirigami.ApplicationWindow {
             orientation: Qt.Vertical
         }
 
-        MultiEffect {
-            source: tableBackground
-            anchors.fill: tableBackground
-            brightness: -0.15
-            blurEnabled: true
-            blurMax: 64
-            blur: 0.75
-        }
-
-        Image {
+        BackgroundImage {
             id: tableBackground
-            cache: false
-            asynchronous: true
-            retainWhileLoading: true
-            mipmap: true
-            visible: false
             anchors.fill: parent
-            fillMode: Image.PreserveAspectCrop
         }
 
         TableView {
