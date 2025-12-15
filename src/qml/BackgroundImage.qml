@@ -30,7 +30,7 @@ Item {
             id: createAnimation
             from: 0
             to: 1
-            duration: Kirigami.Units.longDuration
+            duration: Kirigami.Units.shortDuration
 
             onRunningChanged: {
                 if (!running) {
@@ -51,7 +51,7 @@ Item {
         NumberAnimation on opacity {
             id: destroyAnimation
             to: 0.3
-            duration: 0.7 * Kirigami.Units.longDuration
+            duration: 0.7 * Kirigami.Units.shortDuration
             onRunningChanged: {
                 if (!running) {}
             }
