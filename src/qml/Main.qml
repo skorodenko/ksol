@@ -346,15 +346,15 @@ Kirigami.ApplicationWindow {
         Item {
             anchors.fill: parent
 
-            Item {
+            QQC2.Control {
                 anchors.left: parent.left
                 anchors.leftMargin: Kirigami.Units.largeSpacing
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
+                implicitWidth: connectionStateLabel.implicitWidth + connectionStateRestart.implicitWidth * connectionStateRestart.visible
 
-                Rectangle {
+                background: Rectangle {
                     id: connectionStateLabelBackground
-                    anchors.fill: parent
                     Kirigami.Theme.inherit: false
                     Kirigami.Theme.colorSet: Kirigami.Theme.Window
                     color: Kirigami.Theme.negativeBackgroundColor
@@ -365,7 +365,7 @@ Kirigami.ApplicationWindow {
                     anchors.left: parent.left
                     anchors.top: parent.top
                     anchors.bottom: parent.bottom
-                    topPadding: 2
+                    topPadding: 4
                     leftPadding: Kirigami.Units.smallSpacing
                     rightPadding: Kirigami.Units.smallSpacing
 
