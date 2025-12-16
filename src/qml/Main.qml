@@ -99,6 +99,7 @@ Kirigami.ApplicationWindow {
         }
         onStagePlaylistResult: function (value) {
             qplaylist.setQueue(value);
+            mpd_connector.sortPlaylist(QSettingsModel.sortColumn, QSettingsModel.sortOrder);
         }
         onPlayStateChanged: function (state) {
             switch (state) {
@@ -180,7 +181,6 @@ Kirigami.ApplicationWindow {
 
         function onStagePlaylist(name, group) {
             mpd_connector.stagePlaylist(name, group);
-            mpd_connector.sortPlaylist(QSettingsModel.sortColumn, QSettingsModel.sortOrder);
         }
     }
 
