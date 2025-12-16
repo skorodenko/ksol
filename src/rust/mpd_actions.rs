@@ -486,9 +486,9 @@ impl MPDAction for UpdateArt {
         Box::pin(async move {
             let song = self.song_watch.borrow().clone();
             let ckey = format!("{}/{}", song.artist, song.album);
-            tracing::debug!("New album art request for {}", &ckey);
+            tracing::debug!("New album art request for \"{}\"", &ckey);
             if song.file == "" {
-                tracing::debug!("Using empty art for {}", song.file);
+                tracing::debug!("Using empty art for \"{}\"", song.file);
                 let _ = self.qt_thread.queue(move |qobject| {
                     qobject.album_art_update(QString::from(""));
                 });
@@ -498,13 +498,13 @@ impl MPDAction for UpdateArt {
             tokio::select!(
                 biased;
                 Ok(Some(entry)) = self.cover_cache.get(&ckey) => {
-                    tracing::debug!("Using cached art for {}", song.file);
+                    tracing::debug!("Using cached art for \"{}\"", song.file);
                     let _ = self.qt_thread.queue(move |qobject| {
                         qobject.album_art_update(QString::from(entry.value()));
                     });
                 },
                 Ok(Some((cover, Some(mime)))) = mpd_client.album_art(&song.file) => {
-                    tracing::debug!("Recieved album art for {}", song.file);
+                    tracing::debug!("Recieved album art for \"{}\"", song.file);
                     let cover_processing = task::spawn_blocking(move || {
                         let image = image::load_from_memory(&cover).expect("Failed to load image from memory");
                         let image = turbojpeg::compress_image(&image.to_rgb8(), 50, turbojpeg::Subsamp::Sub2x2).unwrap();
@@ -519,12 +519,12 @@ impl MPDAction for UpdateArt {
                             });
                         },
                         _ = self.song_watch.changed() => {
-                            tracing::debug!("Canceled album art processing for {}", song.file);
+                            tracing::debug!("Canceled album art processing for \"{}\"", song.file);
                         },
                     );
                 },
                 _ = self.song_watch.changed() => {
-                    tracing::debug!("Canceled album art request for {}", song.file);
+                    tracing::debug!("Canceled album art request for \"{}\"", song.file);
                 },
             );
             Ok(())
