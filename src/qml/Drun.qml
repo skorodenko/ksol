@@ -217,6 +217,6 @@ QQC2.Popup {
     QQC2.Overlay.modal: Rectangle {
         id: overlay
         color: Kirigami.Theme.alternateBackgroundColor
-        opacity: 0.5
+        opacity: 0.75
     }
 }
