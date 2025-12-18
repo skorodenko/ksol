@@ -21,6 +21,8 @@ Item {
     MultiEffect {
         source: mainImage
         anchors.fill: root
+        colorization: 0.5
+        colorizationColor: Kirigami.Theme.backgroundColor
         brightness: -0.15
         blurEnabled: true
         blurMax: 64
