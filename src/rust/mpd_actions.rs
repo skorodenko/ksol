@@ -455,8 +455,10 @@ impl MPDAction for IdleTimeline {
             let rsp = mpd_client.command(command).await.map_err(|x| MPDActionError::MPDClientError(x.to_string()))?;
             let duration = rsp.duration.unwrap_or(Duration::new(0, 0));
             let elapsed = rsp.elapsed.unwrap_or(Duration::new(0, 0));
+            let bitrate = rsp.bitrate.unwrap_or_default();
             let _ = self.qt_thread.queue(move |mut qobject| {
                 qobject.as_mut().timeline_update(duration.as_secs(), elapsed.as_secs());
+                qobject.as_mut().bitrate_update(bitrate);
             });
             Ok(())
         })

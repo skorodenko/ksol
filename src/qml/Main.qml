@@ -134,6 +134,9 @@ Kirigami.ApplicationWindow {
             var dfs = Math.floor(duration % 60).toString().padStart(2, '0');
             media_duration.text = `${efm}:${efs} / ${dfm}:${dfs}`;
         }
+        onBitrateUpdate: function (bitrate) {
+            bitrateText.text = `${bitrate} b/s`;
+        }
         onActiveSongChanged: function () {
             var songPos = mpd_connector.activeSongPosition;
             qplaylist_view.selectionModel.setCurrentIndex(qplaylist.index(songPos, 0), ItemSelectionModel.Rows);
@@ -387,6 +390,23 @@ Kirigami.ApplicationWindow {
                     onClicked: {
                         mpd_connector.connect();
                     }
+                }
+            }
+
+            QQC2.Control {
+                id: bitrateIndicator
+                implicitWidth: bitrateText.implicitWidth
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                anchors.right: shuffleButton.left
+
+                QQC2.Label {
+                    id: bitrateText
+                    text: "0 b/s"
+                    anchors.centerIn: parent
+                    topPadding: 4
+                    leftPadding: Kirigami.Units.smallSpacing
+                    rightPadding: Kirigami.Units.smallSpacing
                 }
             }
 

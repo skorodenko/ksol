@@ -587,6 +587,10 @@ pub mod qobject {
         fn timeline_update(self: Pin<&mut QMPDConnector>, duration: u64, elapsed: u64);
 
         #[qsignal]
+        #[cxx_name = "bitrateUpdate"]
+        fn bitrate_update(self: Pin<&mut QMPDConnector>, bitrate: u64);
+
+        #[qsignal]
         #[cxx_name = "getPlaylistsResult"]
         fn get_playlists_result(self: Pin<&mut QMPDConnector>, result: QByteArray);
 
