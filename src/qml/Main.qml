@@ -73,6 +73,8 @@ Kirigami.ApplicationWindow {
                 connectionStateLabel.text = "Connected";
                 connectionStateLabelBackground.color = Kirigami.Theme.positiveBackgroundColor;
                 connectionStateRestart.visible = false;
+                var songPos = mpd_connector.activeSongPosition;
+                qplaylist_view.selectionModel.setCurrentIndex(qplaylist.index(songPos, 0), ItemSelectionModel.Rows);
                 break;
             case "connecting" || "disconnected":
                 connectionStateLabel.text = "Connecting";
@@ -134,6 +136,7 @@ Kirigami.ApplicationWindow {
         }
         onActiveSongChanged: function () {
             var songPos = mpd_connector.activeSongPosition;
+            qplaylist_view.selectionModel.setCurrentIndex(qplaylist.index(songPos, 0), ItemSelectionModel.Rows);
             if (songPos < qplaylist_view.topRow + 1) {
                 qplaylist_view.positionViewAtRow(songPos, Qt.AlignTop, -90);
             }
