@@ -37,9 +37,9 @@ impl qobject::QPlaylistModel {
 
     pub fn data(&self, index: &QModelIndex, role: i32) -> QVariant {
         let role = QPlaylistRoles { repr: role };
+        let Ok(row) = usize::try_from(index.row()) else { return QVariant::default() };
         match role {
             QPlaylistRoles::SongDisplay => {
-                let row = index.row() as usize;
                 let column = index.column();
                 let sf = SongField::from_i32(column).unwrap();
                 let index = self.queue_proxy[row];
@@ -65,7 +65,6 @@ impl qobject::QPlaylistModel {
                 QVariant::from(&QString::from(field))
             }
             QPlaylistRoles::SongId => {
-                let row = index.row() as usize;
                 let index = self.queue_proxy[row];
                 QVariant::from(&self.queue[index].id)
             }

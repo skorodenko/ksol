@@ -24,9 +24,10 @@ impl qobject::QPlaylistsGroupModel {
     pub fn data(&self, index: &QModelIndex, role: i32) -> QVariant {
         let role = QPlaylistsGroupRoles { repr: role };
         let settings = Settings::load().blocking_read();
+        let Ok(row) = usize::try_from(index.row()) else { return QVariant::default(); };
         match role {
             QPlaylistsGroupRoles::Name => {
-                if let Some(sg) = settings.search_groups.get(index.row() as usize) {
+                if let Some(sg) = settings.search_groups.get(row) {
                     let sg_name = QString::from(sg.to_string());
                     QVariant::from(&sg_name)
                 } else {
@@ -34,7 +35,7 @@ impl qobject::QPlaylistsGroupModel {
                 }
             }
             QPlaylistsGroupRoles::Value => {
-                if let Some(sg) = settings.search_groups.get(index.row() as usize) {
+                if let Some(sg) = settings.search_groups.get(row) {
                     let sg_value = sg.to_i32().expect("Failed to cast to i32");
                     QVariant::from(&sg_value)
                 } else {

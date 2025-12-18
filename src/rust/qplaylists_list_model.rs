@@ -26,7 +26,8 @@ impl qobject::QPlaylistsListModel {
 
     pub fn data(&self, index: &QModelIndex, role: i32) -> QVariant {
         let role = QPlaylistsListRoles { repr: role };
-        let index = self.queue_proxy[index.row() as usize];
+        let Ok(row) = usize::try_from(index.row()) else { return QVariant::default() };
+        let index = self.queue_proxy[row];
         match role {
             QPlaylistsListRoles::Name => (&QString::from(&self.queue[index])).into(),
             _ => QVariant::default(),
