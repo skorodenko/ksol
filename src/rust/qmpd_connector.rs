@@ -521,6 +521,7 @@ impl Default for MPDConnector {
                     .with_shards(16)
                     .storage()
                     .with_engine_config(BlockEngineBuilder::new(device))
+                    .with_compression(foyer::Compression::None)
                     .build(),
             )
             .expect("Failed to start hybrid cache");
