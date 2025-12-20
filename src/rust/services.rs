@@ -1,6 +1,7 @@
-use crate::rust::mpd_actions::{MPDAction, MPDActionError};
+use crate::rust::mpd_actions::MPDAction;
 use crate::rust::mpris_actions::{MPRISAction, MPRISActionError};
 use crate::rust::mpris_interface::Player;
+use anyhow::Result;
 use futures::future::BoxFuture;
 use mpd_client::ClientController;
 use mpris_server;
@@ -22,8 +23,8 @@ impl MPDActionService {
 }
 
 impl<C: MPDAction + Clone> Service<C> for MPDActionService {
-    type Response = ();
-    type Error = MPDActionError;
+    type Response = C::Response;
+    type Error = anyhow::Error;
     type Future = BoxSyncFuture<'static, Result<Self::Response, Self::Error>>;
 
     fn poll_ready(&mut self, _cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {

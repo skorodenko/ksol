@@ -1405,6 +1405,7 @@ dependencies = [
 name = "ksol"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "base64",
  "bincode 2.0.1",
  "bytes",
@@ -1435,6 +1436,7 @@ dependencies = [
  "turbojpeg",
  "which",
  "xdg",
+ "zvariant",
 ]
 
 [[package]]

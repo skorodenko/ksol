@@ -33,6 +33,8 @@ futures = "0.3.31"
 image = "0.25.9"
 foyer = "0.21.1"
 turbojpeg = { version = "1.3.3", features = ["image"] }
+anyhow = "1.0.100"
+zvariant = "5.8.0"
 
 [build-dependencies]
 cxx-qt-build = { version = "0.7.3", features = ["link_qt_object_files"] }
