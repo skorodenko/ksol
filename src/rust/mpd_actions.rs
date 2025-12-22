@@ -563,7 +563,7 @@ impl MPDAction for UpdateArt {
     fn queue(mut self, mpd_client: ClientController) -> BoxSyncFuture<'static, Result<Self::Response>> {
         Box::pin(async move {
             let song = self.song_watch.borrow().clone();
-            let ckey = format!("{}/{}", song.artist, song.album);
+            let ckey = format!("{}/{}/{}", song.artist, song.album, song.disc);
             tracing::debug!("New album art request for \"{}\"", &ckey);
             if song.file == "" {
                 tracing::debug!("Using empty art for \"{}\"", song.file);
