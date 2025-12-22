@@ -488,7 +488,10 @@ Kirigami.ApplicationWindow {
 
         BackgroundImage {
             id: tableBackground
-            anchors.fill: parent
+            anchors.top: infoMessage.bottom
+            anchors.bottom: filterSearchBox.top
+            anchors.left: parent.left
+            anchors.right: parent.right
         }
 
         TableView {
