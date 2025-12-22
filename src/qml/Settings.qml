@@ -82,7 +82,7 @@ Kirigami.Page {
             id: mpdPage
         }
 
-        Kirigami.Page {
+        SettingsAppearancePage {
             id: appearencePage
         }
     }

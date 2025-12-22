@@ -2,8 +2,6 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Effects
-import QtQuick.Layouts
-import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
 import github.skorodenko.ksol 1.0
 
@@ -23,7 +21,6 @@ Item {
         anchors.fill: root
         colorization: 0.5
         colorizationColor: Kirigami.Theme.backgroundColor
-        brightness: -0.15
         blurEnabled: true
         blurMax: 64
         blur: 0.75
@@ -45,7 +42,6 @@ Item {
     MultiEffect {
         source: altImage
         anchors.fill: root
-        brightness: -0.15
         blurEnabled: true
         blurMax: 64
         blur: 0.75
