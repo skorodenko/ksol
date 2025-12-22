@@ -179,7 +179,7 @@ impl PlayerInterface for Player {
     async fn metadata(&self) -> fdo::Result<Metadata> {
         let mut service = self.mpd_service.clone();
         let song = service.call(mpd_actions::CurrentSong).await.map_err(|_| mpris_server::zbus::Error::InvalidReply)?;
-        let ckey = format!("{}/{}/{}", song.artist, song.album, song.disc);
+        let ckey = format!("{}/{}/{}/{}", song.artist, song.album, song.directory, song.disc);
         let cover = self.cover_cache.get(&ckey).await.map_err(|_| mpris_server::zbus::Error::InvalidReply)?;
         let trackid: TrackId = ObjectPath::try_from(format!("{}", song.id)).unwrap_or_default().into();
         let metadata = match cover {
