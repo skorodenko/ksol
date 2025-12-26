@@ -16,6 +16,7 @@ restore_paused "yes"
 audio_output \{
     type "{s.output_plugin_type}"
     name "Ksol"
+    dop "yes"
 }
 "#;
 
