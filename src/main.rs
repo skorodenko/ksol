@@ -1,18 +1,18 @@
 extern crate ksol;
 
-use cxx_qt_lib::{QQmlApplicationEngine, QQuickStyle, QString, QUrl};
-use cxx_qt_lib_extras::QApplication;
 use std::env;
 use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
 #[tracing::instrument(level = "debug", name = "ksol")]
 fn main() {
+    use cxx_qt_lib::{QGuiApplication, QQmlApplicationEngine, QQuickStyle, QString, QUrl};
+
     let filter = EnvFilter::from_default_env().add_directive("mpd_protocol=error".parse().unwrap());
     tracing_subscriber::registry().with(fmt::layer()).with(filter).init();
 
     tracing::debug!("Starting application");
 
-    let mut app = QApplication::new();
+    let mut app = QGuiApplication::new();
     let mut engine = QQmlApplicationEngine::new();
 
     // To associate the executable to the installed desktop file
