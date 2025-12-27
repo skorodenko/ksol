@@ -9,7 +9,6 @@ use crate::rust::services::{MPDActionService, MPRISActionService};
 use crate::rust::settings::{InternalSettings, Settings};
 use core::pin::Pin;
 use cxx_qt::{CxxQtType, Threading};
-use foyer::{BlockEngineBuilder, DeviceBuilder, FsDeviceBuilder, HybridCache, HybridCacheBuilder};
 use mpd_client::client::{ConnectionEvent, Subsystem};
 use mpd_client::{ClientController, ClientIdler, commands};
 use mpris_server::{LoopStatus, Metadata, PlaybackStatus, Property, Server, Time, TrackId};
@@ -36,7 +35,6 @@ pub struct MPDConnector {
     pub single: bool,
     pub shuffle: bool,
     pub runtime: Runtime,
-    pub cover_cache: HybridCache<String, String>,
     pub mpd_service: Option<MPDActionService>,
     pub mpris_service: Option<MPRISActionService>,
 }
@@ -388,13 +386,13 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                 }
                 "connected" => {
                     let mpd_service = ServiceBuilder::new().service(MPDActionService::new(qobject.client.clone().unwrap()));
-                    let cover_cache = qobject.cover_cache.clone();
-                    let mpris = qobject.runtime.block_on(async {
-                        Server::new("ksol", Player { mpd_service: mpd_service.clone(), cover_cache }).await.unwrap()
-                    });
-                    let mpris_service = ServiceBuilder::new().service(MPRISActionService::new(mpris));
+                    //let cover_cache = qobject.cover_cache.clone();
+                    //let mpris = qobject.runtime.block_on(async {
+                    //    Server::new("ksol", Player { mpd_service: mpd_service.clone(), cover_cache }).await.unwrap()
+                    //});
+                    //let mpris_service = ServiceBuilder::new().service(MPRISActionService::new(mpris));
                     qobject.as_mut().rust_mut().mpd_service.replace(mpd_service);
-                    qobject.as_mut().rust_mut().mpris_service.replace(mpris_service);
+                    //qobject.as_mut().rust_mut().mpris_service.replace(mpris_service);
                     qobject.as_mut().idle();
                     qobject.as_mut().init_ui();
                     qobject.as_mut().sync_state();
@@ -409,10 +407,10 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
         self.as_mut()
             .on_active_song_changed(|qobject| {
                 let qt_thread = qobject.qt_thread();
-                let cover_cache = qobject.cover_cache.clone();
+                //let cover_cache = qobject.cover_cache.clone();
                 let song_watch = qobject.active_song.1.clone();
                 if let Some(mut service) = qobject.mpd_service.clone() {
-                    qobject.runtime.spawn(service.call(mpd_actions::UpdateArt::new(qt_thread, cover_cache, song_watch)));
+                    //qobject.runtime.spawn(service.call(mpd_actions::UpdateArt::new(qt_thread, cover_cache, song_watch)));
                 } else {
                     tracing::error!("Action service not available");
                 }
@@ -421,11 +419,11 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
         self.as_mut()
             .on_stage_playlist_result(|qobject, _data| {
                 let qt_thread = qobject.qt_thread();
-                let cover_cache = qobject.cover_cache.clone();
+                //let cover_cache = qobject.cover_cache.clone();
                 let song_watch = qobject.active_song.1.clone();
                 if let Some(mut service) = qobject.mpd_service.clone() {
                     qobject.runtime.spawn(service.call(mpd_actions::IdlePlayer::new(qt_thread.clone())));
-                    qobject.runtime.spawn(service.call(mpd_actions::UpdateArt::new(qt_thread, cover_cache, song_watch)));
+                    //qobject.runtime.spawn(service.call(mpd_actions::UpdateArt::new(qt_thread, cover_cache, song_watch)));
                 } else {
                     tracing::error!("Action service not available");
                 }
@@ -514,27 +512,10 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
 
 impl Default for MPDConnector {
     fn default() -> Self {
-        let isettings = InternalSettings::load().clone();
-        let device = FsDeviceBuilder::new(isettings.app_cover_cache)
-            .with_capacity(256 * 1024 * 1024)
-            .build()
-            .expect("Failed to build cache fs");
         let active_song = watch::channel(QSong::default());
         let runtime = Builder::new_multi_thread().worker_threads(1).event_interval(3).enable_io().enable_time().build().unwrap();
-        let cover_cache = runtime
-            .block_on(
-                HybridCacheBuilder::new()
-                    .memory(24 * 1024 * 1024)
-                    .with_shards(16)
-                    .storage()
-                    .with_engine_config(BlockEngineBuilder::new(device))
-                    .with_compression(foyer::Compression::None)
-                    .build(),
-            )
-            .expect("Failed to start hybrid cache");
         Self {
             runtime,
-            cover_cache,
             active_song,
             client: None,
             idle_client: None,
