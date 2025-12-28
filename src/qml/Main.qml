@@ -165,7 +165,7 @@ Kirigami.ApplicationWindow {
             }
         }
         onAlbumArtUpdate: function (art) {
-            tableBackground.source = art;
+            tableBackground.source = "file:" + art;
         }
     }
 

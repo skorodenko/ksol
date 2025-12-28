@@ -13,7 +13,7 @@ which = "8.0.0"
 xdg = "3.0.0"
 num-traits = "0.2"
 num-derive = "0.4"
-tokio = { version = "1.48.0", features = ["time", "sync", "process", "rt-multi-thread"] }
+tokio = { version = "1.48.0", features = ["time", "sync", "process", "rt-multi-thread", "fs"] }
 mpd_client = { git = "https://github.com/skorodenko/mpd_client", branch = "refactoring" }
 regex = "1.11.2"
 strum = { version = "0.27", features = ["derive"] }
@@ -33,6 +33,7 @@ image = "0.25.9"
 turbojpeg = { version = "1.3.3", features = ["image"] }
 anyhow = "1.0.100"
 zvariant = "5.8.0"
+mime2ext = "0.1.54"
 
 [build-dependencies]
 cxx-qt-build = { version = "0.8.0", features = [ "link_qt_object_files" ] }

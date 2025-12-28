@@ -1330,6 +1330,7 @@ dependencies = [
  "cxx-qt-lib",
  "futures",
  "image 0.25.9",
+ "mime2ext",
  "mpd_client",
  "mpris-server",
  "num-derive",
@@ -1449,6 +1450,12 @@ checksum = "488016bfae457b036d996092f6cb448677611ce4449e970ceaf42695203f218a"
 dependencies = [
  "autocfg",
 ]
+
+[[package]]
+name = "mime2ext"
+version = "0.1.54"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cbf6f36070878c42c5233846cd3de24cf9016828fd47bc22957a687298bb21fc"
 
 [[package]]
 name = "miniz_oxide"

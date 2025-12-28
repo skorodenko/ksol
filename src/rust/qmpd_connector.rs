@@ -386,9 +386,8 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                 }
                 "connected" => {
                     let mpd_service = ServiceBuilder::new().service(MPDActionService::new(qobject.client.clone().unwrap()));
-                    //let cover_cache = qobject.cover_cache.clone();
                     //let mpris = qobject.runtime.block_on(async {
-                    //    Server::new("ksol", Player { mpd_service: mpd_service.clone(), cover_cache }).await.unwrap()
+                    //    Server::new("ksol", Player { mpd_service: mpd_service.clone() }).await.unwrap()
                     //});
                     //let mpris_service = ServiceBuilder::new().service(MPRISActionService::new(mpris));
                     qobject.as_mut().rust_mut().mpd_service.replace(mpd_service);
@@ -407,10 +406,9 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
         self.as_mut()
             .on_active_song_changed(|qobject| {
                 let qt_thread = qobject.qt_thread();
-                //let cover_cache = qobject.cover_cache.clone();
                 let song_watch = qobject.active_song.1.clone();
                 if let Some(mut service) = qobject.mpd_service.clone() {
-                    //qobject.runtime.spawn(service.call(mpd_actions::UpdateArt::new(qt_thread, cover_cache, song_watch)));
+                    qobject.runtime.spawn(service.call(mpd_actions::UpdateArt::new(qt_thread, song_watch)));
                 } else {
                     tracing::error!("Action service not available");
                 }
@@ -419,11 +417,10 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
         self.as_mut()
             .on_stage_playlist_result(|qobject, _data| {
                 let qt_thread = qobject.qt_thread();
-                //let cover_cache = qobject.cover_cache.clone();
                 let song_watch = qobject.active_song.1.clone();
                 if let Some(mut service) = qobject.mpd_service.clone() {
                     qobject.runtime.spawn(service.call(mpd_actions::IdlePlayer::new(qt_thread.clone())));
-                    //qobject.runtime.spawn(service.call(mpd_actions::UpdateArt::new(qt_thread, cover_cache, song_watch)));
+                    qobject.runtime.spawn(service.call(mpd_actions::UpdateArt::new(qt_thread, song_watch)));
                 } else {
                     tracing::error!("Action service not available");
                 }
