@@ -3,15 +3,12 @@ use crate::rust::qmpd_connector::qobject::QMPDConnector;
 use crate::rust::services::BoxSyncFuture;
 use crate::rust::settings::InternalSettings;
 use anyhow::{Result, anyhow};
-use base64::prelude::*;
 use bincode::config;
 use bincode::serde::encode_to_vec;
 use cxx_qt::{CxxQtThread, CxxQtType};
 use cxx_qt_lib::{QByteArray, QString};
 use image;
 use mpd_client::{ClientController, commands, filter::Filter, responses, tag::Tag};
-use mime2ext::mime2ext;
-use tokio::fs;
 use std::fs::write;
 use tokio::sync::watch;
 use tokio::task;
@@ -564,8 +561,6 @@ impl MPDAction for UpdateArt {
         Box::pin(async move {
             let song = self.song_watch.borrow().clone();
             let ckey = covers.join(format!("{}_{}_{}", song.album, song.artist, song.disc));
-            let mut file = ckey.clone();
-            println!("{:?}", ckey);
             tracing::debug!("New album art request for \"{}\"", song.file);
             if ckey.exists() {
                 let _ = self.qt_thread.queue(move |qobject| {
@@ -575,21 +570,18 @@ impl MPDAction for UpdateArt {
             }
             self.song_watch.mark_unchanged();
             tokio::select!(
-                Ok(Some((cover, Some(mime)))) = mpd_client.album_art(&song.file) => {
+                Ok(Some((cover, Some(_mime)))) = mpd_client.album_art(&song.file) => {
                     tracing::debug!("Recieved album art for \"{}\"", song.file);
                     let cover_processing = task::spawn_blocking(move || {
-                        //let ext = mime2ext(&mime).unwrap();
-                        //file.set_extension(ext);
                         let image = image::load_from_memory(&cover).expect("Failed to load image from memory");
                         let image = turbojpeg::compress_image(&image.to_rgb8(), 50, turbojpeg::Subsamp::Sub2x2).unwrap();
-                        let _ = write(&file, image);
-                        file
+                        let _ = write(&ckey, image);
+                        ckey
                     });
                     tokio::select!(
                         Ok(cover) = cover_processing => {
-                            let _ = fs::hard_link(&cover, &ckey);
                             let _ = self.qt_thread.queue(move |qobject| {
-                                qobject.album_art_update(QString::from(ckey.to_str().unwrap()));
+                                qobject.album_art_update(QString::from(cover.to_str().unwrap()));
                             });
                         },
                         _ = self.song_watch.changed() => {

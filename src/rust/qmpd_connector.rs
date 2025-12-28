@@ -24,7 +24,6 @@ use tokio_util::sync::CancellationToken;
 use tower::{Service, ServiceBuilder};
 use tracing;
 use which::which;
-use zvariant::ObjectPath;
 
 pub struct MPDConnector {
     pub client: Option<ClientController>,
@@ -386,12 +385,12 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                 }
                 "connected" => {
                     let mpd_service = ServiceBuilder::new().service(MPDActionService::new(qobject.client.clone().unwrap()));
-                    //let mpris = qobject.runtime.block_on(async {
-                    //    Server::new("ksol", Player { mpd_service: mpd_service.clone() }).await.unwrap()
-                    //});
-                    //let mpris_service = ServiceBuilder::new().service(MPRISActionService::new(mpris));
+                    let mpris = qobject
+                        .runtime
+                        .block_on(async { Server::new("ksol", Player { mpd_service: mpd_service.clone() }).await.unwrap() });
+                    let mpris_service = ServiceBuilder::new().service(MPRISActionService::new(mpris));
                     qobject.as_mut().rust_mut().mpd_service.replace(mpd_service);
-                    //qobject.as_mut().rust_mut().mpris_service.replace(mpris_service);
+                    qobject.as_mut().rust_mut().mpris_service.replace(mpris_service);
                     qobject.as_mut().idle();
                     qobject.as_mut().init_ui();
                     qobject.as_mut().sync_state();
@@ -488,14 +487,14 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                 if let Some(mut service) = qobject.mpris_service.clone() {
                     if qobject.active_song.1.has_changed().expect("Channel closed") {
                         let song = qobject.active_song.1.borrow();
-                        let trackid: TrackId = ObjectPath::try_from(format!("{}", song.id)).unwrap_or_default().into();
+                        let trackid = TrackId::try_from(format!("{}", song.id)).unwrap_or_default();
                         let metadata = Metadata::builder()
                             .title(&song.title)
                             .artist([&song.artist])
                             .album(&song.album)
                             .trackid(trackid)
                             .length(Time::from_secs(song.duration.as_secs() as i64))
-                            .art_url(String::from(cover))
+                            .art_url(format!("file:{}", cover))
                             .build();
                         qobject
                             .runtime

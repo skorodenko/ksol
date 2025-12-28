@@ -1,5 +1,6 @@
 use crate::rust::mpd_actions::{self, Seek};
 use crate::rust::services::MPDActionService;
+use crate::rust::settings::InternalSettings;
 use mpd_client::commands::SingleMode;
 use mpd_client::responses::PlayState;
 use mpris_server::{
@@ -8,7 +9,7 @@ use mpris_server::{
 };
 use std::time::Duration;
 use tower::Service;
-use zvariant::ObjectPath;
+//use zvariant::ObjectPath;
 
 pub struct Player {
     pub mpd_service: MPDActionService,
@@ -175,30 +176,21 @@ impl PlayerInterface for Player {
     }
 
     async fn metadata(&self) -> fdo::Result<Metadata> {
-//        let mut service = self.mpd_service.clone();
-//        let song = service.call(mpd_actions::CurrentSong).await.map_err(|_| mpris_server::zbus::Error::InvalidReply)?;
-//        let ckey = format!("{}/{}/{}/{}", song.artist, song.album, song.directory, song.disc);
-//        let cover = self.cover_cache.get(&ckey).await.map_err(|_| mpris_server::zbus::Error::InvalidReply)?;
-//        let trackid: TrackId = ObjectPath::try_from(format!("{}", song.id)).unwrap_or_default().into();
-//        let metadata = match cover {
-//            Some(cover) => Metadata::builder()
-//                .title(&song.title)
-//                .artist([&song.artist])
-//                .album(&song.album)
-//                .trackid(trackid)
-//                .length(Time::from_secs(song.duration.as_secs() as i64))
-//                .art_url(String::from(cover.value()))
-//                .build(),
-//            None => Metadata::builder()
-//                .title(&song.title)
-//                .artist([&song.artist])
-//                .album(&song.album)
-//                .trackid(trackid)
-//                .length(Time::from_secs(song.duration.as_secs() as i64))
-//                .build(),
-//        };
-//        Ok(metadata)
-        Ok(Metadata::default())
+        let settings = InternalSettings::load();
+        let covers = settings.app_cover_cache.clone();
+        let mut service = self.mpd_service.clone();
+        let song = service.call(mpd_actions::CurrentSong).await.map_err(|_| mpris_server::zbus::Error::InvalidReply)?;
+        let ckey = covers.join(format!("{}_{}_{}", song.album, song.artist, song.disc));
+        let trackid = TrackId::try_from(format!("{}", song.id)).unwrap_or_default();
+        let metadata = Metadata::builder()
+            .title(&song.title)
+            .artist([&song.artist])
+            .album(&song.album)
+            .trackid(trackid)
+            .length(Time::from_secs(song.duration.as_secs() as i64))
+            .art_url(format!("file:{}", ckey.to_str().unwrap_or_default()))
+            .build();
+        Ok(metadata)
     }
 
     async fn volume(&self) -> fdo::Result<Volume> {
