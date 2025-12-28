@@ -3,8 +3,6 @@ use crate::rust::qmpd_connector::qobject::QMPDConnector;
 use crate::rust::services::BoxSyncFuture;
 use crate::rust::settings::InternalSettings;
 use anyhow::{Result, anyhow};
-use bincode::config;
-use bincode::serde::encode_to_vec;
 use cxx_qt::{CxxQtThread, CxxQtType};
 use cxx_qt_lib::{QByteArray, QString};
 use image;
@@ -212,7 +210,7 @@ impl MPDAction for GetPlaylists {
                 }
             };
             result.sort();
-            let bcode: &[u8] = &encode_to_vec(result, config::standard()).expect("failed to encode to bcode");
+            let bcode: &[u8] = &wincode::serialize(&result).unwrap();
             let bcode = QByteArray::from(bcode);
             let _ = self.qt_thread.queue(|mut qobject| {
                 qobject.as_mut().get_playlists_result(bcode);
@@ -465,7 +463,7 @@ impl MPDAction for IdleQueue {
             let command = commands::Queue::all();
             let rsp = mpd_client.command(command).await.map_err(|e| anyhow!("{e}"))?;
             let songs: Vec<QSong> = rsp.into_iter().map(QSong::from).collect();
-            let bcode: &[u8] = &encode_to_vec(songs, config::standard()).expect("failed to encode to bcode");
+            let bcode: &[u8] = &wincode::serialize(&songs).unwrap();
             let bcode = QByteArray::from(bcode);
             let _ = self.qt_thread.queue(|mut qobject| {
                 qobject.as_mut().stage_playlist_result(bcode);

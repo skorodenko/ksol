@@ -1,12 +1,12 @@
-use core::time::Duration;
 use mpd_client::{responses::SongInQueue, tag::Tag};
 use num_derive::{FromPrimitive, ToPrimitive};
-use serde;
+use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter, Result};
 use std::path::Path;
 use strum::EnumIter;
+use wincode::{SchemaRead, SchemaWrite};
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, SchemaWrite, SchemaRead, Debug, Clone, Default)]
 pub struct QSong {
     pub id: u64,
     pub position: usize,
@@ -21,7 +21,7 @@ pub struct QSong {
     pub file: String,
     pub format: String,
     pub lastmodified: String,
-    pub duration: Duration,
+    pub duration: u64,
     pub directory: String,
 }
 
@@ -68,7 +68,7 @@ impl From<SongInQueue> for QSong {
             file: value.song.url.clone(),
             format: value.song.format.unwrap_or("".into()),
             lastmodified: "".into(),
-            duration: value.song.duration.unwrap_or_default(),
+            duration: value.song.duration.unwrap_or_default().as_secs(),
             directory: Path::new(&value.song.url).parent().unwrap_or(Path::new("Root")).to_str().unwrap_or_default().to_string(),
         }
     }

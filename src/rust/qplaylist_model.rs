@@ -1,12 +1,9 @@
-use qobject::*;
-
 use crate::rust::entities::{QSong, SongField};
 use crate::rust::settings::Settings;
-use bincode::config;
-use bincode::serde::decode_from_slice;
 use core::pin::Pin;
 use cxx_qt::CxxQtType;
 use num_traits::FromPrimitive;
+use qobject::*;
 use regex;
 
 #[derive(Default)]
@@ -57,9 +54,7 @@ impl qobject::QPlaylistModel {
                     SongField::File => &qsong.file,
                     SongField::Format => &qsong.format,
                     SongField::Lastmodified => &qsong.lastmodified,
-                    SongField::Duration => {
-                        &format!("{:0>2}:{:0>2}", qsong.duration.as_secs() / 60, qsong.duration.as_secs() % 60)
-                    }
+                    SongField::Duration => &format!("{:0>2}:{:0>2}", qsong.duration / 60, qsong.duration % 60),
                     SongField::Directory => &qsong.directory,
                 };
                 QVariant::from(&QString::from(field))
@@ -84,7 +79,7 @@ impl qobject::QPlaylistModel {
     }
 
     fn set_queue(mut self: Pin<&mut QPlaylistModel>, value: QByteArray) {
-        let (value, _): (Vec<QSong>, usize) = decode_from_slice(value.as_slice(), config::standard()).unwrap();
+        let value: Vec<QSong> = wincode::deserialize(value.as_slice()).unwrap();
         self.as_mut().begin_reset_model();
         self.as_mut().rust_mut().queue = value;
         self.as_mut().rust_mut().queue_proxy = (0..self.queue.len()).collect();

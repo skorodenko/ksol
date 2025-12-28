@@ -187,7 +187,7 @@ impl PlayerInterface for Player {
             .artist([&song.artist])
             .album(&song.album)
             .trackid(trackid)
-            .length(Time::from_secs(song.duration.as_secs() as i64))
+            .length(Time::from_secs(song.duration as i64))
             .art_url(format!("file:{}", ckey.to_str().unwrap_or_default()))
             .build();
         Ok(metadata)

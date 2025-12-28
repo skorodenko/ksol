@@ -1,7 +1,5 @@
 use qobject::*;
 
-use bincode::config;
-use bincode::serde::decode_from_slice;
 use core::pin::Pin;
 use cxx_qt::CxxQtType;
 use regex;
@@ -35,7 +33,7 @@ impl qobject::QPlaylistsListModel {
     }
 
     pub fn set_queue(mut self: Pin<&mut QPlaylistsListModel>, value: QByteArray) {
-        let (value, _): (Vec<String>, usize) = decode_from_slice(value.as_slice(), config::standard()).unwrap();
+        let value: Vec<String> = wincode::deserialize(value.as_slice()).unwrap();
         self.as_mut().rust_mut().queue = value;
         self.as_mut().update();
     }

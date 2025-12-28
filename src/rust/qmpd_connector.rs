@@ -493,7 +493,7 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                             .artist([&song.artist])
                             .album(&song.album)
                             .trackid(trackid)
-                            .length(Time::from_secs(song.duration.as_secs() as i64))
+                            .length(Time::from_secs(song.duration as i64))
                             .art_url(format!("file:{}", cover))
                             .build();
                         qobject
