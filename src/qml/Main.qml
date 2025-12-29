@@ -546,7 +546,7 @@ Kirigami.ApplicationWindow {
             columnWidthProvider: function (column) {
                 var item = qplaylist_header.repeater.itemAt(column);
                 if (column == qplaylist_header.lastVisibleColumn) {
-                    return item.width + 2 - scrollBar.width;
+                    return item.width - 4 - scrollBar.implicitWidth;
                 } else {
                     return item.visible ? item.width + 2 : 0; // 2 is splitter width (which is not acounted in delegate width)
                 }
