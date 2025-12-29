@@ -560,6 +560,12 @@ impl MPDAction for UpdateArt {
             let song = self.song_watch.borrow().clone();
             let ckey = covers.join(format!("{}_{}_{}", song.album, song.artist, song.disc));
             tracing::debug!("New album art request for \"{}\"", song.file);
+            if song.file.is_empty() {
+                let _ = self.qt_thread.queue(move |qobject| {
+                    qobject.album_art_update(QString::default());
+                });
+                return Ok(());
+            }
             if ckey.exists() {
                 let _ = self.qt_thread.queue(move |qobject| {
                     qobject.album_art_update(QString::from(ckey.to_str().unwrap()));
