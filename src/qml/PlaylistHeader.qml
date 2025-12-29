@@ -19,6 +19,7 @@ Item {
     property int minimumColumnWidth: 60
     property int maximumColumnWidth: width
     property var color: "#32363b"
+    property var highlightColor: Kirigami.Theme.highlightColor
 
     Component.onCompleted: {
         root.firstVisibleColumn = root.updateFirstVisibleColumn();
@@ -148,6 +149,31 @@ Item {
                     QSettingsModel.setColumnWidth(delegate.index, delegate.SplitView.preferredWidth / root.width);
                 }
 
+                MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+
+                    onClicked: {
+                        QSettingsModel.toggleSortColumn(delegate.index);
+                    }
+
+                    onContainsMouseChanged: {
+                        if (containsMouse) {
+                            highlight.visible = true;
+                        } else {
+                            highlight.visible = false;
+                        }
+                    }
+                }
+
+                Rectangle {
+                    id: highlight
+                    opacity: 0.5
+                    visible: false
+                    anchors.fill: parent
+                    color: root.highlightColor
+                }
+
                 Text {
                     elide: Text.ElideRight
                     color: Kirigami.Theme.textColor
@@ -168,13 +194,6 @@ Item {
                     anchors.rightMargin: Kirigami.Units.smallSpacing
 
                     state: QSettingsModel.sortColumn == delegate.index ? QSettingsModel.sortOrder : "0"
-
-                    MouseArea {
-                        anchors.fill: sortIndicator
-                        onClicked: {
-                            QSettingsModel.toggleSortColumn(delegate.index);
-                        }
-                    }
 
                     Text {
                         id: sortIndicatorText
