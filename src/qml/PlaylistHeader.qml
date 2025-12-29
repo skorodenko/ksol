@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Layouts
 import QtQuick.Controls
 import org.kde.kirigami as Kirigami
 import github.skorodenko.ksol 1.0
@@ -195,9 +194,10 @@ Item {
 
                     state: QSettingsModel.sortColumn == delegate.index ? QSettingsModel.sortOrder : "0"
 
-                    Text {
+                    Kirigami.Icon {
                         id: sortIndicatorText
-                        color: Kirigami.Theme.textColor
+                        width: Kirigami.Units.iconSizes.small
+                        height: Kirigami.Units.iconSizes.small
                         anchors.centerIn: parent
                     }
 
@@ -205,19 +205,19 @@ Item {
                         State {
                             name: "1"
                             PropertyChanges {
-                                sortIndicatorText.text: "v"
+                                sortIndicatorText.source: "arrow-down"
                             }
                         },
                         State {
                             name: "0"
                             PropertyChanges {
-                                sortIndicatorText.text: "-"
+                                sortIndicatorText.source: ""
                             }
                         },
                         State {
                             name: "-1"
                             PropertyChanges {
-                                sortIndicatorText.text: "ʌ"
+                                sortIndicatorText.source: "arrow-up"
                             }
                         }
                     ]
