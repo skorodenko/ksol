@@ -321,7 +321,7 @@ Kirigami.ApplicationWindow {
                     }
                     QQC2.MenuItem {
                         text: qsTr("Settings")
-                        icon.name: "settings"
+                        icon.name: "settings-configure"
                         onClicked: {
                             root.pageStack.replace(settings);
                         }

@@ -17,8 +17,8 @@ Kirigami.Page {
 
     function reset() {
         root.customServerUrl = "";
-        root.useNativeMpdServer = QSettingsModel.mpdSocket == root.nativeMpdSocket
-        root.nativeMpdSocket = QSettingsModel.getNativeMpdSocket()
+        root.useNativeMpdServer = QSettingsModel.mpdSocket == root.nativeMpdSocket;
+        root.nativeMpdSocket = QSettingsModel.getNativeMpdSocket();
     }
 
     function handleConnectionCheck() {
@@ -33,80 +33,73 @@ Kirigami.Page {
         root.connectionCheckResult(result);
     }
 
-    QQC2.GroupBox {
-        id: externalServerGroup
+    Kirigami.FormLayout {
+        anchors.fill: parent
 
-        anchors {
-            top: parent.top
-            left: parent.left
-            right: parent.right
+        Item {
+            Kirigami.FormData.isSection: true
+            Kirigami.FormData.label: "MPD server type"
         }
 
-        label: QQC2.RadioButton {
-            id: esgCheckBox
-            checked: !root.useNativeMpdServer
-            text: qsTr("External mpd server (mpd starting/stopping/configuring done outside this app)")
-            onClicked: root.useNativeMpdServer = false
-        }
+        ColumnLayout {
+            Kirigami.FormData.label: "Choose MPD server type:"
 
-        Kirigami.FormLayout {
-            anchors.fill: parent
-            enabled: esgCheckBox.checked
-
-            RowLayout {
-                spacing: Kirigami.Units.mediumSpacing
-                Kirigami.FormData.label: "Server url:"
-
-                QQC2.TextField {
-                    id: gpServerUrl
-                    Binding {
-                        target: root
-                        property: "customServerUrl"
-                        value: gpServerUrl.text
-                    }
-                    placeholderText: QSettingsModel.mpdSocket == root.nativeMpdSocket ? "External server url (http://... or Unix socket)" : QSettingsModel.mpdSocket
-                }
-
-                QQC2.Button {
-                    id: gpAddressCheck
-                    text: "Check & apply"
-                    onClicked: root.handleConnectionCheck()
-                }
+            QQC2.RadioButton {
+                checked: !root.useNativeMpdServer
+                onClicked: root.useNativeMpdServer = false
+                text: qsTr("External (managed outside this app)")
             }
-        }
-    }
-
-    QQC2.GroupBox {
-        id: nativeServerGroup
-        padding: Kirigami.Units.largeSpacing
-
-        anchors {
-            top: externalServerGroup.bottom
-            left: parent.left
-            right: parent.right
-        }
-
-        label: QQC2.RadioButton {
-            id: nsgCheckBox
-            checked: root.useNativeMpdServer
-            text: qsTr("Native mpd server (mpd starting/stopping/configuring managed by this app)")
-            onClicked: {
-                root.useNativeMpdServer = true;
-                QSettingsModel.mpdSocket = root.nativeMpdSocket;
+            QQC2.RadioButton {
+                checked: root.useNativeMpdServer
+                onClicked: {
+                    root.useNativeMpdServer = true;
+                    QSettingsModel.mpdSocket = root.nativeMpdSocket;
+                }
+                text: qsTr("Native (managed by this app)")
             }
         }
 
-        Kirigami.FormLayout {
-            anchors.fill: parent
-            enabled: nsgCheckBox.checked
+        Item {
+            enabled: !root.useNativeMpdServer
+            Kirigami.FormData.isSection: true
+            Kirigami.FormData.label: "External server settings"
+        }
 
-            QQC2.ComboBox {
-                Kirigami.FormData.label: "Output plugin:"
-                model: ["pipewire", "pulse", "alsa"]
-                currentIndex: model.indexOf(QSettingsModel.outputPluginType)
-                onActivated: index => {
-                    QSettingsModel.outputPluginType = model[index];
+        RowLayout {
+            spacing: Kirigami.Units.mediumSpacing
+            enabled: !root.useNativeMpdServer
+            Kirigami.FormData.label: "Server url:"
+
+            QQC2.TextField {
+                id: gpServerUrl
+                Binding {
+                    target: root
+                    property: "customServerUrl"
+                    value: gpServerUrl.text
                 }
+                placeholderText: QSettingsModel.mpdSocket == root.nativeMpdSocket ? "External server url (http://... or Unix socket)" : QSettingsModel.mpdSocket
+            }
+
+            QQC2.Button {
+                id: gpAddressCheck
+                text: "Check & apply"
+                onClicked: root.handleConnectionCheck()
+            }
+        }
+
+        Item {
+            enabled: root.useNativeMpdServer
+            Kirigami.FormData.isSection: true
+            Kirigami.FormData.label: "Native server settings"
+        }
+
+        QQC2.ComboBox {
+            enabled: root.useNativeMpdServer
+            Kirigami.FormData.label: "Output plugin:"
+            model: ["pipewire", "pulse", "alsa"]
+            currentIndex: model.indexOf(QSettingsModel.outputPluginType)
+            onActivated: index => {
+                QSettingsModel.outputPluginType = model[index];
             }
         }
     }
