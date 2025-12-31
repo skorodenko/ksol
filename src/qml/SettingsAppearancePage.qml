@@ -9,17 +9,18 @@ import github.skorodenko.ksol 1.0
 Kirigami.Page {
     id: root
 
-    ColumnLayout {
+    Kirigami.FormLayout {
         anchors.fill: parent
-        RowLayout {
-            QQC2.Label {
-                text: "Opacity: "
-            }
-            QQC2.Slider {
-                Layout.fillWidth: true
-                from: 0
-                to: 1
-            }
+        
+        Item {
+            Kirigami.FormData.isSection: true
+            Kirigami.FormData.label: "Album background"
+        }
+
+        QQC2.SpinBox {
+            Kirigami.FormData.label: "Background opacity"
+            from: 0
+            to: 1
         }
     }
 }
