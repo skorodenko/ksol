@@ -140,12 +140,7 @@ Kirigami.ApplicationWindow {
         onActiveSongChanged: function () {
             var songPos = mpd_connector.activeSongPosition;
             qplaylist_view.selectionModel.setCurrentIndex(qplaylist.index(songPos, 0), ItemSelectionModel.Rows);
-            if (songPos < qplaylist_view.topRow + 1) {
-                qplaylist_view.positionViewAtRow(songPos, Qt.AlignTop, -90);
-            }
-            if (songPos > qplaylist_view.bottomRow - 1) {
-                qplaylist_view.positionViewAtRow(songPos, Qt.AlignBottom, 90);
-            }
+            qplaylist_view.positionViewAtRow(songPos, Qt.AlignVCenter, 0);
         }
         onUpdateOptions: function () {
             var shuffle = mpd_connector.shuffle;
