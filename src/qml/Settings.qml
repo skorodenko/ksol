@@ -19,7 +19,7 @@ Kirigami.Page {
     Connections {
         target: QSettingsModel
 
-        function onMpdSettingsUpdate() {
+        function onMpdServerSettingsUpdate() {
             root.restartMpd = true;
         }
     }

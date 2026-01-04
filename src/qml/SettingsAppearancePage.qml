@@ -18,9 +18,15 @@ Kirigami.Page {
         }
 
         QQC2.SpinBox {
-            Kirigami.FormData.label: "Background opacity"
+            Kirigami.FormData.label: "Background blur:"
             from: 0
-            to: 1
+            to: 100
+        }
+
+        QQC2.SpinBox {
+            Kirigami.FormData.label: "Background opacity:"
+            from: 0
+            to: 100
         }
     }
 }

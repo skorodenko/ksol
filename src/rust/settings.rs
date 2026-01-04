@@ -30,6 +30,8 @@ pub struct Settings {
     pub column_width: Vec<f64>,
     pub column_sort: ColumnSort,
     pub active_group: SongField,
+    pub background_opacity: usize,
+    pub blur_factor: usize,
 }
 
 impl Settings {
@@ -120,6 +122,8 @@ impl Default for Settings {
                 column_width: SongField::iter().map(|_| 1_f64 / 14_f64).collect(),
                 column_sort: ColumnSort::Ascending(SongField::Track),
                 active_group: SongField::Directory,
+                background_opacity: 75,
+                blur_factor: 95,
             },
         }
     }

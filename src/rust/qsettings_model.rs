@@ -21,7 +21,7 @@ impl qobject::QSettingsModel {
         let mut settings = Settings::load().blocking_write();
         settings.mpd_socket = value.into();
         std::mem::drop(settings);
-        self.mpd_settings_update();
+        self.mpd_server_settings_update();
     }
 
     pub fn get_native_mpd_socket(self: Pin<&mut QSettingsModel>) -> QString {
@@ -38,7 +38,7 @@ impl qobject::QSettingsModel {
         let mut settings = Settings::load().blocking_write();
         settings.native_music_dir = value.into();
         std::mem::drop(settings);
-        self.mpd_settings_update();
+        self.mpd_server_settings_update();
     }
 
     fn get_output_plugin_type(self: Pin<&mut QSettingsModel>) -> QString {
@@ -50,7 +50,7 @@ impl qobject::QSettingsModel {
         let mut settings = Settings::load().blocking_write();
         settings.output_plugin_type = value.into();
         std::mem::drop(settings);
-        self.mpd_settings_update();
+        self.mpd_server_settings_update();
     }
 
     fn get_init_wizard(self: Pin<&mut QSettingsModel>) -> bool {
@@ -138,17 +138,20 @@ mod qobject {
         #[qobject]
         #[qml_element]
         #[qml_singleton]
-        #[qproperty(QString, mpdSocket, READ = get_mpd_socket, WRITE = set_mpd_socket, NOTIFY = mpd_settings_update)]
-        #[qproperty(QString, nativeMpdMusicDir, READ = get_native_mpd_music_dir, WRITE = set_native_mpd_music_dir, NOTIFY = mpd_settings_update)]
-        #[qproperty(QString, outputPluginType, READ = get_output_plugin_type, WRITE = set_output_plugin_type, NOTIFY = mpd_settings_update)]
+        #[qproperty(QString, mpdSocket, READ = get_mpd_socket, WRITE = set_mpd_socket, NOTIFY = mpd_server_settings_update)]
+        #[qproperty(QString, nativeMpdMusicDir, READ = get_native_mpd_music_dir, WRITE = set_native_mpd_music_dir, NOTIFY = mpd_server_settings_update)]
+        #[qproperty(QString, outputPluginType, READ = get_output_plugin_type, WRITE = set_output_plugin_type, NOTIFY = mpd_server_settings_update)]
         #[qproperty(bool, initWizard, READ = get_init_wizard, WRITE = set_init_wizard, NOTIFY = init_wizard_changed)]
         #[qproperty(i32, sortOrder, READ = get_sort_order, NOTIFY = update_sort_column)]
         #[qproperty(i32, sortColumn, READ = get_sort_column, NOTIFY = update_sort_column)]
         type QSettingsModel = super::SettingsModel;
 
         #[qsignal]
-        #[cxx_name = "mpdSettingsUpdate"]
-        fn mpd_settings_update(self: Pin<&mut QSettingsModel>);
+        #[cxx_name = "mpdServerSettingsUpdate"]
+        fn mpd_server_settings_update(self: Pin<&mut QSettingsModel>);
+
+        #[qsignal]
+        fn mpd_appearance_settings_update(self: Pin<&mut QSettingsModel>);
 
         #[qsignal]
         fn native_mpd_music_dir_changed(self: Pin<&mut QSettingsModel>);
