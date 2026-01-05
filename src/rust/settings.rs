@@ -31,7 +31,7 @@ pub struct Settings {
     pub column_sort: ColumnSort,
     pub active_group: SongField,
     pub background_opacity: usize,
-    pub blur_factor: usize,
+    pub background_blur: usize,
 }
 
 impl Settings {
@@ -123,7 +123,7 @@ impl Default for Settings {
                 column_sort: ColumnSort::Ascending(SongField::Track),
                 active_group: SongField::Directory,
                 background_opacity: 75,
-                blur_factor: 95,
+                background_blur: 95,
             },
         }
     }

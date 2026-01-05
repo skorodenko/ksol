@@ -11,7 +11,7 @@ Kirigami.Page {
 
     Kirigami.FormLayout {
         anchors.fill: parent
-        
+
         Item {
             Kirigami.FormData.isSection: true
             Kirigami.FormData.label: "Album background"
@@ -19,14 +19,24 @@ Kirigami.Page {
 
         QQC2.SpinBox {
             Kirigami.FormData.label: "Background blur:"
+            value: QSettingsModel.backgroundBlur
             from: 0
             to: 100
+
+            onValueChanged: {
+                QSettingsModel.backgroundBlur = value;
+            }
         }
 
         QQC2.SpinBox {
             Kirigami.FormData.label: "Background opacity:"
+            value: QSettingsModel.backgroundOpacity
             from: 0
             to: 100
+
+            onValueChanged: {
+                QSettingsModel.backgroundOpacity = value;
+            }
         }
     }
 }

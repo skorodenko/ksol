@@ -9,7 +9,7 @@ use std::os::unix::net::UnixStream;
 use tracing;
 
 #[derive(Default)]
-pub struct SettingsModel {}
+pub struct SettingsModel;
 
 impl qobject::QSettingsModel {
     pub fn get_mpd_socket(self: Pin<&mut QSettingsModel>) -> QString {
@@ -71,6 +71,30 @@ impl qobject::QSettingsModel {
     pub fn set_column_width(self: Pin<&mut QSettingsModel>, column: usize, value: f64) {
         let mut settings = Settings::load().blocking_write();
         settings.column_width[column] = value;
+    }
+
+    pub fn get_background_blur(self: Pin<&mut QSettingsModel>) -> usize {
+        let settings = Settings::load().blocking_read();
+        settings.background_blur
+    }
+
+    pub fn set_background_blur(self: Pin<&mut QSettingsModel>, value: usize) {
+        let mut settings = Settings::load().blocking_write();
+        settings.background_blur = value;
+        std::mem::drop(settings);
+        self.mpd_appearance_settings_update();
+    }
+
+    pub fn get_background_opacity(self: Pin<&mut QSettingsModel>) -> usize {
+        let settings = Settings::load().blocking_read();
+        settings.background_opacity
+    }
+
+    pub fn set_background_opacity(self: Pin<&mut QSettingsModel>, value: usize) {
+        let mut settings = Settings::load().blocking_write();
+        settings.background_opacity = value;
+        std::mem::drop(settings);
+        self.mpd_appearance_settings_update();
     }
 
     fn get_sort_order(self: &QSettingsModel) -> i32 {
@@ -141,6 +165,8 @@ mod qobject {
         #[qproperty(QString, mpdSocket, READ = get_mpd_socket, WRITE = set_mpd_socket, NOTIFY = mpd_server_settings_update)]
         #[qproperty(QString, nativeMpdMusicDir, READ = get_native_mpd_music_dir, WRITE = set_native_mpd_music_dir, NOTIFY = mpd_server_settings_update)]
         #[qproperty(QString, outputPluginType, READ = get_output_plugin_type, WRITE = set_output_plugin_type, NOTIFY = mpd_server_settings_update)]
+        #[qproperty(usize, backgroundBlur, READ = get_background_blur, WRITE = set_background_blur, NOTIFY = mpd_appearance_settings_update)]
+        #[qproperty(usize, backgroundOpacity, READ = get_background_opacity, WRITE = set_background_opacity, NOTIFY = mpd_appearance_settings_update)]
         #[qproperty(bool, initWizard, READ = get_init_wizard, WRITE = set_init_wizard, NOTIFY = init_wizard_changed)]
         #[qproperty(i32, sortOrder, READ = get_sort_order, NOTIFY = update_sort_column)]
         #[qproperty(i32, sortColumn, READ = get_sort_column, NOTIFY = update_sort_column)]
@@ -198,6 +224,18 @@ mod qobject {
         #[qinvokable]
         #[cxx_name = "setColumnWidth"]
         fn set_column_width(self: Pin<&mut QSettingsModel>, column: usize, value: f64);
+
+        #[qinvokable]
+        fn get_background_blur(self: Pin<&mut QSettingsModel>) -> usize;
+
+        #[qinvokable]
+        fn set_background_blur(self: Pin<&mut QSettingsModel>, value: usize);
+
+        #[qinvokable]
+        fn get_background_opacity(self: Pin<&mut QSettingsModel>) -> usize;
+
+        #[qinvokable]
+        fn set_background_opacity(self: Pin<&mut QSettingsModel>, value: usize);
 
         #[qinvokable]
         fn get_sort_order(self: &QSettingsModel) -> i32;

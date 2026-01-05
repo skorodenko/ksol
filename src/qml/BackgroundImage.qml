@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Effects
 import org.kde.kirigami as Kirigami
+import github.skorodenko.ksol 1.0
 
 Item {
     id: root
@@ -21,11 +22,11 @@ Item {
         z: -1
         source: mainImage
         anchors.fill: root
-        colorization: 0.5
+        colorization: QSettingsModel.backgroundOpacity / 100
         colorizationColor: Kirigami.Theme.backgroundColor
         blurEnabled: true
         blurMax: 64
-        blur: 0.7
+        blur: QSettingsModel.backgroundBlur / 100
 
         NumberAnimation on opacity {
             id: createAnimation
@@ -45,9 +46,11 @@ Item {
         z: -1
         source: altImage
         anchors.fill: root
+        colorization: QSettingsModel.backgroundOpacity / 100
+        colorizationColor: Kirigami.Theme.backgroundColor
         blurEnabled: true
         blurMax: 64
-        blur: 0.7
+        blur: QSettingsModel.backgroundBlur / 100
 
         NumberAnimation on opacity {
             id: destroyAnimation
@@ -63,12 +66,12 @@ Item {
         z: -2
         source: mainImageS
         anchors.fill: root
-        colorization: 0.5
+        colorization: QSettingsModel.backgroundOpacity / 100
         colorizationColor: Kirigami.Theme.backgroundColor
         blurEnabled: true
         blurMax: 64
         blurMultiplier: 3.0
-        blur: 0.95
+        blur: QSettingsModel.backgroundBlur / 100
 
         NumberAnimation on opacity {
             id: createAnimationS
@@ -88,10 +91,12 @@ Item {
         z: -2
         source: altImageS
         anchors.fill: root
+        colorization: QSettingsModel.backgroundOpacity / 100
+        colorizationColor: Kirigami.Theme.backgroundColor
         blurEnabled: true
         blurMax: 64
         blurMultiplier: 3.0
-        blur: 0.95
+        blur: QSettingsModel.backgroundBlur / 100
 
         NumberAnimation on opacity {
             id: destroyAnimationS
