@@ -22,6 +22,10 @@ QQC2.Popup {
     property alias playlists_group: playlists_group
     property alias activeGroup: playlists_group.activeGroup
 
+    function changeGroup(number) {
+        group_repeater.itemAt(number).click();
+    }
+
     QPlaylistsGroupModel {
         id: playlists_group
     }
@@ -35,42 +39,6 @@ QQC2.Popup {
                 listView.currentIndex = 0;
                 listView.forceActiveFocus();
             }
-        }
-    }
-
-    Shortcut {
-        id: drun_group1
-        sequences: ["F1"]
-        enabled: root.visible
-        onActivated: function () {
-            group_repeater.itemAt(0).click();
-        }
-    }
-
-    Shortcut {
-        id: drun_group2
-        sequences: ["F2"]
-        enabled: root.visible
-        onActivated: function () {
-            group_repeater.itemAt(1).click();
-        }
-    }
-
-    Shortcut {
-        id: drun_group3
-        sequences: ["F3"]
-        enabled: root.visible
-        onActivated: function () {
-            group_repeater.itemAt(2).click();
-        }
-    }
-
-    Shortcut {
-        id: drun_group4
-        sequences: ["F4"]
-        enabled: root.visible
-        onActivated: function () {
-            group_repeater.itemAt(3).click();
         }
     }
 

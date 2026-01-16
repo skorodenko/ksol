@@ -1,13 +1,27 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Layouts
+import Qt.labs.synchronizer
 import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
 import github.skorodenko.ksol 1.0
 
 Kirigami.Page {
     id: root
+
+    Synchronizer {
+        sourceObject: QSettingsModel
+        sourceProperty: "backgroundBlur"
+        targetObject: backgroundBlurControl
+        targetProperty: "value"
+    }
+
+    Synchronizer {
+        sourceObject: QSettingsModel
+        sourceProperty: "backgroundOpacity"
+        targetObject: backgroundOpacityControl
+        targetProperty: "value"
+    }
 
     Kirigami.FormLayout {
         anchors.fill: parent
@@ -18,25 +32,17 @@ Kirigami.Page {
         }
 
         QQC2.SpinBox {
+            id: backgroundBlurControl
             Kirigami.FormData.label: "Background blur:"
-            value: QSettingsModel.backgroundBlur
             from: 0
             to: 100
-
-            onValueChanged: {
-                QSettingsModel.backgroundBlur = value;
-            }
         }
 
         QQC2.SpinBox {
-            Kirigami.FormData.label: "Background opacity:"
-            value: QSettingsModel.backgroundOpacity
+            id: backgroundOpacityControl
+            Kirigami.FormData.label: "Background colorization:"
             from: 0
             to: 100
-
-            onValueChanged: {
-                QSettingsModel.backgroundOpacity = value;
-            }
         }
     }
 }

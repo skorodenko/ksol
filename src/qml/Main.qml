@@ -36,32 +36,28 @@ Kirigami.ApplicationWindow {
         infoMessage.icon.source = iconName;
     }
 
-    Shortcut {
-        sequences: ["Escape"]
-        onActivated: function () {
+    AppShortcuts {
+        drunVisible: drun.visible
+        filterSearchVisible: filterSearchBox.visible
+
+        onOpenDrun: {
+            mpd_connector.getPlaylists(drun.activeGroup);
+            drun.visible = true;
+        }
+
+        onOpenFilter: {
+            filterSearchBox.visible = true;
+        }
+
+        onCloseMenu: {
             qplaylist_view.selectionTimeout = false;
             selectionTimeoutTimer.stop();
             filterSearchBox.visible = false;
             drun.visible = false;
         }
-    }
 
-    Shortcut {
-        id: drun_open
-        sequences: ["f"]
-        enabled: !filterSearchBox.visible && !drun.visible
-        onActivated: function () {
-            mpd_connector.getPlaylists(drun.activeGroup);
-            drun.visible = true;
-        }
-    }
-
-    Shortcut {
-        sequences: ["/"]
-        context: Qt.ApplicationShortcut
-        enabled: !filterSearchBox.visible && !drun.visible
-        onActivated: function () {
-            filterSearchBox.visible = true;
+        onDrunGroupChange: function(number) {
+            drun.changeGroup(number);
         }
     }
 
@@ -484,7 +480,7 @@ Kirigami.ApplicationWindow {
         BackgroundImage {
             id: tableBackground
             anchors.top: infoMessage.bottom
-            anchors.bottom: filterSearchBox.top
+            anchors.bottom: parent.bottom
             anchors.left: parent.left
             anchors.right: parent.right
         }

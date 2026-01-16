@@ -4,6 +4,7 @@ fn main() {
     CxxQtBuilder::new_qml_module(QmlModule::new("github.skorodenko.ksol").qml_files([
         "src/qml/Main.qml",
         "src/qml/Drun.qml",
+        "src/qml/AppShortcuts.qml",
         "src/qml/BackgroundImage.qml",
         "src/qml/PlaylistHeader.qml",
         "src/qml/About.qml",
