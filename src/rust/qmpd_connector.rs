@@ -277,7 +277,7 @@ impl qobject::QMPDConnector {
 
     fn connect_client(self: Pin<&mut Self>) {
         let qt_thread = self.qt_thread();
-        let mut retcount = 5;
+        let mut retcount = 10;
         self.runtime.spawn(async move {
             let (state, mpd_client, mpd_idle) = loop {
                 let settings = Settings::load().read().await;

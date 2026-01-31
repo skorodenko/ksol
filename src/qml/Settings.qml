@@ -54,13 +54,15 @@ Kirigami.Page {
             id: selectionMenu
             padding: 0
 
-            ColumnLayout {
-                SidebarDelegate {
+            header: QQC2.ToolBar {
+                QQC2.ToolButton {
                     text: "Return"
-                    iconName: "go-previous-symbolic"
-                    Layout.fillWidth: true
+                    icon.name: "go-previous-symbolic"
                     onClicked: root.backRequest(root.restartMpd)
                 }
+            }
+
+            ColumnLayout {
                 SidebarDelegate {
                     text: "General"
                     iconName: "preferences-desktop-multimedia"
