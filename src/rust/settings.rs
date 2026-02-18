@@ -1,5 +1,5 @@
 use crate::rust::entities::{ColumnSort, SongField};
-use serde;
+
 use std::fs;
 use std::path::PathBuf;
 use std::sync::OnceLock;
@@ -44,8 +44,8 @@ impl Settings {
     }
 
     pub fn dump() {
-        let settings: Settings = Self::load().blocking_read().clone();
-        let settings_file = toml::to_string(&settings).expect("Failed to dump settings file");
+        let settings = Self::load().blocking_read().clone();
+        let settings_file = toml::to_string(&settings).expect("Failed to serialize settings");
         let internal_settings = InternalSettings::load();
         fs::write(&internal_settings.app_config_file, settings_file).expect("Failed to write settings file");
     }
@@ -55,16 +55,14 @@ impl Settings {
         let app_config = xdg_dirs.get_config_home().unwrap();
         let app_data = xdg_dirs.get_data_home().unwrap();
         let app_cache = xdg_dirs.get_cache_home().unwrap();
-        let mpd_config = app_config.join("mpd");
-        let mpd_data = app_data.join("mpd");
-        let mpd_cache = app_cache.join("mpd");
 
-        let _ = fs::create_dir(app_config);
-        let _ = fs::create_dir(app_data);
-        let _ = fs::create_dir(app_cache);
-        let _ = fs::create_dir(mpd_config);
-        let _ = fs::create_dir(mpd_data);
-        let _ = fs::create_dir(mpd_cache);
+        // Create all directories at once to avoid duplicate calls
+        let dirs_to_create =
+            [&app_config, &app_data, &app_cache, &app_config.join("mpd"), &app_data.join("mpd"), &app_cache.join("mpd")];
+
+        for dir in dirs_to_create {
+            let _ = fs::create_dir_all(dir);
+        }
     }
 }
 
@@ -88,19 +86,11 @@ impl Default for InternalSettings {
             app_cache_dir: app_cache.clone(),
             app_cover_cache: app_cache.join("covers"),
             app_config_dir: app_config.clone(),
-            app_config_file: app_config.join("settings.toml").to_str().unwrap().to_string(),
+            app_config_file: app_config.join("settings.toml").display().to_string(),
             mpd_binary: which("mpd").unwrap_or_default(),
-            native_socket: mpd_data.join("socket").to_str().unwrap().to_string(),
-            native_config: mpd_data.join("mpd.conf").to_str().unwrap().to_string(),
+            native_socket: mpd_data.join("socket").display().to_string(),
+            native_config: mpd_data.join("mpd.conf").display().to_string(),
         }
-    }
-}
-
-impl Drop for Settings {
-    fn drop(&mut self) {
-        let settings_file = toml::to_string(self).expect("Failed to dump settings file");
-        let internal_settings = InternalSettings::load();
-        fs::write(&internal_settings.app_config_file, settings_file).expect("Failed to write settings file");
     }
 }
 
@@ -116,7 +106,7 @@ impl Default for Settings {
             Err(_) => Self {
                 init_wizard: true,
                 mpd_socket: internal_settings.native_socket.clone(),
-                native_music_dir: xdg_home.join("Music/").to_str().unwrap().to_string(),
+                native_music_dir: xdg_home.join("Music/").display().to_string(),
                 output_plugin_type: String::from("pipewire"),
                 search_groups: vec![SongField::Directory, SongField::Artist, SongField::Album, SongField::Genre],
                 column_width: SongField::iter().map(|_| 1_f64 / 14_f64).collect(),
