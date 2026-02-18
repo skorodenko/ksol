@@ -56,7 +56,7 @@ Kirigami.ApplicationWindow {
             drun.visible = false;
         }
 
-        onDrunGroupChange: function(number) {
+        onDrunGroupChange: function (number) {
             drun.changeGroup(number);
         }
     }
@@ -135,8 +135,10 @@ Kirigami.ApplicationWindow {
         }
         onActiveSongChanged: function () {
             var songPos = mpd_connector.activeSongPosition;
-            qplaylist_view.selectionModel.setCurrentIndex(qplaylist.index(songPos, 0), ItemSelectionModel.Rows);
-            qplaylist_view.positionViewAtRow(songPos, Qt.AlignVCenter, 0);
+            var songCount = qplaylist.rowCount();
+            var relativePos = songPos / songCount;
+            var itemRatio = qplaylist_view.visibleArea.heightRatio;
+            scrollBar.position = relativePos - 0.5 * itemRatio;
         }
         onUpdateOptions: function () {
             var shuffle = mpd_connector.shuffle;
@@ -625,7 +627,7 @@ Kirigami.ApplicationWindow {
 
                 onTextEdited: {
                     qplaylist_view.selectionModel.setCurrentIndex(qplaylist.index(0, 0), ItemSelectionModel.Rows);
-                    qplaylist_view.positionViewAtRow(0, Qt.AlignTop, 0);
+                    scrollBar.position = 0;
                     qplaylist_view.selectionTimeout = true;
                     selectionTimeoutTimer.restart();
                 }
