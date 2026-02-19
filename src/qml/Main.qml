@@ -36,6 +36,11 @@ Kirigami.ApplicationWindow {
         infoMessage.icon.source = iconName;
     }
 
+    function moveToSong(songPos) {
+        qplaylist_view.selectionModel.setCurrentIndex(qplaylist.index(songPos, 0), ItemSelectionModel.Rows);
+        qplaylist_view.positionViewAtRow(songPos, Qt.AlignVCenter, 0);
+    }
+
     AppShortcuts {
         drunVisible: drun.visible
         filterSearchVisible: filterSearchBox.visible
@@ -43,6 +48,18 @@ Kirigami.ApplicationWindow {
         onOpenDrun: {
             mpd_connector.getPlaylists(drun.activeGroup);
             drun.visible = true;
+        }
+
+        onMoveToSong: function (mode) {
+            if (mode === 1) {
+                root.moveToSong(0);
+            }
+            if (mode === 0) {
+                root.moveToSong(mpd_connector.activeSongPosition);
+            }
+            if (mode === -1) {
+                root.moveToSong(qplaylist.rowCount() - 1);
+            }
         }
 
         onOpenFilter: {
@@ -134,11 +151,7 @@ Kirigami.ApplicationWindow {
             bitrateText.text = `${bitrate} b/s`;
         }
         onActiveSongChanged: function () {
-            var songPos = mpd_connector.activeSongPosition;
-            var songCount = qplaylist.rowCount();
-            var relativePos = songPos / songCount;
-            var itemRatio = qplaylist_view.visibleArea.heightRatio;
-            scrollBar.position = relativePos - 0.5 * itemRatio;
+            root.moveToSong(mpd_connector.activeSongPosition);
         }
         onUpdateOptions: function () {
             var shuffle = mpd_connector.shuffle;
@@ -496,6 +509,7 @@ Kirigami.ApplicationWindow {
             anchors.bottom: filterSearchBox.top
             anchors.topMargin: rowSpacing
             rowSpacing: Kirigami.Units.smallSpacing
+            animate: false
 
             property bool selectionTimeout: false
             property int songPos: 0

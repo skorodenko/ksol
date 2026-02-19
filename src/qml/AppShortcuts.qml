@@ -10,6 +10,7 @@ QQC2.Control {
     signal openFilter
     signal closeMenu
     signal drunGroupChange(int group)
+    signal moveToSong(int mode)
 
     required property bool drunVisible
     required property bool filterSearchVisible
@@ -24,6 +25,24 @@ QQC2.Control {
         sequences: ["f"]
         enabled: !root.filterSearchVisible && !root.drunVisible
         onActivated: root.openDrun()
+    }
+
+    Shortcut {
+        sequences: ["g"]
+        enabled: !root.filterSearchVisible && !root.drunVisible
+        onActivated: root.moveToSong(1)
+    }
+
+    Shortcut {
+        sequences: ["Shift+g"]
+        enabled: !root.filterSearchVisible && !root.drunVisible
+        onActivated: root.moveToSong(-1)
+    }
+
+    Shortcut {
+        sequences: ["c"]
+        enabled: !root.filterSearchVisible && !root.drunVisible
+        onActivated: root.moveToSong(0)
     }
 
     Shortcut {
