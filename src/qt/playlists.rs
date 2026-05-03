@@ -24,16 +24,24 @@ impl qobject::QPlaylistsListModel {
 
     pub fn data(&self, index: &QModelIndex, role: i32) -> QVariant {
         let role = QPlaylistsListRoles { repr: role };
-        let Ok(row) = usize::try_from(index.row()) else { return QVariant::default() };
+        let Ok(row) = usize::try_from(index.row()) else {
+            return QVariant::default();
+        };
         let index = self.queue_proxy[row];
         match role {
-            QPlaylistsListRoles::Name => (&QString::from(&self.queue[index])).into(),
+            QPlaylistsListRoles::Name => {
+                (&QString::from(&self.queue[index])).into()
+            }
             _ => QVariant::default(),
         }
     }
 
-    pub fn set_queue(mut self: Pin<&mut QPlaylistsListModel>, value: QByteArray) {
-        let value: Vec<String> = wincode::deserialize(value.as_slice()).unwrap();
+    pub fn set_queue(
+        mut self: Pin<&mut QPlaylistsListModel>,
+        value: QByteArray,
+    ) {
+        let value: Vec<String> =
+            wincode::deserialize(value.as_slice()).unwrap();
         self.as_mut().rust_mut().queue = value;
         self.as_mut().update();
     }
@@ -52,12 +60,18 @@ impl cxx_qt::Initialize for qobject::QPlaylistsListModel {
     fn initialize(self: Pin<&mut Self>) {
         self.on_update(|mut qobject| {
             let filter = regex::escape(&qobject.filter);
-            let pattern = regex::RegexBuilder::new(&filter).case_insensitive(true).build().unwrap();
+            let pattern = regex::RegexBuilder::new(&filter)
+                .case_insensitive(true)
+                .build()
+                .unwrap();
             let proxy: Vec<usize> = (0..qobject.queue.len()).collect();
             qobject.as_mut().layout_about_to_be_changed();
             qobject.as_mut().rust_mut().queue_proxy = proxy
                 .into_iter()
-                .filter(|&x| pattern.is_match(&qobject.queue[x]) || pattern.is_match(&qobject.queue[x]))
+                .filter(|&x| {
+                    pattern.is_match(&qobject.queue[x])
+                        || pattern.is_match(&qobject.queue[x])
+                })
                 .collect();
             qobject.as_mut().layout_changed();
         })
@@ -81,7 +95,8 @@ mod qobject {
         type QByteArray = cxx_qt_lib::QByteArray;
 
         include!("cxx-qt-lib/qhash.h");
-        type QHash_i32_QByteArray = cxx_qt_lib::QHash<cxx_qt_lib::QHashPair_i32_QByteArray>;
+        type QHash_i32_QByteArray =
+            cxx_qt_lib::QHash<cxx_qt_lib::QHashPair_i32_QByteArray>;
 
         include!("cxx-qt-lib/qmodelindex.h");
         type QModelIndex = cxx_qt_lib::QModelIndex;
@@ -121,7 +136,11 @@ mod qobject {
         fn row_count(self: &QPlaylistsListModel, index: &QModelIndex) -> i32;
 
         #[cxx_override]
-        fn data(self: &QPlaylistsListModel, index: &QModelIndex, role: i32) -> QVariant;
+        fn data(
+            self: &QPlaylistsListModel,
+            index: &QModelIndex,
+            role: i32,
+        ) -> QVariant;
 
         #[qinvokable]
         fn get_filter(self: &QPlaylistsListModel) -> QString;

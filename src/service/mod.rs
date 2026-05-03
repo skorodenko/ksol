@@ -1,6 +1,11 @@
-use crate::rust::mpd_actions::MPDAction;
-use crate::rust::mpris_actions::{MPRISAction, MPRISActionError};
-use crate::rust::mpris_interface::Player;
+pub mod mpd;
+pub mod mpris;
+pub mod mpris_interface;
+
+use mpd::MPDAction;
+use mpris::{MPRISAction, MPRISActionError};
+use mpris_interface::Player;
+
 use anyhow::Result;
 use futures::future::BoxFuture;
 use mpd_client::ClientController;
@@ -9,7 +14,8 @@ use std::pin::Pin;
 use std::sync::Arc;
 use tower::Service;
 
-pub type BoxSyncFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + Sync + 'a>>;
+pub type BoxSyncFuture<'a, T> =
+    Pin<Box<dyn Future<Output = T> + Send + Sync + 'a>>;
 
 #[derive(Clone)]
 pub struct MPDActionService {
@@ -27,7 +33,10 @@ impl<C: MPDAction + Clone> Service<C> for MPDActionService {
     type Error = anyhow::Error;
     type Future = BoxSyncFuture<'static, Result<Self::Response, Self::Error>>;
 
-    fn poll_ready(&mut self, _cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
+    fn poll_ready(
+        &mut self,
+        _cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Result<(), Self::Error>> {
         std::task::Poll::Ready(Ok(()))
     }
 
@@ -52,7 +61,10 @@ impl<C: MPRISAction + Clone> Service<C> for MPRISActionService {
     type Error = MPRISActionError;
     type Future = BoxFuture<'static, Result<Self::Response, Self::Error>>;
 
-    fn poll_ready(&mut self, _cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
+    fn poll_ready(
+        &mut self,
+        _cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Result<(), Self::Error>> {
         std::task::Poll::Ready(Ok(()))
     }
 

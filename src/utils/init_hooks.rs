@@ -1,4 +1,4 @@
-use crate::rust::settings::{InternalSettings, Settings};
+use super::settings::{InternalSettings, Settings};
 use std::{fs::File, io::Write};
 use tinytemplate::TinyTemplate;
 use tracing;

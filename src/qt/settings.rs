@@ -1,7 +1,7 @@
 use qobject::*;
 
-use crate::rust::entities::{ColumnSort, SongField};
-use crate::rust::settings::{InternalSettings, Settings};
+use crate::utils::settings::{InternalSettings, Settings};
+use crate::{ColumnSort, SongField};
 use core::pin::Pin;
 use num_traits::{FromPrimitive, ToPrimitive};
 use std::net::TcpStream;
@@ -47,10 +47,15 @@ impl qobject::QSettingsModel {
     }
 
     fn get_native_mpd_music_dir(self: Pin<&mut QSettingsModel>) -> QString {
-        Self::with_settings_read(|settings| QString::from(&settings.native_music_dir))
+        Self::with_settings_read(|settings| {
+            QString::from(&settings.native_music_dir)
+        })
     }
 
-    fn set_native_mpd_music_dir(self: Pin<&mut QSettingsModel>, value: QString) {
+    fn set_native_mpd_music_dir(
+        self: Pin<&mut QSettingsModel>,
+        value: QString,
+    ) {
         Self::with_settings_write(|settings| {
             settings.native_music_dir = value.into();
         });
@@ -58,7 +63,9 @@ impl qobject::QSettingsModel {
     }
 
     fn get_output_plugin_type(self: Pin<&mut QSettingsModel>) -> QString {
-        Self::with_settings_read(|settings| QString::from(&settings.output_plugin_type))
+        Self::with_settings_read(|settings| {
+            QString::from(&settings.output_plugin_type)
+        })
     }
 
     fn set_output_plugin_type(self: Pin<&mut QSettingsModel>, value: QString) {
@@ -78,11 +85,20 @@ impl qobject::QSettingsModel {
         });
     }
 
-    pub fn get_column_width(self: Pin<&mut QSettingsModel>, column: usize) -> f64 {
-        Self::with_settings_read(|settings| *settings.column_width.get(column).unwrap())
+    pub fn get_column_width(
+        self: Pin<&mut QSettingsModel>,
+        column: usize,
+    ) -> f64 {
+        Self::with_settings_read(|settings| {
+            *settings.column_width.get(column).unwrap()
+        })
     }
 
-    pub fn set_column_width(self: Pin<&mut QSettingsModel>, column: usize, value: f64) {
+    pub fn set_column_width(
+        self: Pin<&mut QSettingsModel>,
+        column: usize,
+        value: f64,
+    ) {
         Self::with_settings_write(|settings| {
             settings.column_width[column] = value;
         });
@@ -103,7 +119,10 @@ impl qobject::QSettingsModel {
         Self::with_settings_read(|settings| settings.background_opacity)
     }
 
-    pub fn set_background_opacity(self: Pin<&mut QSettingsModel>, value: usize) {
+    pub fn set_background_opacity(
+        self: Pin<&mut QSettingsModel>,
+        value: usize,
+    ) {
         Self::with_settings_write(|settings| {
             settings.background_opacity = value;
         });
@@ -151,9 +170,13 @@ impl qobject::QSettingsModel {
         isettings.mpd_binary.exists()
     }
 
-    pub fn check_server_connection(self: Pin<&mut QSettingsModel>, url: QString) -> bool {
+    pub fn check_server_connection(
+        self: Pin<&mut QSettingsModel>,
+        url: QString,
+    ) -> bool {
         tracing::debug!("Checking server connection for url: {}", url);
-        UnixStream::connect(url.to_string()).is_ok() || TcpStream::connect(url.to_string()).is_ok()
+        UnixStream::connect(url.to_string()).is_ok()
+            || TcpStream::connect(url.to_string()).is_ok()
     }
 }
 
@@ -212,13 +235,19 @@ mod qobject {
         fn get_native_mpd_music_dir(self: Pin<&mut QSettingsModel>) -> QString;
 
         #[qinvokable]
-        fn set_native_mpd_music_dir(self: Pin<&mut QSettingsModel>, value: QString);
+        fn set_native_mpd_music_dir(
+            self: Pin<&mut QSettingsModel>,
+            value: QString,
+        );
 
         #[qinvokable]
         fn get_output_plugin_type(self: Pin<&mut QSettingsModel>) -> QString;
 
         #[qinvokable]
-        fn set_output_plugin_type(self: Pin<&mut QSettingsModel>, value: QString);
+        fn set_output_plugin_type(
+            self: Pin<&mut QSettingsModel>,
+            value: QString,
+        );
 
         #[qinvokable]
         fn get_init_wizard(self: Pin<&mut QSettingsModel>) -> bool;
@@ -228,11 +257,18 @@ mod qobject {
 
         #[qinvokable]
         #[cxx_name = "getColumnWidth"]
-        fn get_column_width(self: Pin<&mut QSettingsModel>, column: usize) -> f64;
+        fn get_column_width(
+            self: Pin<&mut QSettingsModel>,
+            column: usize,
+        ) -> f64;
 
         #[qinvokable]
         #[cxx_name = "setColumnWidth"]
-        fn set_column_width(self: Pin<&mut QSettingsModel>, column: usize, value: f64);
+        fn set_column_width(
+            self: Pin<&mut QSettingsModel>,
+            column: usize,
+            value: f64,
+        );
 
         #[qinvokable]
         fn get_background_blur(self: Pin<&mut QSettingsModel>) -> usize;
@@ -262,6 +298,9 @@ mod qobject {
 
         #[qinvokable]
         #[cxx_name = "checkServerConnection"]
-        fn check_server_connection(self: Pin<&mut QSettingsModel>, url: QString) -> bool;
+        fn check_server_connection(
+            self: Pin<&mut QSettingsModel>,
+            url: QString,
+        ) -> bool;
     }
 }

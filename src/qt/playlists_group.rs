@@ -1,7 +1,7 @@
 use qobject::*;
 
-use crate::rust::entities::SongField;
-use crate::rust::settings::Settings;
+use crate::SongField;
+use crate::utils::settings::Settings;
 use core::pin::Pin;
 use num_traits::{FromPrimitive, ToPrimitive};
 
@@ -24,7 +24,9 @@ impl qobject::QPlaylistsGroupModel {
     pub fn data(&self, index: &QModelIndex, role: i32) -> QVariant {
         let role = QPlaylistsGroupRoles { repr: role };
         let settings = Settings::load().blocking_read();
-        let Ok(row) = usize::try_from(index.row()) else { return QVariant::default(); };
+        let Ok(row) = usize::try_from(index.row()) else {
+            return QVariant::default();
+        };
         match role {
             QPlaylistsGroupRoles::Name => {
                 if let Some(sg) = settings.search_groups.get(row) {
@@ -73,7 +75,8 @@ mod qobject {
         type QString = cxx_qt_lib::QString;
 
         include!("cxx-qt-lib/qhash.h");
-        type QHash_i32_QByteArray = cxx_qt_lib::QHash<cxx_qt_lib::QHashPair_i32_QByteArray>;
+        type QHash_i32_QByteArray =
+            cxx_qt_lib::QHash<cxx_qt_lib::QHashPair_i32_QByteArray>;
 
         include!("cxx-qt-lib/qmodelindex.h");
         type QModelIndex = cxx_qt_lib::QModelIndex;
@@ -94,7 +97,10 @@ mod qobject {
 
         #[qsignal]
         #[cxx_name = "activeGroupChanged"]
-        fn active_group_changed(self: Pin<&mut QPlaylistsGroupModel>, value: i32);
+        fn active_group_changed(
+            self: Pin<&mut QPlaylistsGroupModel>,
+            value: i32,
+        );
 
         #[cxx_override]
         #[cxx_name = "roleNames"]
@@ -105,7 +111,11 @@ mod qobject {
         fn row_count(self: &QPlaylistsGroupModel, index: &QModelIndex) -> i32;
 
         #[cxx_override]
-        fn data(self: &QPlaylistsGroupModel, index: &QModelIndex, role: i32) -> QVariant;
+        fn data(
+            self: &QPlaylistsGroupModel,
+            index: &QModelIndex,
+            role: i32,
+        ) -> QVariant;
 
         #[qinvokable]
         fn get_active_group(self: &QPlaylistsGroupModel) -> i32;

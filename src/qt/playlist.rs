@@ -1,5 +1,5 @@
-use crate::rust::entities::{QSong, SongField};
-use crate::rust::settings::Settings;
+use crate::utils::settings::Settings;
+use crate::{QSong, SongField};
 use core::pin::Pin;
 use cxx_qt::CxxQtType;
 use num_traits::FromPrimitive;
@@ -34,7 +34,9 @@ impl qobject::QPlaylistModel {
 
     pub fn data(&self, index: &QModelIndex, role: i32) -> QVariant {
         let role = QPlaylistRoles { repr: role };
-        let Ok(row) = usize::try_from(index.row()) else { return QVariant::default() };
+        let Ok(row) = usize::try_from(index.row()) else {
+            return QVariant::default();
+        };
         match role {
             QPlaylistRoles::SongDisplay => {
                 let column = index.column();
@@ -54,7 +56,11 @@ impl qobject::QPlaylistModel {
                     SongField::File => &qsong.file,
                     SongField::Format => &qsong.format,
                     SongField::Lastmodified => &qsong.lastmodified,
-                    SongField::Duration => &format!("{:0>2}:{:0>2}", qsong.duration / 60, qsong.duration % 60),
+                    SongField::Duration => &format!(
+                        "{:0>2}:{:0>2}",
+                        qsong.duration / 60,
+                        qsong.duration % 60
+                    ),
                     SongField::Directory => &qsong.directory,
                 };
                 QVariant::from(&QString::from(field))
@@ -67,10 +73,17 @@ impl qobject::QPlaylistModel {
         }
     }
 
-    pub fn header_data(&self, section: i32, orientation: Orientation, role: i32) -> QVariant {
+    pub fn header_data(
+        &self,
+        section: i32,
+        orientation: Orientation,
+        role: i32,
+    ) -> QVariant {
         let role = QPlaylistRoles { repr: role };
         match role {
-            QPlaylistRoles::ColumnName if orientation == Orientation::Horizontal => {
+            QPlaylistRoles::ColumnName
+                if orientation == Orientation::Horizontal =>
+            {
                 let sf = SongField::from_i32(section).unwrap();
                 QVariant::from(&QString::from(format!("{}", sf)))
             }
@@ -101,12 +114,18 @@ impl cxx_qt::Initialize for qobject::QPlaylistModel {
     fn initialize(self: Pin<&mut Self>) {
         self.on_update_filter(|mut qobject| {
             let filter = regex::escape(&qobject.filter);
-            let pattern = regex::RegexBuilder::new(&filter).case_insensitive(true).build().unwrap();
+            let pattern = regex::RegexBuilder::new(&filter)
+                .case_insensitive(true)
+                .build()
+                .unwrap();
             let proxy: Vec<usize> = (0..qobject.queue.len()).collect();
             qobject.as_mut().layout_about_to_be_changed();
             qobject.as_mut().rust_mut().queue_proxy = proxy
                 .into_iter()
-                .filter(|&x| pattern.is_match(&qobject.queue[x].title) || pattern.is_match(&qobject.queue[x].artist))
+                .filter(|&x| {
+                    pattern.is_match(&qobject.queue[x].title)
+                        || pattern.is_match(&qobject.queue[x].artist)
+                })
                 .collect();
             qobject.as_mut().layout_changed();
         })
@@ -130,7 +149,8 @@ mod qobject {
         type QByteArray = cxx_qt_lib::QByteArray;
 
         include!("cxx-qt-lib/qhash.h");
-        type QHash_i32_QByteArray = cxx_qt_lib::QHash<cxx_qt_lib::QHashPair_i32_QByteArray>;
+        type QHash_i32_QByteArray =
+            cxx_qt_lib::QHash<cxx_qt_lib::QHashPair_i32_QByteArray>;
 
         include!("cxx-qt-lib/qmodelindex.h");
         type QModelIndex = cxx_qt_lib::QModelIndex;
@@ -139,7 +159,7 @@ mod qobject {
     #[namespace = "Qt"]
     unsafe extern "C++" {
         include!("cxx-qt-lib/qt.h");
-        type Orientation = crate::rust::qt::Orientation;
+        type Orientation = crate::qt::qt::Orientation;
     }
 
     #[qenum(QPlaylistModel)]
@@ -178,11 +198,20 @@ mod qobject {
         fn column_count(self: &QPlaylistModel, index: &QModelIndex) -> i32;
 
         #[cxx_override]
-        fn data(self: &QPlaylistModel, index: &QModelIndex, role: i32) -> QVariant;
+        fn data(
+            self: &QPlaylistModel,
+            index: &QModelIndex,
+            role: i32,
+        ) -> QVariant;
 
         #[cxx_override]
         #[cxx_name = "headerData"]
-        fn header_data(self: &QPlaylistModel, section: i32, orientation: Orientation, role: i32) -> QVariant;
+        fn header_data(
+            self: &QPlaylistModel,
+            section: i32,
+            orientation: Orientation,
+            role: i32,
+        ) -> QVariant;
 
         #[qinvokable]
         #[cxx_virtual]
@@ -197,7 +226,12 @@ mod qobject {
 
         #[inherit]
         #[cxx_name = "headerDataChanged"]
-        fn header_data_changed(self: Pin<&mut QPlaylistModel>, orientation: Orientation, start: i32, end: i32);
+        fn header_data_changed(
+            self: Pin<&mut QPlaylistModel>,
+            orientation: Orientation,
+            start: i32,
+            end: i32,
+        );
 
         #[inherit]
         #[cxx_name = "beginResetModel"]
