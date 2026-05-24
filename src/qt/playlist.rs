@@ -1,4 +1,4 @@
-use crate::utils::settings::Settings;
+use crate::utils::state::Globals;
 use crate::{QSong, SongField};
 use core::pin::Pin;
 use cxx_qt::CxxQtType;
@@ -28,8 +28,8 @@ impl qobject::QPlaylistModel {
     }
 
     pub fn column_count(&self, _index: &QModelIndex) -> i32 {
-        let settings = Settings::load().blocking_read();
-        settings.column_width.len() as i32
+        let state = &Globals::get().state;
+        state.column_width.len() as i32
     }
 
     pub fn data(&self, index: &QModelIndex, role: i32) -> QVariant {

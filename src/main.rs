@@ -8,12 +8,15 @@ fn main() {
     use cxx_qt_lib::{
         QGuiApplication, QQmlApplicationEngine, QQuickStyle, QString, QUrl,
     };
+    use ksol::utils::init_hooks::init_dirs;
 
     let filter = EnvFilter::from_default_env()
         .add_directive("mpd_protocol=error".parse().unwrap());
     tracing_subscriber::registry().with(fmt::layer()).with(filter).init();
 
     tracing::debug!("Starting application");
+
+    init_dirs();
 
     let mut app = QGuiApplication::new();
     let mut engine = QQmlApplicationEngine::new();
@@ -37,5 +40,5 @@ fn main() {
     }
 
     tracing::debug!("Application closing");
-    ksol::utils::settings::Settings::dump();
+    //ksol::utils::settings::Settings::dump();
 }

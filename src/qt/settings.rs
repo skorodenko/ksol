@@ -1,33 +1,25 @@
 use qobject::*;
 
 use crate::utils::settings::{InternalSettings, Settings};
+use crate::utils::state::Globals;
 use crate::{ColumnSort, SongField};
 use core::pin::Pin;
 use num_traits::{FromPrimitive, ToPrimitive};
 use std::net::TcpStream;
 use std::os::unix::net::UnixStream;
+use std::sync::Arc;
 use tracing;
 
 #[derive(Default)]
 pub struct SettingsModel;
 
 impl qobject::QSettingsModel {
-    /// Helper function to read settings and apply a closure to them
     fn with_settings_read<F, R>(f: F) -> R
     where
         F: FnOnce(&Settings) -> R,
     {
-        let settings = Settings::load().blocking_read();
+        let settings = Globals::get().settings.load();
         f(&settings)
-    }
-
-    /// Helper function to write settings and apply a closure to them
-    fn with_settings_write<F>(f: F)
-    where
-        F: FnOnce(&mut Settings),
-    {
-        let mut settings = Settings::load().blocking_write();
-        f(&mut settings);
     }
 
     pub fn get_mpd_socket(self: Pin<&mut QSettingsModel>) -> QString {
@@ -35,14 +27,14 @@ impl qobject::QSettingsModel {
     }
 
     pub fn set_mpd_socket(self: Pin<&mut QSettingsModel>, value: QString) {
-        Self::with_settings_write(|settings| {
+        Globals::get().with_edit_setings(|settings| {
             settings.mpd_socket = value.into();
         });
-        self.mpd_server_settings_update();
+        //NOTE HERE self.mpd_server_settings_update();
     }
 
     pub fn get_native_mpd_socket(self: Pin<&mut QSettingsModel>) -> QString {
-        let isettings = InternalSettings::load();
+        let isettings = InternalSettings::get();
         QString::from(&isettings.native_socket)
     }
 
@@ -56,10 +48,10 @@ impl qobject::QSettingsModel {
         self: Pin<&mut QSettingsModel>,
         value: QString,
     ) {
-        Self::with_settings_write(|settings| {
+        Globals::get().with_edit_setings(|settings| {
             settings.native_music_dir = value.into();
         });
-        self.mpd_server_settings_update();
+        //NOTE HERE self.mpd_server_settings_update();
     }
 
     fn get_output_plugin_type(self: Pin<&mut QSettingsModel>) -> QString {
@@ -69,10 +61,10 @@ impl qobject::QSettingsModel {
     }
 
     fn set_output_plugin_type(self: Pin<&mut QSettingsModel>, value: QString) {
-        Self::with_settings_write(|settings| {
+        Globals::get().with_edit_setings(|settings| {
             settings.output_plugin_type = value.into();
         });
-        self.mpd_server_settings_update();
+        //NOTE HERE self.mpd_server_settings_update();
     }
 
     fn get_init_wizard(self: Pin<&mut QSettingsModel>) -> bool {
@@ -80,8 +72,8 @@ impl qobject::QSettingsModel {
     }
 
     fn set_init_wizard(self: Pin<&mut QSettingsModel>, value: bool) {
-        Self::with_settings_write(|settings| {
-            settings.init_wizard = value;
+        Globals::get().with_edit_setings(|settings| {
+            settings.init_wizard = value.into();
         });
     }
 
@@ -89,9 +81,7 @@ impl qobject::QSettingsModel {
         self: Pin<&mut QSettingsModel>,
         column: usize,
     ) -> f64 {
-        Self::with_settings_read(|settings| {
-            *settings.column_width.get(column).unwrap()
-        })
+        Globals::get().state.column_width.get(column)
     }
 
     pub fn set_column_width(
@@ -99,20 +89,18 @@ impl qobject::QSettingsModel {
         column: usize,
         value: f64,
     ) {
-        Self::with_settings_write(|settings| {
-            settings.column_width[column] = value;
-        });
+        Globals::get().state.column_width.set(column, value);
     }
 
     pub fn get_background_blur(self: Pin<&mut QSettingsModel>) -> usize {
-        Self::with_settings_read(|settings| settings.background_blur)
+        Globals::get().settings.load().background_blur
     }
 
     pub fn set_background_blur(self: Pin<&mut QSettingsModel>, value: usize) {
-        Self::with_settings_write(|settings| {
-            settings.background_blur = value;
+        Globals::get().with_edit_setings(|settings| {
+            settings.background_blur = value.into();
         });
-        self.mpd_appearance_settings_update();
+        //NOTE HERE self.mpd_appearance_settings_update();
     }
 
     pub fn get_background_opacity(self: Pin<&mut QSettingsModel>) -> usize {
@@ -123,50 +111,51 @@ impl qobject::QSettingsModel {
         self: Pin<&mut QSettingsModel>,
         value: usize,
     ) {
-        Self::with_settings_write(|settings| {
-            settings.background_opacity = value;
+        Globals::get().with_edit_setings(|settings| {
+            settings.background_opacity = value.into();
         });
-        self.mpd_appearance_settings_update();
+        //NOTE HERE self.mpd_appearance_settings_update();
     }
 
     fn get_sort_order(self: &QSettingsModel) -> i32 {
-        Self::with_settings_read(|settings| match settings.column_sort {
+        let column_sort = Globals::get().state.column_sort.load();
+        match **column_sort {
             ColumnSort::Inactive => 0,
             ColumnSort::Ascending(_) => 1,
             ColumnSort::Descending(_) => -1,
-        })
+        }
     }
 
     fn get_sort_column(self: &QSettingsModel) -> i32 {
-        Self::with_settings_read(|settings| match settings.column_sort {
+        let column_sort = Globals::get().state.column_sort.load();
+        match **column_sort {
             ColumnSort::Inactive => -1,
             ColumnSort::Ascending(col) => col.to_i32().unwrap_or(-1),
             ColumnSort::Descending(col) => col.to_i32().unwrap_or(-1),
-        })
+        }
     }
 
     pub fn toggle_sort_column(self: Pin<&mut QSettingsModel>, column: i32) {
         let column = SongField::from_i32(column).unwrap();
-        Self::with_settings_write(|settings| match settings.column_sort {
-            ColumnSort::Inactive => {
-                settings.column_sort = ColumnSort::Ascending(column);
-            }
+        let current_state = Globals::get().state.column_sort.load();
+        let new_state = match **current_state {
+            ColumnSort::Inactive => ColumnSort::Ascending(column),
             ColumnSort::Ascending(old_column) => {
                 if old_column != column {
-                    settings.column_sort = ColumnSort::Ascending(column);
+                    ColumnSort::Ascending(column)
                 } else {
-                    settings.column_sort = ColumnSort::Descending(column);
+                    ColumnSort::Descending(column)
                 }
             }
-            ColumnSort::Descending(_) => {
-                settings.column_sort = ColumnSort::Ascending(column);
-            }
-        });
+            ColumnSort::Descending(_) => ColumnSort::Ascending(column),
+        };
+        let new_state = Arc::new(new_state);
+        Globals::get().state.column_sort.store(new_state);
         self.update_sort_column();
     }
 
     pub fn mpd_binary_available(self: Pin<&mut QSettingsModel>) -> bool {
-        let isettings = InternalSettings::load();
+        let isettings = InternalSettings::get();
         isettings.mpd_binary.exists()
     }
 

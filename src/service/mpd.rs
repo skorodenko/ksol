@@ -5,7 +5,6 @@ use crate::qt::mpd::qobject::QMPDConnector;
 use crate::utils::settings::InternalSettings;
 use crate::{ColumnSort, QSong, SongField};
 use anyhow::{Result, anyhow};
-use bytes::Bytes;
 use cxx_qt::{CxxQtThread, CxxQtType};
 use cxx_qt_lib::{QByteArray, QString};
 use image;
@@ -762,7 +761,7 @@ impl MPDAction for UpdateArt {
         mut self,
         mpd_client: ClientController,
     ) -> BoxSyncFuture<'static, Result<Self::Response>> {
-        let settings = InternalSettings::load();
+        let settings = InternalSettings::get();
         let covers = settings.app_cover_cache.clone();
 
         let ckey_fn = |song: &QSong, covers: &PathBuf| {
@@ -777,6 +776,7 @@ impl MPDAction for UpdateArt {
                 song.album, song.artist, song.disc
             ));
             tracing::debug!("New album art request for \"{}\"", song.file);
+
             // Request in progress
             if ckey_tmp.exists() {
                 let _ = self.qt_thread.queue(move |qobject| {
@@ -784,6 +784,7 @@ impl MPDAction for UpdateArt {
                 });
                 return Ok(());
             }
+
             // Art already in cache
             if ckey.exists() {
                 let _ = self.qt_thread.queue(move |qobject| {
@@ -793,9 +794,10 @@ impl MPDAction for UpdateArt {
                 });
                 return Ok(());
             }
-            self.song_watch.mark_unchanged();
+
             // Mark this cover as pending
             fs::write(&ckey_tmp, vec![]).await?;
+
             // Get cover from mpd
             let cover = tokio::select!(
                 Ok(Some((cover, Some(_)))) = mpd_client.album_art(&song.file) => {
@@ -804,9 +806,15 @@ impl MPDAction for UpdateArt {
                 },
                 _ = self.song_watch.changed(), if ckey_fn(&self.song_watch.borrow().clone(), &covers) != ckey => {
                     tracing::debug!("Canceled album art request for \"{}\"", song.file);
-                    Bytes::default()
+                    fs::remove_file(&ckey_tmp).await.expect(&format!("Failed to delete pending file {:?}", ckey_tmp));
+                    return Ok(());
+                },
+                else => {
+                    fs::remove_file(&ckey_tmp).await.expect(&format!("Failed to delete pending file {:?}", ckey_tmp));
+                    return Ok(());
                 },
             );
+
             // Process cover (downscale)
             let ckey_clone = ckey.clone();
             let cover_processing = task::spawn_blocking(move || {
@@ -822,6 +830,7 @@ impl MPDAction for UpdateArt {
                 std::fs::rename(&ckey_tmp, &ckey_clone).unwrap();
                 ckey_clone
             });
+
             tokio::select!(
                 Ok(cover) = cover_processing => {
                     let _ = self.qt_thread.queue(move |qobject| {
@@ -832,6 +841,7 @@ impl MPDAction for UpdateArt {
                     tracing::debug!("Canceled album art processing for \"{}\"", song.file);
                 },
             );
+
             Ok(())
         })
     }

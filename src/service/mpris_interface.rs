@@ -212,7 +212,7 @@ impl PlayerInterface for Player {
     }
 
     async fn metadata(&self) -> fdo::Result<Metadata> {
-        let settings = InternalSettings::load();
+        let settings = InternalSettings::get();
         let covers = settings.app_cover_cache.clone();
         let mut service = self.mpd_service.clone();
         let song = service

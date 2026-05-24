@@ -1,9 +1,11 @@
 use qobject::*;
 
-use crate::SongField;
 use crate::utils::settings::Settings;
+use crate::utils::state::State;
+use crate::{SongField, utils::state::Globals};
 use core::pin::Pin;
 use num_traits::{FromPrimitive, ToPrimitive};
+use std::sync::Arc;
 
 #[derive(Default)]
 pub struct PlaylistsGroupModel {}
@@ -17,13 +19,13 @@ impl qobject::QPlaylistsGroupModel {
     }
 
     pub fn row_count(&self, _index: &QModelIndex) -> i32 {
-        let settings = Settings::load().blocking_read();
+        let settings = Globals::get().settings.load();
         settings.search_groups.len() as i32
     }
 
     pub fn data(&self, index: &QModelIndex, role: i32) -> QVariant {
         let role = QPlaylistsGroupRoles { repr: role };
-        let settings = Settings::load().blocking_read();
+        let settings = Globals::get().settings.load();
         let Ok(row) = usize::try_from(index.row()) else {
             return QVariant::default();
         };
@@ -49,15 +51,16 @@ impl qobject::QPlaylistsGroupModel {
     }
 
     pub fn get_active_group(&self) -> i32 {
-        let settings = Settings::load().blocking_read();
-        settings.active_group as i32
+        let active_group = &Globals::get().state.active_group.load();
+        active_group.to_i32().unwrap_or_default()
     }
 
     pub fn set_active_group(self: Pin<&mut Self>, value: i32) {
         let cvalue = SongField::from_i32(value).unwrap();
-        let mut settings = Settings::load().blocking_write();
-        settings.active_group = cvalue;
-        std::mem::drop(settings);
+        Globals::get().with_state(|state| {
+            let val = Arc::new(cvalue);
+            state.active_group.swap(val);
+        });
         self.active_group_changed(value);
     }
 }

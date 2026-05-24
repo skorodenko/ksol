@@ -4,7 +4,8 @@ use crate::service;
 use crate::service::mpris_interface::Player;
 use crate::service::{MPDActionService, MPRISActionService};
 use crate::utils::init_hooks::init_native_mpd_config;
-use crate::utils::settings::{InternalSettings, Settings};
+use crate::utils::settings::InternalSettings;
+use crate::utils::state::Globals;
 use crate::{ColumnSort, QSong, SongField};
 use core::pin::Pin;
 use cxx_qt::{CxxQtType, Threading};
@@ -317,8 +318,8 @@ impl qobject::QMPDConnector {
         native_config: &String,
     ) {
         tracing::debug!("Starting native mpd server");
-        let settings = Settings::load().blocking_read().clone();
-        let isettings = InternalSettings::load().clone();
+        let settings = (*Globals::get().settings.load_full()).clone();
+        let isettings = InternalSettings::get().clone();
         init_native_mpd_config(settings, isettings);
         self.spawn_server_instance(mpd_binary, native_config);
     }
@@ -328,7 +329,7 @@ impl qobject::QMPDConnector {
         let mut retcount = 10;
         self.runtime.spawn(async move {
             let (state, mpd_client, mpd_idle) = loop {
-                let settings = Settings::load().read().await;
+                let settings = Globals::get().settings.load();
                 tracing::debug!("Trying to connect to server {}", settings.mpd_socket);
                 tokio::select! {
                     Ok(connection) = TcpStream::connect(&settings.mpd_socket) => {
@@ -411,8 +412,8 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                     tracing::debug!("Exhausted all reconnection attempts");
                 }
                 "disconnected" => {
-                    let settings = Settings::load().blocking_read();
-                    let isettings = InternalSettings::load();
+                    let settings = Globals::get().settings.load();
+                    let isettings = InternalSettings::get();
                     let cancel_token = CancellationToken::new();
                     if let Some(token) = qobject.cancel.clone() {
                         tracing::debug!("Issuing cancel on disconnect");

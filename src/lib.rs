@@ -7,7 +7,6 @@ use num_derive::{FromPrimitive, ToPrimitive};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter, Result};
 use std::path::Path;
-use strum::EnumIter;
 use wincode::{SchemaRead, SchemaWrite};
 
 #[derive(
@@ -35,7 +34,6 @@ pub struct QSong {
     serde::Deserialize,
     serde::Serialize,
     PartialEq,
-    EnumIter,
     FromPrimitive,
     ToPrimitive,
     Copy,
@@ -60,7 +58,9 @@ pub enum SongField {
     Directory = 13,
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug)]
+#[derive(
+    serde::Deserialize, serde::Serialize, PartialEq, Copy, Clone, Debug,
+)]
 #[repr(i32)]
 pub enum ColumnSort {
     Inactive,
