@@ -2,6 +2,7 @@ use qobject::*;
 
 #[cxx_qt::bridge]
 mod qobject {
+
     extern "C++" {
         include!("cxx-qt-lib/qvariant.h");
         type QVariant = cxx_qt_lib::QVariant;
@@ -26,14 +27,13 @@ mod qobject {
         #[qproperty(OutputPlugin, native_output_plugin, cxx_name = "nativeOutputPlugin")]
         #[qproperty(usize, background_blur, cxx_name = "backgroundBlur")]
         #[qproperty(usize, background_colorization, cxx_name = "backgroundColorization")]
-        type QSettings = super::Settings;
+        type QAppSettings = super::AppSettings;
     }
 }
 
-//use crate::utils::settings::{InternalSettings, Settings};
 use crate::utils::persist::PersistentConfig;
 
-pub struct Settings {
+pub struct AppSettings {
     pub init_wizard: bool,
     pub mpd_socket: QString,
     pub native_music_dir: QString,
@@ -42,21 +42,29 @@ pub struct Settings {
     pub background_colorization: usize,
 }
 
-impl Settings {
+impl AppSettings {
     fn save(self) {
         let config = PersistentConfig::from(self);
         config.dump().inspect_err(|e| eprintln!("Failed to save config {}", e));
     }
 }
 
-impl Default for Settings {
+impl Default for AppSettings {
     fn default() -> Self {
-        let config = PersistentConfig::load();
-        Self::from(config)
+        //let config = PersistentConfig::load();
+        //Self::from(config)
+        Self {
+            init_wizard: Default::default(),
+            mpd_socket: Default::default(),
+            native_music_dir: Default::default(),
+            native_output_plugin: OutputPlugin::Pipewire,
+            background_blur: Default::default(),
+            background_colorization: Default::default(),
+        }
     }
 }
 
-impl From<PersistentConfig> for Settings {
+impl From<PersistentConfig> for AppSettings {
     fn from(value: PersistentConfig) -> Self {
         Self {
             init_wizard: value.init_wizard,
@@ -68,4 +76,3 @@ impl From<PersistentConfig> for Settings {
         }
     }
 }
-

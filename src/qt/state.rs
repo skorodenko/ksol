@@ -100,18 +100,6 @@ impl QState {
         self.as_mut().rust_mut().active_group = SongField::from_i32(value).expect("Bad value");
     }
 
-    fn get_column_width(&self, col: usize) -> f64 {
-        let item = self.header_columns.get(col).expect("Out of bounds");
-        item.width
-    }
-
-    fn set_column_width(mut self: Pin<&mut Self>, col: usize, width: f64) {
-        let mut this = self.as_mut().rust_mut();
-        if let Some(item) = this.header_columns.get_mut(col) {
-            item.width = width;
-        }
-    }
-
     fn get_header_column(&self, col: usize, col_type: ColumnType) -> QVariant {
         let item = self.header_columns.get(col).expect("Out of bounds");
         match col_type {

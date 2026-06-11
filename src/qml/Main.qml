@@ -13,7 +13,7 @@ Kirigami.ApplicationWindow {
     pageStack.initialPage: mainPage
 
     Component.onCompleted: {
-        if (QSettings.initWizard) {
+        if (QAppSettings.initWizard) {
             initWizardDelay.start();
         } else {
             mpd_connector.connect();

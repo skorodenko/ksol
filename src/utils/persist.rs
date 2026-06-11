@@ -1,8 +1,7 @@
 use super::globals::Globals;
 use super::misc::AtomicF64Vec;
-use crate::qt::settings::Settings;
+use crate::qt::settings::AppSettings;
 use crate::{ColumnSort, HeaderColumn, SongField};
-use arc_swap::ArcSwap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
@@ -84,8 +83,8 @@ impl PersistentConfig {
     }
 }
 
-impl From<Settings> for PersistentConfig {
-    fn from(value: Settings) -> Self {
+impl From<AppSettings> for PersistentConfig {
+    fn from(value: AppSettings) -> Self {
         Self {
             init_wizard: value.init_wizard,
             mpd_socket: value.mpd_socket.into(),

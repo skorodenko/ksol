@@ -67,15 +67,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3d036a3c4ab069c7b410a2ce876bd74808d2d0888a82667669f8e783a898bf1"
 
 [[package]]
-name = "arc-swap"
-version = "1.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6a3a1fd6f75306b68087b831f025c712524bcb19aad54e557b1129cfa0a2b207"
-dependencies = [
- "rustversion",
-]
-
-[[package]]
 name = "arg_enum_proc_macro"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -558,9 +549,9 @@ dependencies = [
 
 [[package]]
 name = "cxx-qt"
-version = "0.8.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec7c6dea4b551221e1df4349af7ae6af2c906c16860bdab5cada5a957b43cbbc"
+checksum = "3fdf26e5ee4375a85799d0fe436662e5a8ef099bd0964b84bce8812c35c7daea"
 dependencies = [
  "cxx",
  "cxx-qt-build",
@@ -572,9 +563,9 @@ dependencies = [
 
 [[package]]
 name = "cxx-qt-build"
-version = "0.8.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c70cbc19fb351a0413632b326ad4862baea7f50d641d2d360b29ad0f772547bc"
+checksum = "f9a88c7f8241bfe4dfd19d27397a5845f0f275735a34ee7fb219045da81945e3"
 dependencies = [
  "cc",
  "codespan-reporting 0.11.1",
@@ -589,9 +580,9 @@ dependencies = [
 
 [[package]]
 name = "cxx-qt-gen"
-version = "0.8.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33744d84f696836347071ad73da233f758f98e5c0b348e2855140173b36bffa2"
+checksum = "9b1917c90b10117890e3794f4a0dc764a24704de40711d688ae128b0704490b8"
 dependencies = [
  "clang-format",
  "convert_case",
@@ -604,9 +595,9 @@ dependencies = [
 
 [[package]]
 name = "cxx-qt-lib"
-version = "0.8.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7eacfc219a287c422619b7704166bfd3b9b842367bd9124ad5557e6150a2d658"
+checksum = "d7b3de184cff59ad29d657021f933380e584d9b70265247f6a96098bef964211"
 dependencies = [
  "cxx",
  "cxx-qt",
@@ -616,9 +607,9 @@ dependencies = [
 
 [[package]]
 name = "cxx-qt-macro"
-version = "0.8.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3cb8ce32a983d56470101ff8e61c8a700ba37805b6e942186c6f3dd5d6ad44f6"
+checksum = "230b0d8b20d3d02a85885742be4fabc0382fead4e382dd8c9c9ff1827f221e8c"
 dependencies = [
  "cxx-qt-gen",
  "proc-macro2",
@@ -1142,7 +1133,6 @@ name = "ksol"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "arc-swap",
  "bytes",
  "cxx",
  "cxx-qt",
@@ -1577,9 +1567,9 @@ dependencies = [
 
 [[package]]
 name = "qt-build-utils"
-version = "0.8.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0cfd41d4f115dfc940ea3ea31b3aed77233ad09ab8859a227ed61323025590af"
+checksum = "4d074750fd3baba12fdb47388d591ad9ed043e23864a79d129dcf3a1ef6fc8d9"
 dependencies = [
  "anyhow",
  "cc",
