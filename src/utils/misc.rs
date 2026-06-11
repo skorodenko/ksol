@@ -8,8 +8,7 @@ pub struct AtomicF64Vec {
 impl AtomicF64Vec {
     pub fn new(len: usize, default_value: f64) -> Self {
         let bits = f64::to_bits(default_value);
-        let data: Vec<AtomicU64> =
-            (0..len).map(|_| AtomicU64::new(bits)).collect();
+        let data: Vec<AtomicU64> = (0..len).map(|_| AtomicU64::new(bits)).collect();
         Self { data: Arc::from(data) }
     }
 

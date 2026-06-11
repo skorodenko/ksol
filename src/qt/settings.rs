@@ -1,27 +1,5 @@
 use qobject::*;
 
-//use crate::utils::settings::{InternalSettings, Settings};
-use crate::utils::state::Globals;
-use crate::{ColumnSort, SongField};
-use core::pin::Pin;
-use num_traits::{FromPrimitive, ToPrimitive};
-use std::net::TcpStream;
-use std::os::unix::net::UnixStream;
-use std::sync::Arc;
-use tracing;
-
-#[derive(Default)]
-pub struct Settings {
-    init_wizard: bool,
-    mpd_socket: QString,
-    native_music_dir: QString,
-    native_output_plugin: QString,
-    background_blur: usize,
-    background_colorization: usize,
-}
-
-impl qobject::QSettings {}
-
 #[cxx_qt::bridge]
 mod qobject {
     extern "C++" {
@@ -32,18 +10,62 @@ mod qobject {
         type QString = cxx_qt_lib::QString;
     }
 
+    #[repr(i32)]
+    #[namespace = "OutputPlugin"]
+    enum OutputPlugin {
+        Pipewire = 0x1,
+    }
+
     extern "RustQt" {
         #[qobject]
         #[qml_element]
         #[qml_singleton]
-        #[qproperty(bool, init_wizard)]
+        #[qproperty(bool, init_wizard, cxx_name = "initWizard")]
         #[qproperty(QString, mpd_socket, cxx_name = "mpdSocket")]
         #[qproperty(QString, native_music_dir, cxx_name = "nativeMusicDir")]
-        #[qproperty(QString, native_output_plugin)]
-        #[qproperty(usize, background_blur)]
-        #[qproperty(usize, background_colorization)]
-        //        #[qproperty(i32, sortOrder, READ = get_sort_order, NOTIFY = update_sort_column)]
-        //        #[qproperty(i32, sortColumn, READ = get_sort_column, NOTIFY = update_sort_column)]
+        #[qproperty(OutputPlugin, native_output_plugin, cxx_name = "nativeOutputPlugin")]
+        #[qproperty(usize, background_blur, cxx_name = "backgroundBlur")]
+        #[qproperty(usize, background_colorization, cxx_name = "backgroundColorization")]
         type QSettings = super::Settings;
     }
 }
+
+//use crate::utils::settings::{InternalSettings, Settings};
+use crate::utils::persist::PersistentConfig;
+
+pub struct Settings {
+    pub init_wizard: bool,
+    pub mpd_socket: QString,
+    pub native_music_dir: QString,
+    pub native_output_plugin: OutputPlugin,
+    pub background_blur: usize,
+    pub background_colorization: usize,
+}
+
+impl Settings {
+    fn save(self) {
+        let config = PersistentConfig::from(self);
+        config.dump().inspect_err(|e| eprintln!("Failed to save config {}", e));
+    }
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        let config = PersistentConfig::load();
+        Self::from(config)
+    }
+}
+
+impl From<PersistentConfig> for Settings {
+    fn from(value: PersistentConfig) -> Self {
+        Self {
+            init_wizard: value.init_wizard,
+            mpd_socket: value.mpd_socket.into(),
+            native_music_dir: value.native_music_dir.into(),
+            native_output_plugin: OutputPlugin { repr: value.native_output_plugin },
+            background_blur: value.background_blur,
+            background_colorization: value.background_colorization,
+        }
+    }
+}
+

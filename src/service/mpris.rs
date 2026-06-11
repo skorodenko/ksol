@@ -5,10 +5,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 pub trait MPRISAction {
-    fn queue(
-        self,
-        mpris: Arc<Server<Player>>,
-    ) -> BoxFuture<'static, Result<(), MPRISActionError>>;
+    fn queue(self, mpris: Arc<Server<Player>>) -> BoxFuture<'static, Result<(), MPRISActionError>>;
 }
 
 #[derive(Debug)]
@@ -28,10 +25,7 @@ impl PropertyUpdate {
 }
 
 impl MPRISAction for PropertyUpdate {
-    fn queue(
-        self,
-        mpris: Arc<Server<Player>>,
-    ) -> BoxFuture<'static, Result<(), MPRISActionError>> {
+    fn queue(self, mpris: Arc<Server<Player>>) -> BoxFuture<'static, Result<(), MPRISActionError>> {
         let props = self.props.clone();
         Box::pin(async move {
             mpris
@@ -54,18 +48,10 @@ impl Seeked {
 }
 
 impl MPRISAction for Seeked {
-    fn queue(
-        self,
-        mpris: Arc<Server<Player>>,
-    ) -> BoxFuture<'static, Result<(), MPRISActionError>> {
-        let signal = Signal::Seeked {
-            position: Time::from_secs(self.offset.as_secs() as i64),
-        };
+    fn queue(self, mpris: Arc<Server<Player>>) -> BoxFuture<'static, Result<(), MPRISActionError>> {
+        let signal = Signal::Seeked { position: Time::from_secs(self.offset.as_secs() as i64) };
         Box::pin(async move {
-            mpris
-                .emit(signal)
-                .await
-                .map_err(|x| MPRISActionError::MPRISError(x.to_string()))
+            mpris.emit(signal).await.map_err(|x| MPRISActionError::MPRISError(x.to_string()))
         })
     }
 }

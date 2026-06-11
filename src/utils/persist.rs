@@ -1,14 +1,18 @@
-use crate::SongField;
-
 use super::globals::Globals;
+use super::misc::AtomicF64Vec;
+use crate::qt::settings::Settings;
+use crate::{ColumnSort, HeaderColumn, SongField};
+use arc_swap::ArcSwap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
+use tokio::sync::RwLock;
 
 /// Default output plugin type used when no configuration exists.
-const DEFAULT_OUTPUT_PLUGIN_TYPE: &str = "pipewire";
+const DEFAULT_OUTPUT_PLUGIN_TYPE: i32 = 1;
 
 /// Default background opacity percentage (0-100).
-const DEFAULT_BACKGROUND_OPACITY: usize = 75;
+const DEFAULT_BACKGROUND_COLORIZATION: usize = 75;
 
 /// Default background blur percentage (0-100).
 const DEFAULT_BACKGROUND_BLUR: usize = 95;
@@ -17,11 +21,11 @@ const DEFAULT_BACKGROUND_BLUR: usize = 95;
 pub struct PersistentConfig {
     pub init_wizard: bool,
     pub mpd_socket: String,
-    pub output_plugin_type: String,
-    pub search_groups: Vec<SongField>,
+    //pub search_groups: Vec<i32>,
     pub native_music_dir: String,
-    pub background_opacity: usize,
+    pub native_output_plugin: i32,
     pub background_blur: usize,
+    pub background_colorization: usize,
 }
 
 impl PersistentConfig {
@@ -45,31 +49,23 @@ impl PersistentConfig {
     /// Load settings from disk, returning a default configuration if the file
     /// doesn't exist or contains invalid TOML.
     pub fn load() -> Self {
-        let internal_settings = Globals::get();
+        let globals = Globals::get();
 
         // Default home directory path (used for fallback values)
-        let xdg_home =
-            std::env::home_dir().unwrap_or_else(|| PathBuf::from("/"));
+        let xdg_home = std::env::home_dir().unwrap_or_else(|| PathBuf::from("/"));
 
-        match fs::read_to_string(&internal_settings.app_config_file) {
-            Ok(settings_file) => {
-                toml::from_str(&settings_file).unwrap_or_else(|_| {
-                    eprintln!(
-                        "Warning: Failed to parse settings file, using defaults"
-                    );
-                    Self::default_values(&internal_settings, &xdg_home)
-                })
-            }
+        match fs::read_to_string(&globals.app_config_file) {
+            Ok(settings_file) => toml::from_str(&settings_file).unwrap_or_else(|_| {
+                eprintln!("Warning: Failed to parse settings file, using defaults");
+                Self::default_values(&globals, &xdg_home)
+            }),
             Err(e) => {
                 if e.kind() == std::io::ErrorKind::NotFound {
                     // Config file doesn't exist yet - this is expected on first run
-                    Self::default_values(&internal_settings, &xdg_home)
+                    Self::default_values(&globals, &xdg_home)
                 } else {
-                    eprintln!(
-                        "Warning: Failed to read settings file: {}. Using defaults",
-                        e
-                    );
-                    Self::default_values(&internal_settings, &xdg_home)
+                    eprintln!("Warning: Failed to read settings file: {}. Using defaults", e);
+                    Self::default_values(&globals, &xdg_home)
                 }
             }
         }
@@ -81,15 +77,61 @@ impl PersistentConfig {
             init_wizard: true,
             mpd_socket: globals.native_socket.clone(),
             native_music_dir: xdg_home.join("Music/").display().to_string(),
-            output_plugin_type: DEFAULT_OUTPUT_PLUGIN_TYPE.to_owned(),
-            search_groups: vec![
-                SongField::Directory,
-                SongField::Artist,
-                SongField::Album,
-                SongField::Genre,
-            ],
-            background_opacity: DEFAULT_BACKGROUND_OPACITY,
+            native_output_plugin: DEFAULT_OUTPUT_PLUGIN_TYPE,
             background_blur: DEFAULT_BACKGROUND_BLUR,
+            background_colorization: DEFAULT_BACKGROUND_COLORIZATION,
         }
+    }
+}
+
+impl From<Settings> for PersistentConfig {
+    fn from(value: Settings) -> Self {
+        Self {
+            init_wizard: value.init_wizard,
+            mpd_socket: value.mpd_socket.into(),
+            native_music_dir: value.native_music_dir.into(),
+            native_output_plugin: value.native_output_plugin.repr,
+            background_blur: value.background_blur,
+            background_colorization: value.background_colorization,
+        }
+    }
+}
+
+pub struct StateFile {
+    pub header_columns: Vec<HeaderColumn>,
+    pub column_sort: ColumnSort,
+    pub active_group: SongField,
+}
+
+impl StateFile {
+    pub fn load() -> Self {
+        Self::default_values()
+    }
+
+    pub fn dump(self) {
+        todo!()
+    }
+
+    pub fn default_values() -> Self {
+        let header_columns = vec![
+            HeaderColumn { name: "#".into(), width: 1f64 / 14f64, hidden: false },
+            HeaderColumn { name: "Title".into(), width: 1f64 / 14f64, hidden: false },
+            HeaderColumn { name: "Artist".into(), width: 1f64 / 14f64, hidden: false },
+            HeaderColumn { name: "Album".into(), width: 1f64 / 14f64, hidden: false },
+            HeaderColumn { name: "Date".into(), width: 1f64 / 14f64, hidden: false },
+            HeaderColumn { name: "Genre".into(), width: 1f64 / 14f64, hidden: false },
+            HeaderColumn { name: "Disc".into(), width: 1f64 / 14f64, hidden: false },
+            HeaderColumn { name: "Composer".into(), width: 1f64 / 14f64, hidden: false },
+            HeaderColumn { name: "Albumartist".into(), width: 1f64 / 14f64, hidden: false },
+            HeaderColumn { name: "File".into(), width: 1f64 / 14f64, hidden: false },
+            HeaderColumn { name: "Format".into(), width: 1f64 / 14f64, hidden: false },
+            HeaderColumn { name: "Lastmodified".into(), width: 1f64 / 14f64, hidden: false },
+            HeaderColumn { name: "Duration".into(), width: 1f64 / 14f64, hidden: false },
+            HeaderColumn { name: "Directory".into(), width: 1f64 / 14f64, hidden: false },
+        ];
+        let column_sort = ColumnSort::Ascending(SongField::Track);
+        let active_group = SongField::Directory;
+
+        Self { header_columns, column_sort, active_group }
     }
 }

@@ -1,11 +1,11 @@
 use super::MPDActionService;
 use super::mpd::{self, Seek};
-use crate::utils::settings::InternalSettings;
+use crate::utils::globals::Globals;
 use mpd_client::commands::SingleMode;
 use mpd_client::responses::PlayState;
 use mpris_server::{
-    LoopStatus, Metadata, PlaybackRate, PlaybackStatus, PlayerInterface,
-    RootInterface, Time, TrackId, Volume,
+    LoopStatus, Metadata, PlaybackRate, PlaybackStatus, PlayerInterface, RootInterface, Time,
+    TrackId, Volume,
     zbus::{Result, fdo},
 };
 use std::time::Duration;
@@ -68,28 +68,19 @@ impl RootInterface for Player {
 impl PlayerInterface for Player {
     async fn next(&self) -> fdo::Result<()> {
         let mut service = self.mpd_service.clone();
-        service
-            .call(mpd::Next)
-            .await
-            .map_err(|_| mpris_server::zbus::Error::InvalidReply)?;
+        service.call(mpd::Next).await.map_err(|_| mpris_server::zbus::Error::InvalidReply)?;
         Ok(())
     }
 
     async fn previous(&self) -> fdo::Result<()> {
         let mut service = self.mpd_service.clone();
-        service
-            .call(mpd::Previous)
-            .await
-            .map_err(|_| mpris_server::zbus::Error::InvalidReply)?;
+        service.call(mpd::Previous).await.map_err(|_| mpris_server::zbus::Error::InvalidReply)?;
         Ok(())
     }
 
     async fn pause(&self) -> fdo::Result<()> {
         let mut service = self.mpd_service.clone();
-        service
-            .call(mpd::PlayToggle)
-            .await
-            .map_err(|_| mpris_server::zbus::Error::InvalidReply)?;
+        service.call(mpd::PlayToggle).await.map_err(|_| mpris_server::zbus::Error::InvalidReply)?;
         Ok(())
     }
 
@@ -104,19 +95,13 @@ impl PlayerInterface for Player {
 
     async fn stop(&self) -> fdo::Result<()> {
         let mut service = self.mpd_service.clone();
-        service
-            .call(mpd::PlayToggle)
-            .await
-            .map_err(|_| mpris_server::zbus::Error::InvalidReply)?;
+        service.call(mpd::PlayToggle).await.map_err(|_| mpris_server::zbus::Error::InvalidReply)?;
         Ok(())
     }
 
     async fn play(&self) -> fdo::Result<()> {
         let mut service = self.mpd_service.clone();
-        service
-            .call(mpd::PlayToggle)
-            .await
-            .map_err(|_| mpris_server::zbus::Error::InvalidReply)?;
+        service.call(mpd::PlayToggle).await.map_err(|_| mpris_server::zbus::Error::InvalidReply)?;
         Ok(())
     }
 
@@ -129,11 +114,7 @@ impl PlayerInterface for Player {
         Ok(())
     }
 
-    async fn set_position(
-        &self,
-        _track_id: TrackId,
-        position: Time,
-    ) -> fdo::Result<()> {
+    async fn set_position(&self, _track_id: TrackId, position: Time) -> fdo::Result<()> {
         let mut service = self.mpd_service.clone();
         service
             .call(Seek::new(Duration::from_secs(position.as_secs() as u64)))
@@ -148,10 +129,8 @@ impl PlayerInterface for Player {
 
     async fn playback_status(&self) -> fdo::Result<PlaybackStatus> {
         let mut service = self.mpd_service.clone();
-        let status = service
-            .call(mpd::Status)
-            .await
-            .map_err(|_| mpris_server::zbus::Error::InvalidReply)?;
+        let status =
+            service.call(mpd::Status).await.map_err(|_| mpris_server::zbus::Error::InvalidReply)?;
         match status.state {
             PlayState::Paused => Ok(PlaybackStatus::Paused),
             PlayState::Stopped => Ok(PlaybackStatus::Stopped),
@@ -161,14 +140,10 @@ impl PlayerInterface for Player {
 
     async fn loop_status(&self) -> fdo::Result<LoopStatus> {
         let mut service = self.mpd_service.clone();
-        let status = service
-            .call(mpd::Status)
-            .await
-            .map_err(|_| mpris_server::zbus::Error::InvalidReply)?;
+        let status =
+            service.call(mpd::Status).await.map_err(|_| mpris_server::zbus::Error::InvalidReply)?;
         match (status.repeat, status.single) {
-            (true, SingleMode::Enabled) | (true, SingleMode::Oneshot) => {
-                Ok(LoopStatus::Track)
-            }
+            (true, SingleMode::Enabled) | (true, SingleMode::Oneshot) => Ok(LoopStatus::Track),
             (true, SingleMode::Disabled) => Ok(LoopStatus::Playlist),
             _ => Ok(LoopStatus::None),
         }
@@ -195,10 +170,8 @@ impl PlayerInterface for Player {
 
     async fn shuffle(&self) -> fdo::Result<bool> {
         let mut service = self.mpd_service.clone();
-        let status = service
-            .call(mpd::Status)
-            .await
-            .map_err(|_| mpris_server::zbus::Error::InvalidReply)?;
+        let status =
+            service.call(mpd::Status).await.map_err(|_| mpris_server::zbus::Error::InvalidReply)?;
         Ok(status.random)
     }
 
@@ -212,17 +185,15 @@ impl PlayerInterface for Player {
     }
 
     async fn metadata(&self) -> fdo::Result<Metadata> {
-        let settings = InternalSettings::get();
-        let covers = settings.app_cover_cache.clone();
+        let globals = Globals::get();
+        let covers = globals.app_cover_cache.clone();
         let mut service = self.mpd_service.clone();
         let song = service
             .call(mpd::CurrentSong)
             .await
             .map_err(|_| mpris_server::zbus::Error::InvalidReply)?;
-        let ckey = covers
-            .join(format!("{}_{}_{}", song.album, song.artist, song.disc));
-        let trackid =
-            TrackId::try_from(format!("{}", song.id)).unwrap_or_default();
+        let ckey = covers.join(format!("{}_{}_{}", song.album, song.artist, song.disc));
+        let trackid = TrackId::try_from(format!("{}", song.id)).unwrap_or_default();
         let metadata = Metadata::builder()
             .title(&song.title)
             .artist([&song.artist])
@@ -244,14 +215,10 @@ impl PlayerInterface for Player {
 
     async fn position(&self) -> fdo::Result<Time> {
         let mut service = self.mpd_service.clone();
-        let status = service
-            .call(mpd::Status)
-            .await
-            .map_err(|_| mpris_server::zbus::Error::InvalidReply)?;
+        let status =
+            service.call(mpd::Status).await.map_err(|_| mpris_server::zbus::Error::InvalidReply)?;
         match status.elapsed {
-            Some(t) => {
-                Ok(Time::from_secs(t.as_secs().try_into().unwrap_or_default()))
-            }
+            Some(t) => Ok(Time::from_secs(t.as_secs().try_into().unwrap_or_default())),
             None => Ok(Time::ZERO),
         }
     }
@@ -266,10 +233,8 @@ impl PlayerInterface for Player {
 
     async fn can_go_next(&self) -> fdo::Result<bool> {
         let mut service = self.mpd_service.clone();
-        let status = service
-            .call(mpd::Status)
-            .await
-            .map_err(|_| mpris_server::zbus::Error::InvalidReply)?;
+        let status =
+            service.call(mpd::Status).await.map_err(|_| mpris_server::zbus::Error::InvalidReply)?;
         match status.state {
             PlayState::Stopped => Ok(false),
             PlayState::Playing | PlayState::Paused => Ok(true),
@@ -278,10 +243,8 @@ impl PlayerInterface for Player {
 
     async fn can_go_previous(&self) -> fdo::Result<bool> {
         let mut service = self.mpd_service.clone();
-        let status = service
-            .call(mpd::Status)
-            .await
-            .map_err(|_| mpris_server::zbus::Error::InvalidReply)?;
+        let status =
+            service.call(mpd::Status).await.map_err(|_| mpris_server::zbus::Error::InvalidReply)?;
         match status.state {
             PlayState::Stopped => Ok(false),
             PlayState::Playing | PlayState::Paused => Ok(true),
@@ -290,10 +253,8 @@ impl PlayerInterface for Player {
 
     async fn can_play(&self) -> fdo::Result<bool> {
         let mut service = self.mpd_service.clone();
-        let status = service
-            .call(mpd::Status)
-            .await
-            .map_err(|_| mpris_server::zbus::Error::InvalidReply)?;
+        let status =
+            service.call(mpd::Status).await.map_err(|_| mpris_server::zbus::Error::InvalidReply)?;
         match status.state {
             PlayState::Stopped => Ok(false),
             PlayState::Playing | PlayState::Paused => Ok(true),
@@ -302,10 +263,8 @@ impl PlayerInterface for Player {
 
     async fn can_pause(&self) -> fdo::Result<bool> {
         let mut service = self.mpd_service.clone();
-        let status = service
-            .call(mpd::Status)
-            .await
-            .map_err(|_| mpris_server::zbus::Error::InvalidReply)?;
+        let status =
+            service.call(mpd::Status).await.map_err(|_| mpris_server::zbus::Error::InvalidReply)?;
         match status.state {
             PlayState::Stopped => Ok(false),
             PlayState::Playing | PlayState::Paused => Ok(true),
@@ -314,10 +273,8 @@ impl PlayerInterface for Player {
 
     async fn can_seek(&self) -> fdo::Result<bool> {
         let mut service = self.mpd_service.clone();
-        let status = service
-            .call(mpd::Status)
-            .await
-            .map_err(|_| mpris_server::zbus::Error::InvalidReply)?;
+        let status =
+            service.call(mpd::Status).await.map_err(|_| mpris_server::zbus::Error::InvalidReply)?;
         match status.state {
             PlayState::Stopped => Ok(false),
             PlayState::Playing | PlayState::Paused => Ok(true),

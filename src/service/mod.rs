@@ -14,8 +14,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use tower::Service;
 
-pub type BoxSyncFuture<'a, T> =
-    Pin<Box<dyn Future<Output = T> + Send + Sync + 'a>>;
+pub type BoxSyncFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + Sync + 'a>>;
 
 #[derive(Clone)]
 pub struct MPDActionService {

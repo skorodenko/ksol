@@ -1,19 +1,147 @@
 use qobject::*;
 
+#[cxx_qt::bridge]
+pub mod qobject {
+    extern "C++" {
+        include!("cxx-qt-lib/qstring.h");
+        type QString = cxx_qt_lib::QString;
+
+        include!("cxx-qt-lib/qbytearray.h");
+        type QByteArray = cxx_qt_lib::QByteArray;
+    }
+
+    extern "RustQt" {
+        #[qobject]
+        #[qml_element]
+        #[qproperty(bool, repeat, READ, WRITE, NOTIFY = update_options)]
+        #[qproperty(bool, single, READ, WRITE, NOTIFY = update_options)]
+        #[qproperty(bool, shuffle, READ, WRITE, NOTIFY = update_options)]
+        #[qproperty(u64, activeSongId, READ = get_active_song_id, NOTIFY = active_song_changed)]
+        #[qproperty(usize, activeSongPosition, READ = get_active_song_position, NOTIFY = active_song_changed)]
+        #[qproperty(QString, activeSongTitle, READ = get_active_song_title, NOTIFY = active_song_changed)]
+        #[qproperty(QString, activeSongArtist, READ = get_active_song_artist, NOTIFY = active_song_changed)]
+        type QMPDConnector = super::MPDConnector;
+
+        #[qsignal]
+        #[cxx_name = "connectionUpdate"]
+        fn connection_update(self: Pin<&mut QMPDConnector>, status: QString);
+
+        #[qsignal]
+        #[cxx_name = "updateOptions"]
+        fn update_options(self: Pin<&mut QMPDConnector>);
+
+        #[qsignal]
+        #[cxx_name = "playStateChanged"]
+        fn play_state_changed(self: Pin<&mut QMPDConnector>, status: QString);
+
+        #[qsignal]
+        #[cxx_name = "activeSongChanged"]
+        fn active_song_changed(self: Pin<&mut QMPDConnector>);
+
+        #[qsignal]
+        #[cxx_name = "albumArtUpdate"]
+        fn album_art_update(self: Pin<&mut QMPDConnector>, art: QString);
+
+        #[qsignal]
+        #[cxx_name = "timelineUpdate"]
+        fn timeline_update(self: Pin<&mut QMPDConnector>, duration: u64, elapsed: u64);
+
+        #[qsignal]
+        #[cxx_name = "bitrateUpdate"]
+        fn bitrate_update(self: Pin<&mut QMPDConnector>, bitrate: u64);
+
+        #[qsignal]
+        #[cxx_name = "getPlaylistsResult"]
+        fn get_playlists_result(self: Pin<&mut QMPDConnector>, result: QByteArray);
+
+        #[qsignal]
+        #[cxx_name = "stagePlaylistResult"]
+        fn stage_playlist_result(self: Pin<&mut QMPDConnector>, result: QByteArray);
+
+        #[qsignal]
+        #[cxx_name = "dbUpdated"]
+        fn db_updated(self: Pin<&mut QMPDConnector>, status: bool);
+
+        #[qinvokable]
+        #[cxx_name = "connect"]
+        fn connect(self: Pin<&mut QMPDConnector>);
+
+        #[qinvokable]
+        fn get_active_song_id(self: Pin<&mut QMPDConnector>) -> u64;
+
+        #[qinvokable]
+        fn get_active_song_position(self: Pin<&mut QMPDConnector>) -> usize;
+
+        #[qinvokable]
+        fn get_active_song_title(self: Pin<&mut QMPDConnector>) -> QString;
+
+        #[qinvokable]
+        fn get_active_song_artist(self: Pin<&mut QMPDConnector>) -> QString;
+
+        #[qinvokable]
+        #[cxx_name = "syncState"]
+        fn sync_state(self: Pin<&mut QMPDConnector>);
+
+        #[qinvokable]
+        #[cxx_name = "playSong"]
+        fn play_song(self: Pin<&mut QMPDConnector>, id: u64);
+
+        #[qinvokable]
+        #[cxx_name = "playToggle"]
+        fn play_toggle(self: Pin<&mut QMPDConnector>);
+
+        #[qinvokable]
+        #[cxx_name = "playNext"]
+        fn play_next(self: Pin<&mut QMPDConnector>);
+
+        #[qinvokable]
+        #[cxx_name = "playPrevious"]
+        fn play_previous(self: Pin<&mut QMPDConnector>);
+
+        #[qinvokable]
+        #[cxx_name = "playSeek"]
+        fn play_seek(self: Pin<&mut QMPDConnector>, value: u64);
+
+        #[qinvokable]
+        #[cxx_name = "updateDb"]
+        fn update_db(self: Pin<&mut QMPDConnector>);
+
+        #[qinvokable]
+        #[cxx_name = "getPlaylists"]
+        fn get_playlists(self: Pin<&mut QMPDConnector>, value: i32);
+
+        #[qinvokable]
+        #[cxx_name = "stagePlaylist"]
+        fn stage_playlist(self: Pin<&mut QMPDConnector>, name: QString, group: i32);
+
+        #[qinvokable]
+        #[cxx_name = "sortPlaylist"]
+        fn sort_playlist(self: Pin<&mut QMPDConnector>, sort_column: i32, sort_order: i32);
+
+        #[qinvokable]
+        #[cxx_name = "shuffleToggle"]
+        fn shuffle_toggle(self: Pin<&mut QMPDConnector>, current_state: bool);
+
+        #[qinvokable]
+        #[cxx_name = "repeatToggle"]
+        fn repeat_toggle(self: Pin<&mut QMPDConnector>, current_repeat: bool, current_single: bool);
+    }
+
+    impl cxx_qt::Threading for QMPDConnector {}
+    impl cxx_qt::Initialize for QMPDConnector {}
+}
+
 use crate::service;
 use crate::service::mpris_interface::Player;
 use crate::service::{MPDActionService, MPRISActionService};
+use crate::utils::globals::Globals;
 use crate::utils::init_hooks::init_native_mpd_config;
-use crate::utils::settings::InternalSettings;
-use crate::utils::state::Globals;
 use crate::{ColumnSort, QSong, SongField};
 use core::pin::Pin;
 use cxx_qt::{CxxQtType, Threading};
 use mpd_client::client::{ConnectionEvent, Subsystem};
 use mpd_client::{ClientController, ClientIdler, commands};
-use mpris_server::{
-    LoopStatus, Metadata, PlaybackStatus, Property, Server, Time, TrackId,
-};
+use mpris_server::{LoopStatus, Metadata, PlaybackStatus, Property, Server, Time, TrackId};
 use num_traits::FromPrimitive;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -36,6 +164,7 @@ pub struct MPDConnector {
     pub single: bool,
     pub shuffle: bool,
     pub runtime: Runtime,
+    pub mpd_socket: QString,
     pub mpd_service: Option<MPDActionService>,
     pub mpris_service: Option<MPRISActionService>,
 }
@@ -186,8 +315,7 @@ impl qobject::QMPDConnector {
         tracing::debug!("Updating MPD DB");
         let qt_thread = self.qt_thread();
         if let Some(mut service) = self.mpd_service.clone() {
-            self.runtime
-                .spawn(service.call(service::mpd::UpdateDB::new(qt_thread)));
+            self.runtime.spawn(service.call(service::mpd::UpdateDB::new(qt_thread)));
         } else {
             tracing::error!("Action service not available");
         }
@@ -197,42 +325,27 @@ impl qobject::QMPDConnector {
         let group = SongField::from_i32(group).expect("bad group value");
         let qt_thread = self.qt_thread();
         if let Some(mut service) = self.mpd_service.clone() {
-            self.runtime.spawn(
-                service.call(service::mpd::GetPlaylists::new(group, qt_thread)),
-            );
+            self.runtime.spawn(service.call(service::mpd::GetPlaylists::new(group, qt_thread)));
         } else {
             tracing::error!("Action service not available");
         }
     }
 
-    pub fn stage_playlist(
-        self: Pin<&mut QMPDConnector>,
-        name: QString,
-        group: i32,
-    ) {
+    pub fn stage_playlist(self: Pin<&mut QMPDConnector>, name: QString, group: i32) {
         let name = String::from(name);
         let group = SongField::from_i32(group).expect("bad group value");
         if let Some(mut service) = self.mpd_service.clone() {
-            self.runtime.spawn(
-                service.call(service::mpd::StagePlaylist::new(name, group)),
-            );
+            self.runtime.spawn(service.call(service::mpd::StagePlaylist::new(name, group)));
         } else {
             tracing::error!("Action service not available");
         }
     }
 
-    pub fn sort_playlist(
-        self: Pin<&mut QMPDConnector>,
-        sort_column: i32,
-        sort_order: i32,
-    ) {
-        let sort_column =
-            SongField::from_i32(sort_column).expect("bad sort_column value");
+    pub fn sort_playlist(self: Pin<&mut QMPDConnector>, sort_column: i32, sort_order: i32) {
+        let sort_column = SongField::from_i32(sort_column).expect("bad sort_column value");
         let sort_order = ColumnSort::from((sort_order, sort_column));
         if let Some(mut service) = self.mpd_service.clone() {
-            self.runtime.spawn(
-                service.call(service::mpd::SortPlaylist::new(sort_order)),
-            );
+            self.runtime.spawn(service.call(service::mpd::SortPlaylist::new(sort_order)));
         } else {
             tracing::error!("Action service not available");
         }
@@ -240,24 +353,17 @@ impl qobject::QMPDConnector {
 
     pub fn shuffle_toggle(self: Pin<&mut QMPDConnector>, current_state: bool) {
         if let Some(mut service) = self.mpd_service.clone() {
-            self.runtime.spawn(
-                service.call(service::mpd::ShuffleToggle::new(current_state)),
-            );
+            self.runtime.spawn(service.call(service::mpd::ShuffleToggle::new(current_state)));
         } else {
             tracing::error!("Action service not available");
         }
     }
 
-    fn repeat_toggle(
-        self: Pin<&mut QMPDConnector>,
-        current_repeat: bool,
-        current_single: bool,
-    ) {
+    fn repeat_toggle(self: Pin<&mut QMPDConnector>, current_repeat: bool, current_single: bool) {
         if let Some(mut service) = self.mpd_service.clone() {
-            self.runtime.spawn(service.call(service::mpd::RepeatToggle::new(
-                current_repeat,
-                current_single,
-            )));
+            self.runtime.spawn(
+                service.call(service::mpd::RepeatToggle::new(current_repeat, current_single)),
+            );
         } else {
             tracing::error!("Action service not available");
         }
@@ -267,75 +373,54 @@ impl qobject::QMPDConnector {
         let qt_thread = self.qt_thread();
         if let Some(mut service) = self.mpd_service.clone() {
             self.runtime.spawn(async move {
-                let _ = service
-                    .call(service::mpd::SetBinaryLimit(2usize.pow(20)))
-                    .await;
-                let _ = service
-                    .call(service::mpd::IdleQueue::new(qt_thread.clone()))
-                    .await;
-                let _ = service
-                    .call(service::mpd::IdlePlayer::new(qt_thread.clone()))
-                    .await;
-                let _ = service
-                    .call(service::mpd::IdleOptions::new(qt_thread.clone()))
-                    .await;
-                let _ = service
-                    .call(service::mpd::IdleTimeline::new(qt_thread))
-                    .await;
+                let _ = service.call(service::mpd::SetBinaryLimit(2usize.pow(20))).await;
+                let _ = service.call(service::mpd::IdleQueue::new(qt_thread.clone())).await;
+                let _ = service.call(service::mpd::IdlePlayer::new(qt_thread.clone())).await;
+                let _ = service.call(service::mpd::IdleOptions::new(qt_thread.clone())).await;
+                let _ = service.call(service::mpd::IdleTimeline::new(qt_thread)).await;
             });
         } else {
             tracing::error!("Action service not available");
         }
     }
 
-    fn spawn_server_instance(
-        self: Pin<&mut Self>,
-        mpd_binary: &PathBuf,
-        native_config: &String,
-    ) {
+    fn spawn_server_instance(self: Pin<&mut Self>, mpd_binary: &PathBuf, native_config: &String) {
         let mpd_binary = mpd_binary.clone();
         let native_config = native_config.clone();
         let cancel_token = self.cancel.clone().expect("Cancel token is None");
         self.runtime.spawn(async move {
             let mut command = Command::new(mpd_binary);
             command.args(["--no-daemon", &native_config]);
-            let mut handle =
-                command.spawn().expect("Failed to start mpd server");
+            let mut handle = command.spawn().expect("Failed to start mpd server");
             cancel_token.cancelled().await;
             match handle.kill().await {
                 Ok(_) => tracing::warn!("Gracefully closed native mpd server"),
-                Err(e) => tracing::error!(
-                    "Failed to gracefully close native mpd sever {}",
-                    e
-                ),
+                Err(e) => tracing::error!("Failed to gracefully close native mpd sever {}", e),
             };
         });
     }
 
-    fn start_native_server(
-        self: Pin<&mut Self>,
-        mpd_binary: &PathBuf,
-        native_config: &String,
-    ) {
+    fn start_native_server(self: Pin<&mut Self>, mpd_binary: &PathBuf, native_config: &String) {
         tracing::debug!("Starting native mpd server");
-        let settings = (*Globals::get().settings.load_full()).clone();
-        let isettings = InternalSettings::get().clone();
-        init_native_mpd_config(settings, isettings);
+        //TODO
+        //let settings = (*Globals::get().settings.load_full()).clone();
+        //let isettings = InternalSettings::get().clone();
+        //init_native_mpd_config(settings, isettings);
         self.spawn_server_instance(mpd_binary, native_config);
     }
 
     fn connect_client(self: Pin<&mut Self>) {
         let qt_thread = self.qt_thread();
         let mut retcount = 10;
+        let socket: String = self.mpd_socket.clone().into();
         self.runtime.spawn(async move {
             let (state, mpd_client, mpd_idle) = loop {
-                let settings = Globals::get().settings.load();
-                tracing::debug!("Trying to connect to server {}", settings.mpd_socket);
+                tracing::debug!("Trying to connect to server {}", socket);
                 tokio::select! {
-                    Ok(connection) = TcpStream::connect(&settings.mpd_socket) => {
+                    Ok(connection) = TcpStream::connect(&socket) => {
                         if let Ok(client) = ClientController::connect(connection).await {
                             let connection_2 =
-                                TcpStream::connect(&settings.mpd_socket).await.expect("failed to establish 2nd connection");
+                                TcpStream::connect(&socket).await.expect("failed to establish 2nd connection");
                             let idle = ClientIdler::connect(connection_2).await.expect("failed to init idler");
                             tracing::debug!("Succesfully connected to MPD server (tcp)");
                             break ("connected", Some(client), Some(idle));
@@ -344,10 +429,10 @@ impl qobject::QMPDConnector {
                             tracing::warn!("Failed to connect to MPD server, retrying");
                         };
                     },
-                    Ok(connection) = UnixStream::connect(&settings.mpd_socket) => {
+                    Ok(connection) = UnixStream::connect(&socket) => {
                         if let Ok(client) = ClientController::connect(connection).await {
                             let connection_2 =
-                                UnixStream::connect(&settings.mpd_socket).await.expect("failed to establish 2nd connection");
+                                UnixStream::connect(&socket).await.expect("failed to establish 2nd connection");
                             let idle = ClientIdler::connect(connection_2).await.expect("failed to init idler");
                             tracing::debug!("Succesfully connected to MPD server (unix_socket)");
                             break ("connected", Some(client), Some(idle));
@@ -412,32 +497,41 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                     tracing::debug!("Exhausted all reconnection attempts");
                 }
                 "disconnected" => {
-                    let settings = Globals::get().settings.load();
-                    let isettings = InternalSettings::get();
+                    let globals = Globals::get();
+                    let socket: String = qobject.mpd_socket.clone().into();
                     let cancel_token = CancellationToken::new();
                     if let Some(token) = qobject.cancel.clone() {
                         tracing::debug!("Issuing cancel on disconnect");
                         token.cancel();
                     };
                     qobject.as_mut().rust_mut().cancel.replace(cancel_token);
-                    if settings.mpd_socket == isettings.native_socket {
+                    if socket == globals.native_socket {
                         tracing::debug!("Using native mpd server");
                         match which("mpd") {
                             Ok(mpd_binary) => {
                                 tracing::debug!("Found mpd binary {:?}", mpd_binary);
-                                qobject.as_mut().start_native_server(&mpd_binary, &isettings.native_config);
+                                qobject
+                                    .as_mut()
+                                    .start_native_server(&mpd_binary, &globals.native_config);
                             }
-                            Err(err) => panic!("Using native socket, but no mpd binary was found, {:?}", err),
+                            Err(err) => panic!(
+                                "Using native socket, but no mpd binary was found, {:?}",
+                                err
+                            ),
                         };
                     };
                     qobject.as_mut().connection_update(QString::from("connecting"));
                 }
                 "connected" => {
-                    let mpd_service = ServiceBuilder::new().service(MPDActionService::new(qobject.client.clone().unwrap()));
-                    let mpris = qobject
-                        .runtime
-                        .block_on(async { Server::new("ksol", Player { mpd_service: mpd_service.clone() }).await.unwrap() });
-                    let mpris_service = ServiceBuilder::new().service(MPRISActionService::new(mpris));
+                    let mpd_service = ServiceBuilder::new()
+                        .service(MPDActionService::new(qobject.client.clone().unwrap()));
+                    let mpris = qobject.runtime.block_on(async {
+                        Server::new("ksol", Player { mpd_service: mpd_service.clone() })
+                            .await
+                            .unwrap()
+                    });
+                    let mpris_service =
+                        ServiceBuilder::new().service(MPRISActionService::new(mpris));
                     qobject.as_mut().rust_mut().mpd_service.replace(mpd_service);
                     qobject.as_mut().rust_mut().mpris_service.replace(mpris_service);
                     qobject.as_mut().idle();
@@ -456,9 +550,9 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                 let qt_thread = qobject.qt_thread();
                 let song_watch = qobject.active_song.1.clone();
                 if let Some(mut service) = qobject.mpd_service.clone() {
-                    qobject.runtime.spawn(service.call(
-                        service::mpd::UpdateArt::new(qt_thread, song_watch),
-                    ));
+                    qobject
+                        .runtime
+                        .spawn(service.call(service::mpd::UpdateArt::new(qt_thread, song_watch)));
                 } else {
                     tracing::error!("Action service not available");
                 }
@@ -469,12 +563,12 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                 let qt_thread = qobject.qt_thread();
                 let song_watch = qobject.active_song.1.clone();
                 if let Some(mut service) = qobject.mpd_service.clone() {
-                    qobject.runtime.spawn(service.call(
-                        service::mpd::IdlePlayer::new(qt_thread.clone()),
-                    ));
-                    qobject.runtime.spawn(service.call(
-                        service::mpd::UpdateArt::new(qt_thread, song_watch),
-                    ));
+                    qobject
+                        .runtime
+                        .spawn(service.call(service::mpd::IdlePlayer::new(qt_thread.clone())));
+                    qobject
+                        .runtime
+                        .spawn(service.call(service::mpd::UpdateArt::new(qt_thread, song_watch)));
                 } else {
                     tracing::error!("Action service not available");
                 }
@@ -506,9 +600,9 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                         ],
                         _ => unreachable!(),
                     };
-                    qobject.runtime.spawn(service.call(
-                        service::mpris::PropertyUpdate::new(mpris_changes),
-                    ));
+                    qobject
+                        .runtime
+                        .spawn(service.call(service::mpris::PropertyUpdate::new(mpris_changes)));
                 };
             })
             .release();
@@ -520,46 +614,39 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                     let shuffle = qobject.shuffle;
                     let mut mpris_changes = Vec::new();
                     match (repeat, single) {
-                        (false, false) | (false, true) => mpris_changes
-                            .push(Property::LoopStatus(LoopStatus::None)),
-                        (true, false) => mpris_changes
-                            .push(Property::LoopStatus(LoopStatus::Playlist)),
-                        (true, true) => mpris_changes
-                            .push(Property::LoopStatus(LoopStatus::Track)),
+                        (false, false) | (false, true) => {
+                            mpris_changes.push(Property::LoopStatus(LoopStatus::None))
+                        }
+                        (true, false) => {
+                            mpris_changes.push(Property::LoopStatus(LoopStatus::Playlist))
+                        }
+                        (true, true) => mpris_changes.push(Property::LoopStatus(LoopStatus::Track)),
                     };
                     match shuffle {
                         true => mpris_changes.push(Property::Shuffle(true)),
                         false => mpris_changes.push(Property::Shuffle(false)),
                     };
-                    qobject.runtime.spawn(service.call(
-                        service::mpris::PropertyUpdate::new(mpris_changes),
-                    ));
+                    qobject
+                        .runtime
+                        .spawn(service.call(service::mpris::PropertyUpdate::new(mpris_changes)));
                 }
             })
             .release();
         self.as_mut()
             .on_timeline_update(|qobject, _, elapsed| {
                 if let Some(mut service) = qobject.mpris_service.clone() {
-                    qobject.runtime.spawn(service.call(
-                        service::mpris::Seeked::new(Duration::from_secs(
-                            elapsed,
-                        )),
-                    ));
+                    qobject.runtime.spawn(
+                        service.call(service::mpris::Seeked::new(Duration::from_secs(elapsed))),
+                    );
                 }
             })
             .release();
         self.as_mut()
             .on_album_art_update(|qobject, cover| {
                 if let Some(mut service) = qobject.mpris_service.clone() {
-                    if qobject
-                        .active_song
-                        .1
-                        .has_changed()
-                        .expect("Channel closed")
-                    {
+                    if qobject.active_song.1.has_changed().expect("Channel closed") {
                         let song = qobject.active_song.1.borrow();
-                        let trackid = TrackId::try_from(format!("{}", song.id))
-                            .unwrap_or_default();
+                        let trackid = TrackId::try_from(format!("{}", song.id)).unwrap_or_default();
                         let metadata = Metadata::builder()
                             .title(&song.title)
                             .artist([&song.artist])
@@ -568,11 +655,9 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
                             .length(Time::from_secs(song.duration as i64))
                             .art_url(format!("file:{}", cover))
                             .build();
-                        qobject.runtime.spawn(service.call(
-                            service::mpris::PropertyUpdate::new(vec![
-                                Property::Metadata(metadata),
-                            ]),
-                        ));
+                        qobject.runtime.spawn(service.call(service::mpris::PropertyUpdate::new(
+                            vec![Property::Metadata(metadata)],
+                        )));
                     };
                 };
             })
@@ -601,159 +686,7 @@ impl Default for MPDConnector {
             repeat: false,
             single: false,
             shuffle: false,
+            mpd_socket: QString::default(),
         }
     }
-}
-
-#[cxx_qt::bridge]
-pub mod qobject {
-    extern "C++" {
-        include!("cxx-qt-lib/qstring.h");
-        type QString = cxx_qt_lib::QString;
-
-        include!("cxx-qt-lib/qbytearray.h");
-        type QByteArray = cxx_qt_lib::QByteArray;
-    }
-
-    extern "RustQt" {
-        #[qobject]
-        #[qml_element]
-        #[qproperty(bool, repeat, READ, WRITE, NOTIFY = update_options)]
-        #[qproperty(bool, single, READ, WRITE, NOTIFY = update_options)]
-        #[qproperty(bool, shuffle, READ, WRITE, NOTIFY = update_options)]
-        #[qproperty(u64, activeSongId, READ = get_active_song_id, NOTIFY = active_song_changed)]
-        #[qproperty(usize, activeSongPosition, READ = get_active_song_position, NOTIFY = active_song_changed)]
-        #[qproperty(QString, activeSongTitle, READ = get_active_song_title, NOTIFY = active_song_changed)]
-        #[qproperty(QString, activeSongArtist, READ = get_active_song_artist, NOTIFY = active_song_changed)]
-        type QMPDConnector = super::MPDConnector;
-
-        #[qsignal]
-        #[cxx_name = "connectionUpdate"]
-        fn connection_update(self: Pin<&mut QMPDConnector>, status: QString);
-
-        #[qsignal]
-        #[cxx_name = "updateOptions"]
-        fn update_options(self: Pin<&mut QMPDConnector>);
-
-        #[qsignal]
-        #[cxx_name = "playStateChanged"]
-        fn play_state_changed(self: Pin<&mut QMPDConnector>, status: QString);
-
-        #[qsignal]
-        #[cxx_name = "activeSongChanged"]
-        fn active_song_changed(self: Pin<&mut QMPDConnector>);
-
-        #[qsignal]
-        #[cxx_name = "albumArtUpdate"]
-        fn album_art_update(self: Pin<&mut QMPDConnector>, art: QString);
-
-        #[qsignal]
-        #[cxx_name = "timelineUpdate"]
-        fn timeline_update(
-            self: Pin<&mut QMPDConnector>,
-            duration: u64,
-            elapsed: u64,
-        );
-
-        #[qsignal]
-        #[cxx_name = "bitrateUpdate"]
-        fn bitrate_update(self: Pin<&mut QMPDConnector>, bitrate: u64);
-
-        #[qsignal]
-        #[cxx_name = "getPlaylistsResult"]
-        fn get_playlists_result(
-            self: Pin<&mut QMPDConnector>,
-            result: QByteArray,
-        );
-
-        #[qsignal]
-        #[cxx_name = "stagePlaylistResult"]
-        fn stage_playlist_result(
-            self: Pin<&mut QMPDConnector>,
-            result: QByteArray,
-        );
-
-        #[qsignal]
-        #[cxx_name = "dbUpdated"]
-        fn db_updated(self: Pin<&mut QMPDConnector>, status: bool);
-
-        #[qinvokable]
-        #[cxx_name = "connect"]
-        fn connect(self: Pin<&mut QMPDConnector>);
-
-        #[qinvokable]
-        fn get_active_song_id(self: Pin<&mut QMPDConnector>) -> u64;
-
-        #[qinvokable]
-        fn get_active_song_position(self: Pin<&mut QMPDConnector>) -> usize;
-
-        #[qinvokable]
-        fn get_active_song_title(self: Pin<&mut QMPDConnector>) -> QString;
-
-        #[qinvokable]
-        fn get_active_song_artist(self: Pin<&mut QMPDConnector>) -> QString;
-
-        #[qinvokable]
-        #[cxx_name = "syncState"]
-        fn sync_state(self: Pin<&mut QMPDConnector>);
-
-        #[qinvokable]
-        #[cxx_name = "playSong"]
-        fn play_song(self: Pin<&mut QMPDConnector>, id: u64);
-
-        #[qinvokable]
-        #[cxx_name = "playToggle"]
-        fn play_toggle(self: Pin<&mut QMPDConnector>);
-
-        #[qinvokable]
-        #[cxx_name = "playNext"]
-        fn play_next(self: Pin<&mut QMPDConnector>);
-
-        #[qinvokable]
-        #[cxx_name = "playPrevious"]
-        fn play_previous(self: Pin<&mut QMPDConnector>);
-
-        #[qinvokable]
-        #[cxx_name = "playSeek"]
-        fn play_seek(self: Pin<&mut QMPDConnector>, value: u64);
-
-        #[qinvokable]
-        #[cxx_name = "updateDb"]
-        fn update_db(self: Pin<&mut QMPDConnector>);
-
-        #[qinvokable]
-        #[cxx_name = "getPlaylists"]
-        fn get_playlists(self: Pin<&mut QMPDConnector>, value: i32);
-
-        #[qinvokable]
-        #[cxx_name = "stagePlaylist"]
-        fn stage_playlist(
-            self: Pin<&mut QMPDConnector>,
-            name: QString,
-            group: i32,
-        );
-
-        #[qinvokable]
-        #[cxx_name = "sortPlaylist"]
-        fn sort_playlist(
-            self: Pin<&mut QMPDConnector>,
-            sort_column: i32,
-            sort_order: i32,
-        );
-
-        #[qinvokable]
-        #[cxx_name = "shuffleToggle"]
-        fn shuffle_toggle(self: Pin<&mut QMPDConnector>, current_state: bool);
-
-        #[qinvokable]
-        #[cxx_name = "repeatToggle"]
-        fn repeat_toggle(
-            self: Pin<&mut QMPDConnector>,
-            current_repeat: bool,
-            current_single: bool,
-        );
-    }
-
-    impl cxx_qt::Threading for QMPDConnector {}
-    impl cxx_qt::Initialize for QMPDConnector {}
 }

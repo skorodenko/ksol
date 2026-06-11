@@ -33,7 +33,7 @@ Item {
             delegate: CheckBox {
                 required property int index
                 text: root.model.headerData(index, Qt.Horizontal, QPlaylistModel.ColumnName)
-                checked: QSettingsModel.getColumnWidth(index) != 0.0
+                checked: QState.getHeaderColumn(index, ColumnType.Width) != 0.0
                 nextCheckState: function () {
                     root.toggleColumn(index, !checked);
                     return checked ? Qt.Unchecked : Qt.Checked;
@@ -58,12 +58,12 @@ Item {
         var item = repeater.itemAt(column);
         if (state == true) {
             item.visible = true;
-            QSettingsModel.setColumnWidth(column, root.minimumColumnWidth / root.width);
+            QState.setHeaderColumn(column, ColumnType.Width, root.minimumColumnWidth / root.width);
             root.firstVisibleColumn = root.updateFirstVisibleColumn();
             root.lastVisibleColumn = root.updateLastVisibleColumn();
         } else {
             item.visible = false;
-            QSettingsModel.setColumnWidth(column, 0.0);
+            QState.setHeaderColumn(column, ColumnType.Width, 0.0);
             root.firstVisibleColumn = root.updateFirstVisibleColumn();
             root.lastVisibleColumn = root.updateLastVisibleColumn();
         }
@@ -71,7 +71,7 @@ Item {
 
     function updateFirstVisibleColumn() {
         for (var i = 0; i < root.columnCount; i++) {
-            if (QSettingsModel.getColumnWidth(i) != 0.0) {
+            if (QState.getHeaderColumn(i, ColumnType.Width) != 0.0) {
                 return i;
             }
         }
@@ -80,7 +80,7 @@ Item {
 
     function updateLastVisibleColumn() {
         for (var i = root.columnCount - 1; i > 0; i--) {
-            if (QSettingsModel.getColumnWidth(i) != 0.0) {
+            if (QState.getHeaderColumn(i, ColumnType.Width) != 0.0) {
                 return i;
             }
         }
@@ -90,7 +90,7 @@ Item {
     function visibleColumnCount() {
         var k = 0;
         for (var i = 0; i < root.columnCount; i++) {
-            if (QSettingsModel.getColumnWidth(i) != 0.0) {
+            if (QState.getHeaderColumn(i, ColumnType.Width) != 0.0) {
                 k++;
             }
         }
@@ -139,22 +139,22 @@ Item {
                 SplitView.fillWidth: index == root.lastVisibleColumn
                 SplitView.minimumWidth: root.minimumColumnWidth
                 SplitView.maximumWidth: root.maximumColumnWidth
-                SplitView.preferredWidth: QSettingsModel.getColumnWidth(index) * root.width
+                SplitView.preferredWidth: QState.getHeaderColumn(index, ColumnType.Width) * root.width
 
                 required property int index
 
                 onWidthChanged: {
                     root.columnWidthChanged();
-                    QSettingsModel.setColumnWidth(delegate.index, delegate.SplitView.preferredWidth / root.width);
+                    QState.setHeaderColumn(delegate.index, ColumnType.Width, delegate.SplitView.preferredWidth / root.width);
                 }
 
                 MouseArea {
                     anchors.fill: parent
                     hoverEnabled: true
 
-                    onClicked: {
-                        QSettingsModel.toggleSortColumn(delegate.index);
-                    }
+                    //onClicked: {
+                    //    QSettingsModel.toggleSortColumn(delegate.index);
+                    //}
 
                     onContainsMouseChanged: {
                         if (containsMouse) {
@@ -192,7 +192,7 @@ Item {
                     anchors.right: delegate.right
                     anchors.rightMargin: Kirigami.Units.smallSpacing
 
-                    state: QSettingsModel.sortColumn == delegate.index ? QSettingsModel.sortOrder : "0"
+                    state: QState.sortColumn == delegate.index ? QState.sortOrder : "0"
 
                     Kirigami.Icon {
                         id: sortIndicatorText

@@ -21,7 +21,6 @@ QQC2.Popup {
 
     property alias playlists_list: playlists_list
     property alias playlists_group: playlists_group
-    property alias activeGroup: playlists_group.activeGroup
 
     function changeGroup(number) {
         group_repeater.itemAt(number).click();
@@ -91,11 +90,11 @@ QQC2.Popup {
                     Layout.fillHeight: true
 
                     onClicked: {
-                        playlists_group.activeGroup = value;
+                        QState.activeGroup = value;
                     }
 
                     background: Rectangle {
-                        color: parent.value === playlists_group.activeGroup ? Kirigami.Theme.activeBackgroundColor : Kirigami.Theme.alternateBackgroundColor
+                        color: parent.value === QState.activeGroup ? Kirigami.Theme.activeBackgroundColor : Kirigami.Theme.alternateBackgroundColor
                         radius: Kirigami.Units.cornerRadius
                     }
                 }
@@ -135,7 +134,7 @@ QQC2.Popup {
             required property int index
 
             Keys.onReturnPressed: function () {
-                root.stagePlaylist(listView.currentItem.name, playlists_group.activeGroup);
+                root.stagePlaylist(listView.currentItem.name, QState.activeGroup);
                 root.visible = false;
             }
 
@@ -151,7 +150,7 @@ QQC2.Popup {
 
                 onDoubleClicked: function (mouse) {
                     if (mouse.button == Qt.LeftButton) {
-                        root.stagePlaylist(delegateItem.name, playlists_group.activeGroup);
+                        root.stagePlaylist(delegateItem.name, QState.activeGroup);
                         root.visible = false;
                     }
                 }

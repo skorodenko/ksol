@@ -1,22 +1,22 @@
-use super::settings::{InternalSettings, Settings};
-
+use crate::utils::globals::Globals;
+use crate::utils::persist::PersistentConfig;
 use std::fs;
 use std::io::Write;
 use tinytemplate::TinyTemplate;
 use tracing;
 use xdg::BaseDirectories;
 
-static MPD_CONFIG_TEMPLATE: &str = r#"music_directory "{s.native_music_dir}"
-sticker_file "{is.app_data_dir}mpd/sticker.sql"
-bind_to_address "{is.app_data_dir}mpd/socket"
-db_file "{is.app_cache_dir}mpd/db"
-pid_file "{is.app_cache_dir}mpd/pid"
-state_file "{is.app_cache_dir}mpd/state"
+static MPD_CONFIG_TEMPLATE: &str = r#"music_directory "{pc.native_music_dir}"
+sticker_file "{gs.app_data_dir}mpd/sticker.sql"
+bind_to_address "{gs.app_data_dir}mpd/socket"
+db_file "{gs.app_cache_dir}mpd/db"
+pid_file "{gs.app_cache_dir}mpd/pid"
+state_file "{gs.app_cache_dir}mpd/state"
 audio_buffer_size "8192"
 log_file "/dev/null"
 restore_paused "yes"
 audio_output \{
-    type "{s.output_plugin_type}"
+    type "{pc.output_plugin_type}"
     name "Ksol"
     dop "yes"
 }
@@ -24,17 +24,17 @@ audio_output \{
 
 #[derive(serde::Serialize, serde::Deserialize)]
 struct TemplateData {
-    pub s: Settings,
-    pub is: InternalSettings,
+    pub pc: PersistentConfig,
+    pub gs: Globals,
 }
 
-pub fn init_native_mpd_config(s: Settings, is: InternalSettings) {
+pub fn init_native_mpd_config(pc: PersistentConfig, gs: Globals) {
     tracing::debug!("Init native mpd config");
     let mut tt = TinyTemplate::new();
     tt.add_template("mpd_config", MPD_CONFIG_TEMPLATE).unwrap();
-    let data = TemplateData { s, is };
+    let data = TemplateData { pc, gs };
     let render = tt.render("mpd_config", &data).unwrap();
-    match fs::File::create_new(data.is.native_config.clone()) {
+    match fs::File::create_new(data.gs.native_config.clone()) {
         Ok(mut file) => {
             let _ = file.write_all(render.as_bytes());
         }

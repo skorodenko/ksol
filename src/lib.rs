@@ -9,9 +9,7 @@ use std::fmt::{Display, Formatter, Result};
 use std::path::Path;
 use wincode::{SchemaRead, SchemaWrite};
 
-#[derive(
-    Serialize, Deserialize, SchemaWrite, SchemaRead, Debug, Clone, Default,
-)]
+#[derive(Serialize, Deserialize, SchemaWrite, SchemaRead, Debug, Clone, Default)]
 pub struct QSong {
     pub id: u64,
     pub position: usize,
@@ -31,14 +29,7 @@ pub struct QSong {
 }
 
 #[derive(
-    serde::Deserialize,
-    serde::Serialize,
-    PartialEq,
-    FromPrimitive,
-    ToPrimitive,
-    Copy,
-    Clone,
-    Debug,
+    serde::Deserialize, serde::Serialize, PartialEq, FromPrimitive, ToPrimitive, Copy, Clone, Debug,
 )]
 #[repr(i32)]
 pub enum SongField {
@@ -58,14 +49,18 @@ pub enum SongField {
     Directory = 13,
 }
 
-#[derive(
-    serde::Deserialize, serde::Serialize, PartialEq, Copy, Clone, Debug,
-)]
+#[derive(serde::Deserialize, serde::Serialize, PartialEq, Copy, Clone, Debug)]
 #[repr(i32)]
 pub enum ColumnSort {
     Inactive,
     Ascending(SongField),
     Descending(SongField),
+}
+
+pub struct HeaderColumn {
+    name: String,
+    width: f64,
+    hidden: bool,
 }
 
 impl From<SongInQueue> for QSong {
@@ -81,45 +76,13 @@ impl From<SongInQueue> for QSong {
                 .join(",")
                 .parse()
                 .unwrap_or(0),
-            disc: value
-                .song
-                .tags
-                .get(&Tag::Disc)
-                .unwrap_or(&vec![])
-                .join(",")
-                .parse()
-                .unwrap_or(0),
-            title: value
-                .song
-                .tags
-                .get(&Tag::Title)
-                .unwrap_or(&vec![])
-                .join(","),
-            artist: value
-                .song
-                .tags
-                .get(&Tag::Artist)
-                .unwrap_or(&vec![])
-                .join(","),
-            album: value
-                .song
-                .tags
-                .get(&Tag::Album)
-                .unwrap_or(&vec![])
-                .join(","),
+            disc: value.song.tags.get(&Tag::Disc).unwrap_or(&vec![]).join(",").parse().unwrap_or(0),
+            title: value.song.tags.get(&Tag::Title).unwrap_or(&vec![]).join(","),
+            artist: value.song.tags.get(&Tag::Artist).unwrap_or(&vec![]).join(","),
+            album: value.song.tags.get(&Tag::Album).unwrap_or(&vec![]).join(","),
             date: value.song.tags.get(&Tag::Date).unwrap_or(&vec![]).join(","),
-            genre: value
-                .song
-                .tags
-                .get(&Tag::Genre)
-                .unwrap_or(&vec![])
-                .join(","),
-            composer: value
-                .song
-                .tags
-                .get(&Tag::Composer)
-                .unwrap_or(&vec![])
-                .join(","),
+            genre: value.song.tags.get(&Tag::Genre).unwrap_or(&vec![]).join(","),
+            composer: value.song.tags.get(&Tag::Composer).unwrap_or(&vec![]).join(","),
             file: value.song.url.clone(),
             format: value.song.format.unwrap_or("".into()),
             lastmodified: "".into(),

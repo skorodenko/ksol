@@ -6,7 +6,7 @@ use std::sync::OnceLock;
 use which::which;
 use xdg::BaseDirectories;
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct Globals {
     pub app_data_dir: PathBuf,
     pub app_cache_dir: PathBuf,

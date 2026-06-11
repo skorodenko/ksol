@@ -13,7 +13,7 @@ Kirigami.ApplicationWindow {
     pageStack.initialPage: mainPage
 
     Component.onCompleted: {
-        if (QSettingsModel.initWizard) {
+        if (QSettings.initWizard) {
             initWizardDelay.start();
         } else {
             mpd_connector.connect();
@@ -46,7 +46,7 @@ Kirigami.ApplicationWindow {
         filterSearchVisible: filterSearchBox.visible
 
         onOpenDrun: {
-            mpd_connector.getPlaylists(drun.activeGroup);
+            mpd_connector.getPlaylists(QState.activeGroup);
             drun.visible = true;
         }
 
@@ -114,7 +114,7 @@ Kirigami.ApplicationWindow {
         }
         onStagePlaylistResult: function (value) {
             qplaylist.setQueue(value);
-            mpd_connector.sortPlaylist(QSettingsModel.sortColumn, QSettingsModel.sortOrder);
+            mpd_connector.sortPlaylist(QState.sortColumn, QState.sortOrder);
         }
         onPlayStateChanged: function (state) {
             switch (state) {
@@ -181,10 +181,10 @@ Kirigami.ApplicationWindow {
     }
 
     Connections {
-        target: QSettingsModel
+        target: QState
 
         function onUpdateSortColumn() {
-            mpd_connector.sortPlaylist(QSettingsModel.sortColumn, QSettingsModel.sortOrder);
+            mpd_connector.sortPlaylist(QState.sortColumn, QState.sortOrder);
         }
     }
 
@@ -221,20 +221,20 @@ Kirigami.ApplicationWindow {
         }
     }
 
-    Settings {
-        id: settings
-        visible: false
-        onBackRequest: function (restartMpd) {
-            root.pageStack.replace(mainPage);
-            if (restartMpd) {
-                mpd_connector.connect();
-            }
-        }
-    }
-
-    About {
-        id: aboutPage
-    }
+    //    Settings {
+    //        id: settings
+    //        visible: false
+    //        onBackRequest: function (restartMpd) {
+    //            root.pageStack.replace(mainPage);
+    //            if (restartMpd) {
+    //                mpd_connector.connect();
+    //            }
+    //        }
+    //    }
+    //
+    //    About {
+    //        id: aboutPage
+    //    }
 
     header: QQC2.ToolBar {
         implicitHeight: 48
