@@ -11,6 +11,9 @@ mod qobject {
         type QString = cxx_qt_lib::QString;
     }
 
+    #[qml_element]
+    qnamespace!("OutputPlugin");
+
     #[repr(i32)]
     #[namespace = "OutputPlugin"]
     enum OutputPlugin {
@@ -45,22 +48,14 @@ pub struct AppSettings {
 impl AppSettings {
     fn save(self) {
         let config = PersistentConfig::from(self);
-        config.dump().inspect_err(|e| eprintln!("Failed to save config {}", e));
+        config.dump();
     }
 }
 
 impl Default for AppSettings {
     fn default() -> Self {
-        //let config = PersistentConfig::load();
-        //Self::from(config)
-        Self {
-            init_wizard: Default::default(),
-            mpd_socket: Default::default(),
-            native_music_dir: Default::default(),
-            native_output_plugin: OutputPlugin::Pipewire,
-            background_blur: Default::default(),
-            background_colorization: Default::default(),
-        }
+        let config = PersistentConfig::load();
+        Self::from(config)
     }
 }
 

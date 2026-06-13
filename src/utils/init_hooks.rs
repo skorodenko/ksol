@@ -16,19 +16,19 @@ audio_buffer_size "8192"
 log_file "/dev/null"
 restore_paused "yes"
 audio_output \{
-    type "{pc.output_plugin_type}"
+    type "pipewire"
     name "Ksol"
     dop "yes"
 }
 "#;
 
-#[derive(serde::Serialize, serde::Deserialize)]
-struct TemplateData {
-    pub pc: PersistentConfig,
-    pub gs: Globals,
+#[derive(serde::Serialize)]
+struct TemplateData<'a> {
+    pub pc: &'a PersistentConfig,
+    pub gs: &'a Globals,
 }
 
-pub fn init_native_mpd_config(pc: PersistentConfig, gs: Globals) {
+pub fn init_native_mpd_config(pc: &PersistentConfig, gs: &Globals) {
     tracing::debug!("Init native mpd config");
     let mut tt = TinyTemplate::new();
     tt.add_template("mpd_config", MPD_CONFIG_TEMPLATE).unwrap();

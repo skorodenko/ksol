@@ -12,6 +12,9 @@ mod qobject {
         type QString = cxx_qt_lib::QString;
     }
 
+    #[qml_element]
+    qnamespace!("ColumnType");
+
     #[qenum]
     #[namespace = "ColumnType"]
     enum ColumnType {
@@ -61,9 +64,14 @@ mod qobject {
             col_type: ColumnType,
             value: QVariant,
         );
+
+        #[qinvokable]
+        #[cxx_name = "mpdBinaryAvailable"]
+        fn mpd_binary_available(self: &QState) -> bool;
     }
 }
 
+use crate::utils::globals::Globals;
 use crate::utils::persist::StateFile;
 use crate::{ColumnSort, HeaderColumn, SongField};
 use num_traits::{FromPrimitive, ToPrimitive};
@@ -124,6 +132,11 @@ impl QState {
                 _ => unreachable!(),
             }
         }
+    }
+
+    fn mpd_binary_available(&self) -> bool {
+        let globals = Globals::get();
+        globals.mpd_binary.exists()
     }
 }
 

@@ -1,6 +1,7 @@
 use super::globals::Globals;
 use super::misc::AtomicF64Vec;
 use crate::qt::settings::AppSettings;
+use crate::utils::init_hooks::{init_dirs, init_native_mpd_config};
 use crate::{ColumnSort, HeaderColumn, SongField};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -32,17 +33,18 @@ impl PersistentConfig {
     ///
     /// Creates parent directories if they don't exist.
     /// Returns an error if serialization or file writing fails.
-    pub fn dump(&self) -> std::io::Result<()> {
-        let internal_settings = Globals::get();
+    pub fn dump(&self) {
+        let globals = Globals::get();
 
         // Ensure parent directory exists before writing
-        if let Some(parent) = internal_settings.app_config_file.parent() {
-            fs::create_dir_all(parent)?;
+        if let Some(parent) = globals.app_config_file.parent() {
+            fs::create_dir_all(parent)
+                .unwrap_or_else(|e| eprintln!("Error: failed to create dir all {}", e));
         }
 
         let settings_file = toml::to_string(self).unwrap();
-        fs::write(&internal_settings.app_config_file, settings_file)?;
-        Ok(())
+        fs::write(&globals.app_config_file, settings_file)
+            .unwrap_or_else(|e| eprintln!("Warning: Failed to write settings file {}", e));
     }
 
     /// Load settings from disk, returning a default configuration if the file
@@ -61,13 +63,21 @@ impl PersistentConfig {
             Err(e) => {
                 if e.kind() == std::io::ErrorKind::NotFound {
                     // Config file doesn't exist yet - this is expected on first run
-                    Self::default_values(&globals, &xdg_home)
+                    let config = Self::default_values(&globals, &xdg_home);
+                    config.init_files();
+                    config.dump();
+                    config
                 } else {
                     eprintln!("Warning: Failed to read settings file: {}. Using defaults", e);
                     Self::default_values(&globals, &xdg_home)
                 }
             }
         }
+    }
+
+    fn init_files(&self) {
+        let globals = Globals::get();
+        init_native_mpd_config(self, globals);
     }
 
     /// Build default [`Settings`] from internal configuration and home directory.
@@ -96,6 +106,7 @@ impl From<AppSettings> for PersistentConfig {
     }
 }
 
+#[derive(wincode::SchemaRead, wincode::SchemaWrite)]
 pub struct StateFile {
     pub header_columns: Vec<HeaderColumn>,
     pub column_sort: ColumnSort,
@@ -104,11 +115,39 @@ pub struct StateFile {
 
 impl StateFile {
     pub fn load() -> Self {
-        Self::default_values()
+        let globals = Globals::get();
+        let state_file_path = &globals.app_state_file;
+        match fs::read(state_file_path) {
+            Ok(data) => wincode::deserialize(&data).unwrap_or_else(|_| {
+                eprintln!("Warning: Failed to parse state file, using defaults");
+                Self::default_values()
+            }),
+            Err(err) => {
+                if err.kind() == std::io::ErrorKind::NotFound {
+                    // Config file doesn't exist yet - this is expected on first run
+                    let state = Self::default_values();
+                    state.dump();
+                    state
+                } else {
+                    eprintln!("Warning: Failed to read settings file: {}. Using defaults", err);
+                    Self::default_values()
+                }
+            }
+        }
     }
 
-    pub fn dump(self) {
-        todo!()
+    pub fn dump(&self) {
+        let globals = Globals::get();
+
+        // Ensure parent directory exists before writing
+        if let Some(parent) = globals.app_state_file.parent() {
+            fs::create_dir_all(parent)
+                .unwrap_or_else(|e| eprintln!("Error: failed to create dir all {}", e));
+        }
+
+        let state_file = wincode::serialize(self).unwrap();
+        fs::write(&globals.app_state_file, state_file)
+            .unwrap_or_else(|e| eprintln!("Warning: Failed to write settings file {}", e));
     }
 
     pub fn default_values() -> Self {
@@ -116,17 +155,17 @@ impl StateFile {
             HeaderColumn { name: "#".into(), width: 1f64 / 14f64, hidden: false },
             HeaderColumn { name: "Title".into(), width: 1f64 / 14f64, hidden: false },
             HeaderColumn { name: "Artist".into(), width: 1f64 / 14f64, hidden: false },
-            HeaderColumn { name: "Album".into(), width: 1f64 / 14f64, hidden: false },
-            HeaderColumn { name: "Date".into(), width: 1f64 / 14f64, hidden: false },
-            HeaderColumn { name: "Genre".into(), width: 1f64 / 14f64, hidden: false },
-            HeaderColumn { name: "Disc".into(), width: 1f64 / 14f64, hidden: false },
-            HeaderColumn { name: "Composer".into(), width: 1f64 / 14f64, hidden: false },
-            HeaderColumn { name: "Albumartist".into(), width: 1f64 / 14f64, hidden: false },
-            HeaderColumn { name: "File".into(), width: 1f64 / 14f64, hidden: false },
-            HeaderColumn { name: "Format".into(), width: 1f64 / 14f64, hidden: false },
-            HeaderColumn { name: "Lastmodified".into(), width: 1f64 / 14f64, hidden: false },
+            HeaderColumn { name: "Album".into(), width: 1f64 / 14f64, hidden: true },
+            HeaderColumn { name: "Date".into(), width: 1f64 / 14f64, hidden: true },
+            HeaderColumn { name: "Genre".into(), width: 1f64 / 14f64, hidden: true },
+            HeaderColumn { name: "Disc".into(), width: 1f64 / 14f64, hidden: true },
+            HeaderColumn { name: "Composer".into(), width: 1f64 / 14f64, hidden: true },
+            HeaderColumn { name: "Albumartist".into(), width: 1f64 / 14f64, hidden: true },
+            HeaderColumn { name: "File".into(), width: 1f64 / 14f64, hidden: true },
+            HeaderColumn { name: "Format".into(), width: 1f64 / 14f64, hidden: true },
+            HeaderColumn { name: "Lastmodified".into(), width: 1f64 / 14f64, hidden: true },
+            HeaderColumn { name: "Directory".into(), width: 1f64 / 14f64, hidden: true },
             HeaderColumn { name: "Duration".into(), width: 1f64 / 14f64, hidden: false },
-            HeaderColumn { name: "Directory".into(), width: 1f64 / 14f64, hidden: false },
         ];
         let column_sort = ColumnSort::Ascending(SongField::Track);
         let active_group = SongField::Directory;

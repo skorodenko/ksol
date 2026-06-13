@@ -80,6 +80,9 @@ Kirigami.ApplicationWindow {
 
     QMPDConnector {
         id: mpd_connector
+
+        mpdSocket: QAppSettings.mpdSocket
+
         onConnectionUpdate: function (state) {
             switch (state) {
             case "connected":

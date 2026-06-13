@@ -29,7 +29,16 @@ pub struct QSong {
 }
 
 #[derive(
-    serde::Deserialize, serde::Serialize, PartialEq, FromPrimitive, ToPrimitive, Copy, Clone, Debug,
+    Deserialize,
+    Serialize,
+    SchemaRead,
+    SchemaWrite,
+    PartialEq,
+    FromPrimitive,
+    ToPrimitive,
+    Copy,
+    Clone,
+    Debug,
 )]
 #[repr(i32)]
 pub enum SongField {
@@ -49,7 +58,7 @@ pub enum SongField {
     Directory = 13,
 }
 
-#[derive(serde::Deserialize, serde::Serialize, PartialEq, Copy, Clone, Debug)]
+#[derive(Deserialize, Serialize, SchemaRead, SchemaWrite, PartialEq, Copy, Clone, Debug)]
 #[repr(i32)]
 pub enum ColumnSort {
     Inactive,
@@ -57,6 +66,7 @@ pub enum ColumnSort {
     Descending(SongField),
 }
 
+#[derive(SchemaRead, SchemaWrite, Debug)]
 pub struct HeaderColumn {
     name: String,
     width: f64,

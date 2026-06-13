@@ -10,16 +10,16 @@ Kirigami.Page {
     id: root
 
     Synchronizer {
-        sourceObject: QSettingsModel
+        sourceObject: QAppSettings
         sourceProperty: "backgroundBlur"
         targetObject: backgroundBlurControl
         targetProperty: "value"
     }
 
     Synchronizer {
-        sourceObject: QSettingsModel
-        sourceProperty: "backgroundOpacity"
-        targetObject: backgroundOpacityControl
+        sourceObject: QAppSettings
+        sourceProperty: "backgroundColorization"
+        targetObject: backgroundColorizationControl
         targetProperty: "value"
     }
 
@@ -39,7 +39,7 @@ Kirigami.Page {
         }
 
         QQC2.SpinBox {
-            id: backgroundOpacityControl
+            id: backgroundColorizationControl
             Kirigami.FormData.label: "Background colorization:"
             from: 0
             to: 100

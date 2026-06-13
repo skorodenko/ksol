@@ -13,6 +13,7 @@ pub mod qobject {
     extern "RustQt" {
         #[qobject]
         #[qml_element]
+        #[qproperty(QString, mpd_socket, cxx_name = "mpdSocket")]
         #[qproperty(bool, repeat, READ, WRITE, NOTIFY = update_options)]
         #[qproperty(bool, single, READ, WRITE, NOTIFY = update_options)]
         #[qproperty(bool, shuffle, READ, WRITE, NOTIFY = update_options)]
@@ -384,7 +385,8 @@ impl qobject::QMPDConnector {
         }
     }
 
-    fn spawn_server_instance(self: Pin<&mut Self>, mpd_binary: &PathBuf, native_config: &String) {
+    fn start_native_server(self: Pin<&mut Self>, mpd_binary: &PathBuf, native_config: &String) {
+        tracing::debug!("Starting native mpd server");
         let mpd_binary = mpd_binary.clone();
         let native_config = native_config.clone();
         let cancel_token = self.cancel.clone().expect("Cancel token is None");
@@ -398,15 +400,6 @@ impl qobject::QMPDConnector {
                 Err(e) => tracing::error!("Failed to gracefully close native mpd sever {}", e),
             };
         });
-    }
-
-    fn start_native_server(self: Pin<&mut Self>, mpd_binary: &PathBuf, native_config: &String) {
-        tracing::debug!("Starting native mpd server");
-        //TODO
-        //let settings = (*Globals::get().settings.load_full()).clone();
-        //let isettings = InternalSettings::get().clone();
-        //init_native_mpd_config(settings, isettings);
-        self.spawn_server_instance(mpd_binary, native_config);
     }
 
     fn connect_client(self: Pin<&mut Self>) {

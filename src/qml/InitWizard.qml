@@ -17,7 +17,7 @@ Window {
     signal finished
 
     property alias currentPage: view.currentIndex
-    property int selectedOption: QSettingsModel.mpdBinaryAvailable() ? 0 : 1
+    property int selectedOption: QState.mpdBinaryAvailable() ? 0 : 1
     property string customServerUrl: ""
 
     function nextPage() {
@@ -103,7 +103,7 @@ Window {
                 }
                 QQC2.RadioButton {
                     id: spRadioButton1
-                    enabled: QSettingsModel.mpdBinaryAvailable()
+                    //enabled: QSettingsModel.mpdBinaryAvailable()
                     anchors.top: spHeading.bottom
                     anchors.topMargin: Kirigami.Units.largeSpacing
                     anchors.left: parent.left
@@ -178,7 +178,7 @@ Window {
                     anchors.right: parent.right
                     text: "Check connection"
                     onClicked: {
-                        let result = QSettingsModel.checkServerConnection(root.customServerUrl);
+                        //let result = QSettingsModel.checkServerConnection(root.customServerUrl);
                         infoMessage.visible = false;
                         infoMessage.visible = true;
                         infoMessage.text = result ? "Successfully connected to server" : "Failed to connect to server";
@@ -212,7 +212,7 @@ Window {
                     anchors.left: parent.left
                     anchors.right: fpChooseMusicFolder.left
                     anchors.rightMargin: Kirigami.Units.mediumSpacing
-                    text: QSettingsModel.nativeMpdMusicDir
+                    text: QAppSettings.nativeMusicDir
                     placeholderText: "Music folder ..."
                 }
 
@@ -222,7 +222,7 @@ Window {
 
                     onAccepted: {
                         fpMusicFolder.text = folderDialog.selectedFolder;
-                        QSettingsModel.nativeMpdMusicDir = folderDialog.selectedFolder;
+                        QAppSettings.nativeMusicDir = folderDialog.selectedFolder;
                     }
                 }
 
@@ -310,9 +310,9 @@ Window {
 
             onClicked: {
                 root.visible = false;
-                QSettingsModel.initWizard = false;
+                QAppSettings.initWizard = false;
                 if (root.selectedOption == 1) {
-                    QSettingsModel.mpdSocket = root.customServerUrl;
+                    QAppSettings.mpdSocket = root.customServerUrl;
                 }
                 root.finished();
             }

@@ -1,7 +1,5 @@
-use crate::SongField;
-
-use std::fs;
-use std::path::{Path, PathBuf};
+use crate::utils::init_hooks::init_dirs;
+use std::path::PathBuf;
 use std::sync::OnceLock;
 use which::which;
 use xdg::BaseDirectories;
@@ -13,6 +11,7 @@ pub struct Globals {
     pub app_cover_cache: PathBuf,
     pub app_config_dir: PathBuf,
     pub app_config_file: PathBuf,
+    pub app_state_file: PathBuf,
     pub mpd_binary: PathBuf,
     pub native_socket: String,
     pub native_config: String,
@@ -22,7 +21,10 @@ impl Globals {
     /// Get the singleton [`InternalSettings`] instance.
     pub fn get() -> &'static Self {
         static INSTANCE: OnceLock<Globals> = OnceLock::new();
-        INSTANCE.get_or_init(Globals::default)
+        INSTANCE.get_or_init(|| {
+            init_dirs();
+            Globals::default()
+        })
     }
 }
 
@@ -47,11 +49,12 @@ impl Default for Globals {
         let mpd_data = app_data.join("mpd");
 
         Self {
-            app_data_dir: app_data,
+            app_data_dir: app_data.clone(),
             app_cache_dir: app_cache.clone(),
             app_cover_cache: app_cache.join("covers"),
             app_config_dir: app_config.clone(),
             app_config_file: app_config.join("settings.toml"),
+            app_state_file: app_data.join("state.bin"),
             mpd_binary: which("mpd").unwrap_or_default(),
             native_socket: mpd_data.join("socket").display().to_string(),
             native_config: mpd_data.join("mpd.conf").display().to_string(),

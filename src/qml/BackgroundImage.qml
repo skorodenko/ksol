@@ -22,7 +22,7 @@ Item {
         z: -1
         source: mainImage
         anchors.fill: root
-        colorization: QAppSettings.backgroundOpacity / 100
+        colorization: QAppSettings.backgroundColorization / 100
         colorizationColor: Kirigami.Theme.backgroundColor
         blurEnabled: true
         blurMax: 64
@@ -46,7 +46,7 @@ Item {
         z: -1
         source: altImage
         anchors.fill: root
-        colorization: QAppSettings.backgroundOpacity / 100
+        colorization: QAppSettings.backgroundColorization / 100
         colorizationColor: Kirigami.Theme.backgroundColor
         blurEnabled: true
         blurMax: 64
@@ -66,7 +66,7 @@ Item {
         z: -2
         source: mainImageS
         anchors.fill: root
-        colorization: QAppSettings.backgroundOpacity / 100
+        colorization: QAppSettings.backgroundColorization / 100
         colorizationColor: Kirigami.Theme.backgroundColor
         blurEnabled: true
         blurMax: 64
@@ -91,7 +91,7 @@ Item {
         z: -2
         source: altImageS
         anchors.fill: root
-        colorization: QAppSettings.backgroundOpacity / 100
+        colorization: QAppSettings.backgroundColorization / 100
         colorizationColor: Kirigami.Theme.backgroundColor
         blurEnabled: true
         blurMax: 64
