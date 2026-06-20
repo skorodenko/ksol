@@ -3,6 +3,7 @@ use super::misc::AtomicF64Vec;
 use crate::qt::settings::AppSettings;
 use crate::utils::init_hooks::{init_dirs, init_native_mpd_config};
 use crate::{ColumnSort, HeaderColumn, SongField};
+use num_traits::FromPrimitive;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
@@ -21,7 +22,6 @@ const DEFAULT_BACKGROUND_BLUR: usize = 95;
 pub struct PersistentConfig {
     pub init_wizard: bool,
     pub mpd_socket: String,
-    //pub search_groups: Vec<i32>,
     pub native_music_dir: String,
     pub native_output_plugin: i32,
     pub background_blur: usize,

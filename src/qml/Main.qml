@@ -113,11 +113,11 @@ Kirigami.ApplicationWindow {
             }
         }
         onGetPlaylistsResult: function (value) {
-            drun.playlists_list.setQueue(value);
+            drun.playlists_list.setData(value);
         }
         onStagePlaylistResult: function (value) {
-            qplaylist.setQueue(value);
-            mpd_connector.sortPlaylist(QState.sortColumn, QState.sortOrder);
+            qplaylist.setData(value);
+            //mpd_connector.sortPlaylist(QState.sortColumn, QState.sortOrder);
         }
         onPlayStateChanged: function (state) {
             switch (state) {
@@ -180,7 +180,6 @@ Kirigami.ApplicationWindow {
 
     QPlaylistModel {
         id: qplaylist
-        filter: filterSearch.text
     }
 
     Connections {
@@ -197,10 +196,6 @@ Kirigami.ApplicationWindow {
         function onStagePlaylist(name, group) {
             mpd_connector.stagePlaylist(name, group);
         }
-    }
-
-    Connections {
-        target: drun.playlists_group
 
         function onActiveGroupChanged(value) {
             mpd_connector.getPlaylists(value);

@@ -109,7 +109,7 @@ pub mod qobject {
 
         #[qinvokable]
         #[cxx_name = "getPlaylists"]
-        fn get_playlists(self: Pin<&mut QMPDConnector>, value: i32);
+        fn get_playlists(self: Pin<&mut QMPDConnector>, value: QString);
 
         #[qinvokable]
         #[cxx_name = "stagePlaylist"]
@@ -136,7 +136,6 @@ use crate::service;
 use crate::service::mpris_interface::Player;
 use crate::service::{MPDActionService, MPRISActionService};
 use crate::utils::globals::Globals;
-use crate::utils::init_hooks::init_native_mpd_config;
 use crate::{ColumnSort, QSong, SongField};
 use core::pin::Pin;
 use cxx_qt::{CxxQtType, Threading};
@@ -145,6 +144,7 @@ use mpd_client::{ClientController, ClientIdler, commands};
 use mpris_server::{LoopStatus, Metadata, PlaybackStatus, Property, Server, Time, TrackId};
 use num_traits::FromPrimitive;
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::sync::Arc;
 use tokio::net::{TcpStream, UnixStream};
 use tokio::process::Command;
@@ -322,8 +322,8 @@ impl qobject::QMPDConnector {
         }
     }
 
-    pub fn get_playlists(self: Pin<&mut QMPDConnector>, group: i32) {
-        let group = SongField::from_i32(group).expect("bad group value");
+    pub fn get_playlists(self: Pin<&mut QMPDConnector>, group: QString) {
+        let group = SongField::from_str(group.to_string().as_str()).unwrap();
         let qt_thread = self.qt_thread();
         if let Some(mut service) = self.mpd_service.clone() {
             self.runtime.spawn(service.call(service::mpd::GetPlaylists::new(group, qt_thread)));

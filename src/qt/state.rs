@@ -1,4 +1,5 @@
 use cxx_qt::CxxQtType;
+use image::EncodableLayout;
 use qobject::*;
 
 #[cxx_qt::bridge]
@@ -10,6 +11,9 @@ mod qobject {
 
         include!("cxx-qt-lib/qstring.h");
         type QString = cxx_qt_lib::QString;
+
+        include!("cxx-qt-lib/qbytearray.h");
+        type QByteArray = cxx_qt_lib::QByteArray;
     }
 
     #[qml_element]
@@ -27,30 +31,16 @@ mod qobject {
         #[qobject]
         #[qml_element]
         #[qml_singleton]
-        #[qproperty(i32, sortOrder, READ = get_sort_order, NOTIFY = update_sort_column)]
-        #[qproperty(i32, sortColumn, READ = get_sort_column, NOTIFY = update_sort_column)]
-        #[qproperty(i32, activeGroup, READ = get_active_group, WRITE = set_active_group, NOTIFY = update_active_group)]
+        #[qproperty(QString, active_group, cxx_name = "activeGroup")]
         type QState = super::State;
 
+        #[qinvokable]
+        #[cxx_name = "setSort"]
+        fn set_sort(self: Pin<&mut QState>, col: i32);
+
         #[qsignal]
-        #[cxx_name = "updateSortColumn"]
-        fn update_sort_column(self: Pin<&mut QState>);
-
-        #[qsignal]
-        #[cxx_name = "updateActiveGroup"]
-        fn update_active_group(self: Pin<&mut QState>);
-
-        #[qinvokable]
-        fn get_sort_order(self: &QState) -> i32;
-
-        #[qinvokable]
-        fn get_sort_column(self: &QState) -> i32;
-
-        #[qinvokable]
-        fn get_active_group(self: &QState) -> i32;
-
-        #[qinvokable]
-        fn set_active_group(self: Pin<&mut QState>, value: i32);
+        #[cxx_name = "updateSort"]
+        fn update_sort(self: Pin<&mut QState>, value: QByteArray);
 
         #[qinvokable]
         #[cxx_name = "getHeaderColumn"]
@@ -74,38 +64,29 @@ mod qobject {
 use crate::utils::globals::Globals;
 use crate::utils::persist::StateFile;
 use crate::{ColumnSort, HeaderColumn, SongField};
-use num_traits::{FromPrimitive, ToPrimitive};
+use num_traits::FromPrimitive;
 use std::pin::Pin;
 
 pub struct State {
-    pub header_columns: Vec<HeaderColumn>,
-    pub column_sort: ColumnSort,
-    pub active_group: SongField,
+    pub active_group: QString,
+    pub(crate) column_sort: ColumnSort,
+    pub(crate) header_columns: Vec<HeaderColumn>,
 }
 
 impl QState {
-    fn get_sort_order(&self) -> i32 {
-        match self.column_sort {
-            ColumnSort::Inactive => 0,
-            ColumnSort::Ascending(_) => 1,
-            ColumnSort::Descending(_) => -1,
-        }
-    }
-
-    fn get_sort_column(&self) -> i32 {
-        match self.column_sort {
-            ColumnSort::Inactive => -1,
-            ColumnSort::Ascending(col) => col.to_i32().unwrap_or(-1),
-            ColumnSort::Descending(col) => col.to_i32().unwrap_or(-1),
-        }
-    }
-
-    fn get_active_group(&self) -> i32 {
-        self.active_group.to_i32().expect("Bad value")
-    }
-
-    fn set_active_group(mut self: Pin<&mut Self>, value: i32) {
-        self.as_mut().rust_mut().active_group = SongField::from_i32(value).expect("Bad value");
+    fn set_sort(mut self: Pin<&mut Self>, col: i32) {
+        let col = SongField::from_i32(col).unwrap();
+        let sort = match self.column_sort {
+            ColumnSort::Inactive => ColumnSort::Descending(col),
+            ColumnSort::Descending(field) if field == col => ColumnSort::Ascending(col),
+            ColumnSort::Descending(field) if field != col => ColumnSort::Descending(col),
+            ColumnSort::Ascending(field) if field == col => ColumnSort::Descending(col),
+            ColumnSort::Ascending(field) if field != col => ColumnSort::Descending(col),
+            _ => unreachable!(),
+        };
+        self.as_mut().rust_mut().column_sort = sort;
+        let bcode = wincode::serialize(&sort).map(|v| QByteArray::from(v.as_bytes())).unwrap();
+        self.update_sort(bcode);
     }
 
     fn get_header_column(&self, col: usize, col_type: ColumnType) -> QVariant {
@@ -143,11 +124,12 @@ impl QState {
 impl Default for State {
     fn default() -> Self {
         let state = StateFile::load();
+        let active_group = &state.active_group.to_string();
 
         Self {
+            active_group: QString::from(active_group),
             header_columns: state.header_columns,
             column_sort: state.column_sort,
-            active_group: state.active_group,
         }
     }
 }

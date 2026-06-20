@@ -32,8 +32,8 @@ Item {
             model: root.columnCount
             delegate: CheckBox {
                 required property int index
-                text: root.model.headerData(index, Qt.Horizontal, QPlaylistModel.ColumnName)
-                checked: QState.getHeaderColumn(index, ColumnType.Width) != 0.0
+                text: QState.getHeaderColumn(index, ColumnType.Name)
+                checked: !QState.getHeaderColumn(index, ColumnType.Hidden)
                 nextCheckState: function () {
                     root.toggleColumn(index, !checked);
                     return checked ? Qt.Unchecked : Qt.Checked;
@@ -56,22 +56,15 @@ Item {
 
     function toggleColumn(column, state) {
         var item = repeater.itemAt(column);
-        if (state == true) {
-            item.visible = true;
-            QState.setHeaderColumn(column, ColumnType.Width, root.minimumColumnWidth / root.width);
-            root.firstVisibleColumn = root.updateFirstVisibleColumn();
-            root.lastVisibleColumn = root.updateLastVisibleColumn();
-        } else {
-            item.visible = false;
-            QState.setHeaderColumn(column, ColumnType.Width, 0.0);
-            root.firstVisibleColumn = root.updateFirstVisibleColumn();
-            root.lastVisibleColumn = root.updateLastVisibleColumn();
-        }
+        item.visible = state;
+        QState.setHeaderColumn(column, ColumnType.Hidden, state);
+        root.firstVisibleColumn = root.updateFirstVisibleColumn();
+        root.lastVisibleColumn = root.updateLastVisibleColumn();
     }
 
     function updateFirstVisibleColumn() {
         for (var i = 0; i < root.columnCount; i++) {
-            if (QState.getHeaderColumn(i, ColumnType.Width) != 0.0) {
+            if (QState.getHeaderColumn(i, ColumnType.Hidden) === false) {
                 return i;
             }
         }
@@ -80,7 +73,7 @@ Item {
 
     function updateLastVisibleColumn() {
         for (var i = root.columnCount - 1; i > 0; i--) {
-            if (QState.getHeaderColumn(i, ColumnType.Width) != 0.0) {
+            if (QState.getHeaderColumn(i, ColumnType.Hidden) === false) {
                 return i;
             }
         }
@@ -90,7 +83,7 @@ Item {
     function visibleColumnCount() {
         var k = 0;
         for (var i = 0; i < root.columnCount; i++) {
-            if (QState.getHeaderColumn(i, ColumnType.Width) != 0.0) {
+            if (QState.getHeaderColumn(i, ColumnType.Hidden) === false) {
                 k++;
             }
         }
@@ -135,7 +128,7 @@ Item {
                 color: root.color
 
                 enabled: visible
-                visible: SplitView.preferredWidth == 0 ? false : true
+                visible: !QState.getHeaderColumn(index, ColumnType.Hidden)
                 SplitView.fillWidth: index == root.lastVisibleColumn
                 SplitView.minimumWidth: root.minimumColumnWidth
                 SplitView.maximumWidth: root.maximumColumnWidth
@@ -152,9 +145,9 @@ Item {
                     anchors.fill: parent
                     hoverEnabled: true
 
-                    //onClicked: {
-                    //    QSettingsModel.toggleSortColumn(delegate.index);
-                    //}
+                    onClicked: {
+                        QState.setSort(delegate.index);
+                    }
 
                     onContainsMouseChanged: {
                         if (containsMouse) {
@@ -181,7 +174,7 @@ Item {
                     anchors.right: sortIndicator.left
                     anchors.verticalCenter: delegate.verticalCenter
                     anchors.leftMargin: Kirigami.Units.smallSpacing
-                    text: root.model.headerData(delegate.index, Qt.Horizontal, QPlaylistModel.ColumnName)
+                    text: QState.getHeaderColumn(index, ColumnType.Name)
                 }
 
                 Item {

@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Effects
 import QtQuick.Layouts
+import QtQml.Models
 import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
 import github.skorodenko.ksol 1.0
@@ -17,22 +18,19 @@ QQC2.Popup {
         listView.forceActiveFocus();
     }
 
-    signal stagePlaylist(string name, int group)
+    signal activeGroupChanged(string group)
+    signal stagePlaylist(string name, string group)
 
     property alias playlists_list: playlists_list
-    property alias playlists_group: playlists_group
 
     function changeGroup(number) {
-        group_repeater.itemAt(number).click();
-    }
-
-    QPlaylistsGroupModel {
-        id: playlists_group
+        var value = groupSelect.model[number];
+        QState.activeGroup = value;
+        root.activeGroupChanged(value);
     }
 
     QPlaylistsListModel {
         id: playlists_list
-        filter: search.text
 
         onLayoutChanged: function () {
             if (playlists_list.rowCount() > 0) {
@@ -52,6 +50,7 @@ QQC2.Popup {
             id: search
             focusPolicy: Qt.NoFocus
             placeholderText: "Filter by group ..."
+            onTextChanged: proxyModel.invalidate()
             Layout.alignment: Qt.AlignLeft
             Layout.preferredWidth: parent.width * 0.3
             Keys.onPressed: function (event) {
@@ -65,41 +64,34 @@ QQC2.Popup {
             Layout.preferredWidth: parent.width * 0.1
         }
 
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
+        QQC2.ComboBox {
+            id: groupSelect
+            model: ["Directory", "Artist", "Album", "Date", "Genre", "Composer", "Albumartist"]
             Layout.alignment: Qt.AlignRight
-
-            spacing: Kirigami.Units.largeSpacing
-
-            Repeater {
-                id: group_repeater
-                model: playlists_group
-
-                QQC2.Button {
-                    required property string name
-                    required property int value
-
-                    Kirigami.Heading {
-                        anchors.centerIn: parent
-                        text: parent.name
-                    }
-
-                    focusPolicy: Qt.NoFocus
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-
-                    onClicked: {
-                        QState.activeGroup = value;
-                    }
-
-                    background: Rectangle {
-                        color: parent.value === QState.activeGroup ? Kirigami.Theme.activeBackgroundColor : Kirigami.Theme.alternateBackgroundColor
-                        radius: Kirigami.Units.cornerRadius
-                    }
-                }
+            Layout.preferredWidth: parent.width * 0.2
+            currentValue: QState.activeGroup
+            onActivated: {
+                QState.activeGroup = currentValue;
+                root.activeGroupChanged(currentValue);
             }
         }
+    }
+
+    SortFilterProxyModel {
+        id: proxyModel
+        model: playlists_list
+        filters: [
+            FunctionFilter {
+                component RoleData: QtObject {
+                    property string name
+                }
+
+                function filter(data: RoleData) : bool {
+                    var searchTxt = search.text.toLowerCase();
+                    return data.name.toLowerCase().includes(searchTxt)
+                }
+            }
+        ]
     }
 
     ListView {
@@ -114,7 +106,8 @@ QQC2.Popup {
         boundsBehavior: Flickable.StopAtBounds
         boundsMovement: Flickable.StopAtBounds
 
-        model: playlists_list
+        //model: playlists_list
+        model: proxyModel
 
         implicitWidth: Math.min(Kirigami.Units.gridUnit * 20, parent.width)
 

@@ -5,8 +5,8 @@ pub mod utils;
 use mpd_client::{responses::SongInQueue, tag::Tag};
 use num_derive::{FromPrimitive, ToPrimitive};
 use serde::{Deserialize, Serialize};
-use std::fmt::{Display, Formatter, Result};
 use std::path::Path;
+use strum_macros::{Display, EnumCount, EnumString};
 use wincode::{SchemaRead, SchemaWrite};
 
 #[derive(Serialize, Deserialize, SchemaWrite, SchemaRead, Debug, Clone, Default)]
@@ -36,6 +36,9 @@ pub struct QSong {
     PartialEq,
     FromPrimitive,
     ToPrimitive,
+    Display,
+    EnumString,
+    EnumCount,
     Copy,
     Clone,
     Debug,
@@ -134,27 +137,6 @@ impl From<SongField> for Tag {
             SongField::Lastmodified => Tag::Other("Lastmodified".into()),
             SongField::Duration => Tag::Other("Duration".into()),
             SongField::Directory => Tag::Other("Directory".into()),
-        }
-    }
-}
-
-impl Display for SongField {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        match self {
-            Self::Track => write!(f, "Track"),
-            Self::Disc => write!(f, "Disc"),
-            Self::Title => write!(f, "Title"),
-            Self::Artist => write!(f, "Artist"),
-            Self::Album => write!(f, "Album"),
-            Self::Date => write!(f, "Date"),
-            Self::Genre => write!(f, "Genre"),
-            Self::Composer => write!(f, "Composer"),
-            Self::Albumartist => write!(f, "Album artist"),
-            Self::File => write!(f, "File"),
-            Self::Format => write!(f, "Format"),
-            Self::Lastmodified => write!(f, "Last modified"),
-            Self::Duration => write!(f, "Duration"),
-            Self::Directory => write!(f, "Directory"),
         }
     }
 }

@@ -20,7 +20,6 @@ fn main() {
     )
     .files([
         "src/qt/mpd.rs",
-        "src/qt/playlists_group.rs",
         "src/qt/playlists.rs",
         "src/qt/playlist.rs",
         "src/qt/settings.rs",

@@ -1,14 +1,21 @@
+use cxx_qt::CxxQtType;
+use cxx_qt_lib::QVector;
 use qobject::*;
 
 #[cxx_qt::bridge]
 mod qobject {
-
     extern "C++" {
         include!("cxx-qt-lib/qvariant.h");
         type QVariant = cxx_qt_lib::QVariant;
 
         include!("cxx-qt-lib/qstring.h");
         type QString = cxx_qt_lib::QString;
+
+        include!("cxx-qt-lib/qbytearray.h");
+        type QByteArray = cxx_qt_lib::QByteArray;
+
+        include!("cxx-qt-lib/qvector.h");
+        type QVector_QString = cxx_qt_lib::QVector<QString>;
     }
 
     #[qml_element]
@@ -34,7 +41,7 @@ mod qobject {
     }
 }
 
-use crate::utils::persist::PersistentConfig;
+use crate::{SongField, utils::persist::PersistentConfig};
 
 pub struct AppSettings {
     pub init_wizard: bool,
@@ -43,13 +50,6 @@ pub struct AppSettings {
     pub native_output_plugin: OutputPlugin,
     pub background_blur: usize,
     pub background_colorization: usize,
-}
-
-impl AppSettings {
-    fn save(self) {
-        let config = PersistentConfig::from(self);
-        config.dump();
-    }
 }
 
 impl Default for AppSettings {
