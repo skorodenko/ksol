@@ -30,8 +30,12 @@ impl MPDAction for Status {
 
     fn queue(self, mpd_client: ClientController) -> BoxSyncFuture<'static, Result<Self::Response>> {
         Box::pin(async move {
+            tracing::debug!("Executing Status command");
             let command = commands::Status;
-            mpd_client.command(command).await.map_err(|e| anyhow!("{e}"))
+            mpd_client.command(command).await.map_err(|e| {
+                tracing::error!("Status command failed: {e}");
+                anyhow!("{e}")
+            })
         })
     }
 }
@@ -45,11 +49,15 @@ impl MPDAction for Queue {
 
     fn queue(self, mpd_client: ClientController) -> BoxSyncFuture<'static, Result<Self::Response>> {
         Box::pin(async move {
+            tracing::debug!("Executing Queue command");
             let command = commands::Queue::all();
             let songs: Vec<QSong> = mpd_client
                 .command(command)
                 .await
-                .map_err(|e| anyhow!("{e}"))?
+                .map_err(|e| {
+                    tracing::error!("Queue command failed: {e}");
+                    anyhow!("{e}")
+                })?
                 .into_iter()
                 .map(QSong::from)
                 .collect();
@@ -67,8 +75,12 @@ impl MPDAction for CurrentSong {
 
     fn queue(self, mpd_client: ClientController) -> BoxSyncFuture<'static, Result<Self::Response>> {
         Box::pin(async move {
+            tracing::debug!("Executing CurrentSong command");
             let command = commands::CurrentSong;
-            let song = mpd_client.command(command).await.map_err(|e| anyhow!("{e}"))?;
+            let song = mpd_client.command(command).await.map_err(|e| {
+                tracing::error!("CurrentSong command failed: {e}");
+                anyhow!("{e}")
+            })?;
             match song {
                 Some(v) => Ok(QSong::from(v)),
                 None => Ok(QSong::default()),
@@ -86,8 +98,12 @@ impl MPDAction for Next {
 
     fn queue(self, mpd_client: ClientController) -> BoxSyncFuture<'static, Result<Self::Response>> {
         Box::pin(async move {
+            tracing::debug!("Executing Next command");
             let command = commands::Next;
-            mpd_client.command(command).await.map_err(|e| anyhow!("{e}"))
+            mpd_client.command(command).await.map_err(|e| {
+                tracing::error!("Next command failed: {e}");
+                anyhow!("{e}")
+            })
         })
     }
 }
@@ -101,8 +117,12 @@ impl MPDAction for Previous {
 
     fn queue(self, mpd_client: ClientController) -> BoxSyncFuture<'static, Result<Self::Response>> {
         Box::pin(async move {
+            tracing::debug!("Executing Previous command");
             let command = commands::Previous;
-            mpd_client.command(command).await.map_err(|e| anyhow!("{e}"))
+            mpd_client.command(command).await.map_err(|e| {
+                tracing::error!("Previous command failed: {e}");
+                anyhow!("{e}")
+            })
         })
     }
 }
@@ -321,25 +341,43 @@ impl MPDAction for StagePlaylist {
     fn queue(self, mpd_client: ClientController) -> BoxSyncFuture<'static, Result<Self::Response>> {
         Box::pin(async move {
             let tag = Tag::from(self.group);
+            tracing::debug!("StagePlaylist: Querying playlist for group {:?}", self.group);
             // Query playlist
             let songs = match tag {
                 Tag::Other(value) if value == "Directory".into() => {
                     let command = commands::ListAllIn::directory(&self.name);
-                    mpd_client.command(command).await.map_err(|e| anyhow!("{e}"))?
+                    tracing::debug!("StagePlaylist: Listing all in directory {}", self.name);
+                    mpd_client.command(command).await.map_err(|e| {
+                        tracing::error!("StagePlaylist: Failed to list all in directory: {e}");
+                        anyhow!("{e}")
+                    })?
                 }
                 _ => {
                     let filter = Filter::tag(tag, &self.name);
                     let command = commands::Find::new(filter);
-                    mpd_client.command(command).await.map_err(|e| anyhow!("{e}"))?
+                    tracing::debug!("StagePlaylist: Finding by tag and name: {}", self.name);
+                    mpd_client.command(command).await.map_err(|e| {
+                        tracing::error!("StagePlaylist: Failed to find by tag and name: {e}");
+                        anyhow!("{e}")
+                    })?
                 }
             };
+            tracing::debug!("StagePlaylist: Found {} songs", songs.len());
             // Clear current queue
+            tracing::debug!("StagePlaylist: Clearing current queue");
             let clear_command = commands::ClearQueue;
-            mpd_client.command(clear_command).await.map_err(|e| anyhow!("{e}"))?;
+            mpd_client.command(clear_command).await.map_err(|e| {
+                tracing::error!("StagePlaylist: Failed to clear queue: {e}");
+                anyhow!("{e}")
+            })?;
             // Populate new queue
             let add_commands: Vec<commands::Add> =
                 songs.iter().map(|x| commands::Add::uri(x.url.as_str())).collect();
-            mpd_client.command_list(add_commands).await.map_err(|e| anyhow!("{e}"))?;
+            tracing::debug!("StagePlaylist: Adding {} commands to queue", add_commands.len());
+            mpd_client.command_list(add_commands).await.map_err(|e| {
+                tracing::error!("StagePlaylist: Failed to add commands to queue: {e}");
+                anyhow!("{e}")
+            })?;
             Ok(())
         })
     }
@@ -586,7 +624,11 @@ impl MPDAction for UpdateArt {
         let covers = globals.app_cover_cache.clone();
 
         let ckey_fn = |song: &QSong, covers: &PathBuf| {
-            covers.join(format!("{}_{}_{}", song.album, song.artist, song.disc))
+            let safe_album =
+                song.album.replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], "_");
+            let safe_artist =
+                song.artist.replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], "_");
+            covers.join(format!("{}_{}_{}", safe_album, safe_artist, song.disc))
         };
 
         Box::pin(async move {
@@ -606,13 +648,16 @@ impl MPDAction for UpdateArt {
             // Art already in cache
             if ckey.exists() {
                 let _ = self.qt_thread.queue(move |qobject| {
-                    qobject.album_art_update(QString::from(ckey.to_str().unwrap()));
+                    qobject.album_art_update(QString::from(ckey.to_string_lossy().into_owned()));
                 });
                 return Ok(());
             }
 
             // Mark this cover as pending
-            fs::write(&ckey_tmp, vec![]).await?;
+            if let Err(e) = fs::write(&ckey_tmp, vec![]).await {
+                tracing::error!("Failed to write pending file {:?}: {}", ckey_tmp, e);
+                return Ok(());
+            }
 
             // Get cover from mpd
             let cover = tokio::select!(
@@ -633,22 +678,33 @@ impl MPDAction for UpdateArt {
 
             // Process cover (downscale)
             let ckey_clone = ckey.clone();
-            let cover_processing = task::spawn_blocking(move || {
-                let image =
-                    image::load_from_memory(&cover).expect("Failed to load image from memory");
-                let image =
+            let cover_processing = task::spawn_blocking(move || -> Result<PathBuf, String> {
+                let image = image::load_from_memory(&cover)
+                    .map_err(|e| format!("Failed to load image from memory: {}", e))?;
+                let compressed =
                     turbojpeg::compress_image(&image.to_rgb8(), 50, turbojpeg::Subsamp::Sub2x2)
-                        .unwrap();
-                std::fs::write(&ckey_tmp, image).unwrap();
-                std::fs::rename(&ckey_tmp, &ckey_clone).unwrap();
-                ckey_clone
+                        .map_err(|e| format!("Failed to compress image: {}", e))?;
+                std::fs::write(&ckey_tmp, compressed).map_err(|e| {
+                    format!("Failed to write compressed image to {:?}: {}", ckey_tmp, e)
+                })?;
+                std::fs::rename(&ckey_tmp, &ckey_clone).map_err(|e| {
+                    format!("Failed to rename {:?} to {:?}: {}", ckey_tmp, ckey_clone, e)
+                })?;
+                Ok(ckey_clone)
             });
 
             tokio::select!(
-                Ok(cover) = cover_processing => {
-                    let _ = self.qt_thread.queue(move |qobject| {
-                        qobject.album_art_update(QString::from(cover.to_str().unwrap()));
-                    });
+                res = cover_processing => {
+                    match res.unwrap() {
+                        Ok(cover_path) => {
+                            let _ = self.qt_thread.queue(move |qobject| {
+                                qobject.album_art_update(QString::from(cover_path.to_string_lossy().into_owned()));
+                            });
+                        },
+                        Err(e) => {
+                            tracing::error!("Album art processing error: {}", e);
+                        },
+                    }
                 },
                 _ = self.song_watch.changed(), if ckey_fn(&self.song_watch.borrow().clone(), &covers) != ckey => {
                     tracing::debug!("Canceled album art processing for \"{}\"", song.file);

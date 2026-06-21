@@ -15,7 +15,7 @@ Item {
     required property int columnCount
     property int firstVisibleColumn: 0
     property int lastVisibleColumn: 0
-    property int minimumColumnWidth: 60
+    property int minimumColumnWidth: 30
     property int maximumColumnWidth: width
     property var color: "#32363b"
     property var highlightColor: Kirigami.Theme.highlightColor

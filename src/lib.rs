@@ -57,8 +57,8 @@ pub enum SongField {
     File = 9,
     Format = 10,
     Lastmodified = 11,
-    Duration = 12,
-    Directory = 13,
+    Directory = 12,
+    Duration = 13,
 }
 
 #[derive(Deserialize, Serialize, SchemaRead, SchemaWrite, PartialEq, Copy, Clone, Debug)]

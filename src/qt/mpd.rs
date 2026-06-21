@@ -113,7 +113,7 @@ pub mod qobject {
 
         #[qinvokable]
         #[cxx_name = "stagePlaylist"]
-        fn stage_playlist(self: Pin<&mut QMPDConnector>, name: QString, group: i32);
+        fn stage_playlist(self: Pin<&mut QMPDConnector>, name: QString, group: QString);
 
         #[qinvokable]
         #[cxx_name = "sortPlaylist"]
@@ -332,9 +332,9 @@ impl qobject::QMPDConnector {
         }
     }
 
-    pub fn stage_playlist(self: Pin<&mut QMPDConnector>, name: QString, group: i32) {
+    pub fn stage_playlist(self: Pin<&mut QMPDConnector>, name: QString, group: QString) {
         let name = String::from(name);
-        let group = SongField::from_i32(group).expect("bad group value");
+        let group = SongField::from_str(group.to_string().as_str()).expect("bad group value");
         if let Some(mut service) = self.mpd_service.clone() {
             self.runtime.spawn(service.call(service::mpd::StagePlaylist::new(name, group)));
         } else {
