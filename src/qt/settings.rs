@@ -1,5 +1,3 @@
-use cxx_qt::CxxQtType;
-use cxx_qt_lib::QVector;
 use qobject::*;
 
 #[cxx_qt::bridge]
@@ -38,10 +36,13 @@ mod qobject {
         #[qproperty(usize, background_blur, cxx_name = "backgroundBlur")]
         #[qproperty(usize, background_colorization, cxx_name = "backgroundColorization")]
         type QAppSettings = super::AppSettings;
+
+        #[qinvokable]
+        fn dump(self: &QAppSettings);
     }
 }
 
-use crate::{SongField, utils::persist::PersistentConfig};
+use crate::utils::persist::PersistentConfig;
 
 pub struct AppSettings {
     pub init_wizard: bool,
@@ -52,9 +53,27 @@ pub struct AppSettings {
     pub background_colorization: usize,
 }
 
+impl QAppSettings {
+    fn dump(&self) {
+        let config_file = PersistentConfig {
+            init_wizard: self.init_wizard,
+            mpd_socket: self.mpd_socket.to_string(),
+            native_music_dir: self.native_music_dir.to_string(),
+            native_output_plugin: self.native_output_plugin.repr,
+            background_blur: self.background_blur,
+            background_colorization: self.background_colorization,
+        };
+        tracing::debug!("Dumping settings file: {:?}", config_file);
+        config_file.dump();
+    }
+}
+
 impl Default for AppSettings {
     fn default() -> Self {
         let config = PersistentConfig::load();
+
+        tracing::debug!("Loaded settings file: {:?}", config);
+
         Self::from(config)
     }
 }

@@ -4,8 +4,9 @@ pub mod utils;
 
 use mpd_client::{responses::SongInQueue, tag::Tag};
 use num_derive::{FromPrimitive, ToPrimitive};
+use num_traits::FromPrimitive;
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::{cmp::Ordering, path::Path};
 use strum_macros::{Display, EnumCount, EnumString};
 use wincode::{SchemaRead, SchemaWrite};
 
@@ -69,11 +70,40 @@ pub enum ColumnSort {
     Descending(SongField),
 }
 
-#[derive(SchemaRead, SchemaWrite, Debug)]
+#[derive(SchemaRead, SchemaWrite, Debug, Clone)]
 pub struct HeaderColumn {
     name: String,
     width: f64,
     hidden: bool,
+}
+
+impl ColumnSort {
+    pub fn cmp_ord(&self, a: &QSong, b: &QSong) -> Ordering {
+        match self {
+            ColumnSort::Inactive => Ordering::Equal,
+            ColumnSort::Ascending(song_field) => self.compare_field(song_field, a, b),
+            ColumnSort::Descending(song_field) => self.compare_field(song_field, b, a),
+        }
+    }
+
+    fn compare_field(&self, field: &SongField, a: &QSong, b: &QSong) -> Ordering {
+        match field {
+            SongField::Track => a.track.cmp(&b.track),
+            SongField::Title => a.title.cmp(&b.title),
+            SongField::Artist => a.artist.cmp(&b.artist),
+            SongField::Album => a.album.cmp(&b.album),
+            SongField::Date => a.date.cmp(&b.date),
+            SongField::Genre => a.genre.cmp(&b.genre),
+            SongField::Disc => a.disc.cmp(&b.disc),
+            SongField::Composer => a.composer.cmp(&b.composer),
+            SongField::Albumartist => a.artist.cmp(&b.artist),
+            SongField::File => a.file.cmp(&b.file),
+            SongField::Format => a.format.cmp(&b.format),
+            SongField::Lastmodified => a.lastmodified.cmp(&b.lastmodified),
+            SongField::Duration => a.duration.cmp(&b.duration),
+            SongField::Directory => a.directory.cmp(&b.directory),
+        }
+    }
 }
 
 impl From<SongInQueue> for QSong {
@@ -110,12 +140,14 @@ impl From<SongInQueue> for QSong {
     }
 }
 
-impl From<(i32, SongField)> for ColumnSort {
-    fn from(value: (i32, SongField)) -> Self {
+impl From<(i32, i32)> for ColumnSort {
+    fn from(value: (i32, i32)) -> Self {
+        let col = SongField::from_i32(value.1).unwrap();
         match value.0 {
-            -1 => ColumnSort::Descending(value.1),
-            1 => ColumnSort::Ascending(value.1),
-            _ => ColumnSort::Inactive,
+            -1 => ColumnSort::Descending(col),
+            1 => ColumnSort::Ascending(col),
+            0 => ColumnSort::Inactive,
+            _ => unreachable!(),
         }
     }
 }

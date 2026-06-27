@@ -20,6 +20,11 @@ Kirigami.ApplicationWindow {
         }
     }
 
+    Component.onDestruction: {
+        QAppSettings.dump();
+        QState.dump();
+    }
+
     Timer {
         id: initWizardDelay
         interval: 150
@@ -117,7 +122,6 @@ Kirigami.ApplicationWindow {
         }
         onStagePlaylistResult: function (value) {
             qplaylist.setData(value);
-            //mpd_connector.sortPlaylist(QState.sortColumn, QState.sortOrder);
         }
         onPlayStateChanged: function (state) {
             switch (state) {
@@ -185,7 +189,7 @@ Kirigami.ApplicationWindow {
     Connections {
         target: QState
 
-        function onUpdateSortColumn() {
+        function onUpdateSort() {
             mpd_connector.sortPlaylist(QState.sortColumn, QState.sortOrder);
         }
     }

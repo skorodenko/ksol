@@ -1,5 +1,4 @@
 use cxx_qt::CxxQtType;
-use image::EncodableLayout;
 use qobject::*;
 
 #[cxx_qt::bridge]
@@ -32,15 +31,25 @@ mod qobject {
         #[qml_element]
         #[qml_singleton]
         #[qproperty(QString, active_group, cxx_name = "activeGroup")]
+        #[qproperty(i32, sortColumn, READ = get_sort_column, NOTIFY = update_sort)]
+        #[qproperty(i32, sortOrder, READ = get_sort_order, NOTIFY = update_sort)]
         type QState = super::State;
 
         #[qinvokable]
         #[cxx_name = "setSort"]
         fn set_sort(self: Pin<&mut QState>, col: i32);
 
+        #[qinvokable]
+        #[cxx_name = "getSortColumn"]
+        fn get_sort_column(self: &QState) -> i32;
+
+        #[qinvokable]
+        #[cxx_name = "getSortOrder"]
+        fn get_sort_order(self: &QState) -> i32;
+
         #[qsignal]
         #[cxx_name = "updateSort"]
-        fn update_sort(self: Pin<&mut QState>, value: QByteArray);
+        fn update_sort(self: Pin<&mut QState>);
 
         #[qinvokable]
         #[cxx_name = "getHeaderColumn"]
@@ -58,6 +67,9 @@ mod qobject {
         #[qinvokable]
         #[cxx_name = "mpdBinaryAvailable"]
         fn mpd_binary_available(self: &QState) -> bool;
+
+        #[qinvokable]
+        fn dump(self: &QState);
     }
 }
 
@@ -66,10 +78,11 @@ use crate::utils::persist::StateFile;
 use crate::{ColumnSort, HeaderColumn, SongField};
 use num_traits::FromPrimitive;
 use std::pin::Pin;
+use std::str::FromStr;
 
 pub struct State {
     pub active_group: QString,
-    pub(crate) column_sort: ColumnSort,
+    pub column_sort: ColumnSort,
     pub(crate) header_columns: Vec<HeaderColumn>,
 }
 
@@ -85,8 +98,23 @@ impl QState {
             _ => unreachable!(),
         };
         self.as_mut().rust_mut().column_sort = sort;
-        let bcode = wincode::serialize(&sort).map(|v| QByteArray::from(v.as_bytes())).unwrap();
-        self.update_sort(bcode);
+        self.update_sort();
+    }
+
+    fn get_sort_column(&self) -> i32 {
+        match self.column_sort {
+            ColumnSort::Inactive => -1,
+            ColumnSort::Ascending(song_field) => song_field as i32,
+            ColumnSort::Descending(song_field) => song_field as i32,
+        }
+    }
+
+    fn get_sort_order(&self) -> i32 {
+        match self.column_sort {
+            ColumnSort::Inactive => 0,
+            ColumnSort::Ascending(_) => 1 as i32,
+            ColumnSort::Descending(_) => -1 as i32,
+        }
     }
 
     fn get_header_column(&self, col: usize, col_type: ColumnType) -> QVariant {
@@ -108,7 +136,12 @@ impl QState {
         let mut this = self.as_mut().rust_mut();
         if let Some(item) = this.header_columns.get_mut(col) {
             match col_type {
-                ColumnType::Width => item.width = value.value_or_default(),
+                ColumnType::Width => {
+                    let width: f64 = value.value_or_default();
+                    if !width.is_nan() {
+                        item.width = width;
+                    }
+                }
                 ColumnType::Hidden => item.hidden = value.value_or_default(),
                 _ => unreachable!(),
             }
@@ -119,12 +152,24 @@ impl QState {
         let globals = Globals::get();
         globals.mpd_binary.exists()
     }
+
+    fn dump(&self) {
+        let state_file = StateFile {
+            header_columns: self.header_columns.clone(),
+            column_sort: self.column_sort,
+            active_group: SongField::from_str(self.active_group.to_string().as_str()).unwrap(),
+        };
+        tracing::debug!("Dumping state file: {:?}", state_file);
+        state_file.dump();
+    }
 }
 
 impl Default for State {
     fn default() -> Self {
         let state = StateFile::load();
         let active_group = &state.active_group.to_string();
+
+        tracing::debug!("Loaded state file: {:?}", state);
 
         Self {
             active_group: QString::from(active_group),

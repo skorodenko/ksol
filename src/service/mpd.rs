@@ -144,8 +144,12 @@ impl MPDAction for PlaySong {
 
     fn queue(self, mpd_client: ClientController) -> BoxSyncFuture<'static, Result<Self::Response>> {
         Box::pin(async move {
+            tracing::debug!("Executing PlaySong command for song id {}", self.id);
             let command = commands::Play::song(commands::SongId::from(self.id));
-            mpd_client.command(command).await.map_err(|e| anyhow!("{e}"))
+            mpd_client.command(command).await.map_err(|e| {
+                tracing::error!("PlaySong command failed: {e}");
+                anyhow!("{e}")
+            })
         })
     }
 }
@@ -159,20 +163,33 @@ impl MPDAction for PlayToggle {
 
     fn queue(self, mpd_client: ClientController) -> BoxSyncFuture<'static, Result<Self::Response>> {
         Box::pin(async move {
+            tracing::debug!("Executing PlayToggle command");
             let command = commands::Status;
-            let rsp = mpd_client.command(command).await.map_err(|e| anyhow!("{e}"))?;
+            let rsp = mpd_client.command(command).await.map_err(|e| {
+                tracing::error!("PlayToggle: Status command failed: {e}");
+                anyhow!("{e}")
+            })?;
             match rsp.state {
                 responses::PlayState::Paused => {
                     let command = commands::SetPause(false);
-                    mpd_client.command(command).await.map_err(|e| anyhow!("{e}"))
+                    mpd_client.command(command).await.map_err(|e| {
+                        tracing::error!("PlayToggle: Resume command failed: {e}");
+                        anyhow!("{e}")
+                    })
                 }
                 responses::PlayState::Playing => {
                     let command = commands::SetPause(true);
-                    mpd_client.command(command).await.map_err(|e| anyhow!("{e}"))
+                    mpd_client.command(command).await.map_err(|e| {
+                        tracing::error!("PlayToggle: Pause command failed: {e}");
+                        anyhow!("{e}")
+                    })
                 }
                 responses::PlayState::Stopped => {
                     let command = commands::Play::current();
-                    mpd_client.command(command).await.map_err(|e| anyhow!("{e}"))
+                    mpd_client.command(command).await.map_err(|e| {
+                        tracing::error!("PlayToggle: Start command failed: {e}");
+                        anyhow!("{e}")
+                    })
                 }
             }
         })
@@ -196,8 +213,12 @@ impl MPDAction for UpdateDB {
 
     fn queue(self, mpd_client: ClientController) -> BoxSyncFuture<'static, Result<Self::Response>> {
         Box::pin(async move {
+            tracing::debug!("Executing UpdateDB command");
             let command = commands::Update::new();
-            let _ = mpd_client.command(command).await.map_err(|e| anyhow!("{e}"))?;
+            let _ = mpd_client.command(command).await.map_err(|e| {
+                tracing::error!("UpdateDB command failed: {e}");
+                anyhow!("{e}")
+            })?;
             let _ = self.qt_thread.queue(|mut qobject| {
                 qobject.as_mut().db_updated(false);
             });
@@ -224,15 +245,22 @@ impl MPDAction for GetPlaylists {
 
     fn queue(self, mpd_client: ClientController) -> BoxSyncFuture<'static, Result<Self::Response>> {
         Box::pin(async move {
+            tracing::debug!("Executing GetPlaylists command for group {:?}", self.group);
             let group = Tag::from(self.group);
             let mut result: Vec<String> = match group {
                 Tag::Other(value) if value == "Directory".into() => {
                     let command = commands::ListDirs::root();
-                    mpd_client.command(command).await.map_err(|e| anyhow!("{e}"))?
+                    mpd_client.command(command).await.map_err(|e| {
+                        tracing::error!("GetPlaylists: ListDirs command failed: {e}");
+                        anyhow!("{e}")
+                    })?
                 }
                 _ => {
                     let command = commands::List::new(group);
-                    let rsp = mpd_client.command(command).await.map_err(|e| anyhow!("{e}"))?;
+                    let rsp = mpd_client.command(command).await.map_err(|e| {
+                        tracing::error!("GetPlaylists: List command failed: {e}");
+                        anyhow!("{e}")
+                    })?;
                     rsp.values().map(|x| x.to_string()).collect()
                 }
             };
@@ -264,59 +292,28 @@ impl MPDAction for SortPlaylist {
 
     fn queue(self, mpd_client: ClientController) -> BoxSyncFuture<'static, Result<Self::Response>> {
         Box::pin(async move {
+            tracing::debug!("Executing SortPlaylist command with order {:?}", self.order);
             let command = commands::Queue::all();
             let mut songs: Vec<QSong> = mpd_client
                 .command(command)
                 .await
-                .map_err(|e| anyhow!("{e}"))?
+                .map_err(|e| {
+                    tracing::error!("SortPlaylist: Queue command failed: {e}");
+                    anyhow!("{e}")
+                })?
                 .into_iter()
                 .map(QSong::from)
                 .collect();
-            match self.order {
-                ColumnSort::Inactive => (),
-                ColumnSort::Ascending(col) => match col {
-                    SongField::Track => songs.sort_by(|a, b| a.track.cmp(&b.track)),
-                    SongField::Title => songs.sort_by(|a, b| a.title.cmp(&b.title)),
-                    SongField::Artist => songs.sort_by(|a, b| a.artist.cmp(&b.artist)),
-                    SongField::Album => songs.sort_by(|a, b| a.album.cmp(&b.album)),
-                    SongField::Date => songs.sort_by(|a, b| a.date.cmp(&b.date)),
-                    SongField::Genre => songs.sort_by(|a, b| a.genre.cmp(&b.genre)),
-                    SongField::Disc => songs.sort_by(|a, b| a.disc.cmp(&b.disc)),
-                    SongField::Composer => songs.sort_by(|a, b| a.composer.cmp(&b.composer)),
-                    SongField::Albumartist => songs.sort_by(|a, b| a.artist.cmp(&b.artist)),
-                    SongField::File => songs.sort_by(|a, b| a.file.cmp(&b.file)),
-                    SongField::Format => songs.sort_by(|a, b| a.format.cmp(&b.format)),
-                    SongField::Lastmodified => {
-                        songs.sort_by(|a, b| a.lastmodified.cmp(&b.lastmodified))
-                    }
-                    SongField::Duration => songs.sort_by(|a, b| a.duration.cmp(&b.duration)),
-                    SongField::Directory => songs.sort_by(|a, b| a.directory.cmp(&b.directory)),
-                },
-                ColumnSort::Descending(col) => match col {
-                    SongField::Track => songs.sort_by(|b, a| a.track.cmp(&b.track)),
-                    SongField::Title => songs.sort_by(|b, a| a.title.cmp(&b.title)),
-                    SongField::Artist => songs.sort_by(|b, a| a.artist.cmp(&b.artist)),
-                    SongField::Album => songs.sort_by(|b, a| a.album.cmp(&b.album)),
-                    SongField::Date => songs.sort_by(|b, a| a.date.cmp(&b.date)),
-                    SongField::Genre => songs.sort_by(|b, a| a.genre.cmp(&b.genre)),
-                    SongField::Disc => songs.sort_by(|b, a| a.disc.cmp(&b.disc)),
-                    SongField::Composer => songs.sort_by(|b, a| a.composer.cmp(&b.composer)),
-                    SongField::Albumartist => songs.sort_by(|b, a| a.artist.cmp(&b.artist)),
-                    SongField::File => songs.sort_by(|b, a| a.file.cmp(&b.file)),
-                    SongField::Format => songs.sort_by(|b, a| a.format.cmp(&b.format)),
-                    SongField::Lastmodified => {
-                        songs.sort_by(|b, a| a.lastmodified.cmp(&b.lastmodified))
-                    }
-                    SongField::Duration => songs.sort_by(|b, a| a.duration.cmp(&b.duration)),
-                    SongField::Directory => songs.sort_by(|b, a| a.directory.cmp(&b.directory)),
-                },
-            };
+            songs.sort_by(|a, b| self.order.cmp_ord(a, b));
             let move_commands: Vec<commands::Move> = songs
                 .iter()
                 .enumerate()
                 .map(|(i, x)| commands::Move::id(x.id.into()).to_position(i.into()))
                 .collect();
-            mpd_client.command_list(move_commands).await.map_err(|e| anyhow!("{e}"))?;
+            mpd_client.command_list(move_commands).await.map_err(|e| {
+                tracing::error!("SortPlaylist: Move command list failed: {e}");
+                anyhow!("{e}")
+            })?;
             Ok(())
         })
     }
@@ -327,11 +324,12 @@ impl MPDAction for SortPlaylist {
 pub struct StagePlaylist {
     name: String,
     group: SongField,
+    order: ColumnSort,
 }
 
 impl StagePlaylist {
-    pub fn new(name: String, group: SongField) -> StagePlaylist {
-        StagePlaylist { name, group }
+    pub fn new(name: String, group: SongField, order: ColumnSort) -> StagePlaylist {
+        StagePlaylist { name, group, order }
     }
 }
 
@@ -342,7 +340,6 @@ impl MPDAction for StagePlaylist {
         Box::pin(async move {
             let tag = Tag::from(self.group);
             tracing::debug!("StagePlaylist: Querying playlist for group {:?}", self.group);
-            // Query playlist
             let songs = match tag {
                 Tag::Other(value) if value == "Directory".into() => {
                     let command = commands::ListAllIn::directory(&self.name);
@@ -363,19 +360,39 @@ impl MPDAction for StagePlaylist {
                 }
             };
             tracing::debug!("StagePlaylist: Found {} songs", songs.len());
-            // Clear current queue
-            tracing::debug!("StagePlaylist: Clearing current queue");
             let clear_command = commands::ClearQueue;
+            tracing::debug!("StagePlaylist: Clearing current queue");
             mpd_client.command(clear_command).await.map_err(|e| {
                 tracing::error!("StagePlaylist: Failed to clear queue: {e}");
                 anyhow!("{e}")
             })?;
-            // Populate new queue
             let add_commands: Vec<commands::Add> =
                 songs.iter().map(|x| commands::Add::uri(x.url.as_str())).collect();
             tracing::debug!("StagePlaylist: Adding {} commands to queue", add_commands.len());
             mpd_client.command_list(add_commands).await.map_err(|e| {
                 tracing::error!("StagePlaylist: Failed to add commands to queue: {e}");
+                anyhow!("{e}")
+            })?;
+            tracing::debug!("Sorting playlist with order {:?}", self.order);
+            let command = commands::Queue::all();
+            let mut songs: Vec<QSong> = mpd_client
+                .command(command)
+                .await
+                .map_err(|e| {
+                    tracing::error!("SortPlaylist: Queue command failed: {e}");
+                    anyhow!("{e}")
+                })?
+                .into_iter()
+                .map(QSong::from)
+                .collect();
+            songs.sort_by(|a, b| self.order.cmp_ord(a, b));
+            let move_commands: Vec<commands::Move> = songs
+                .iter()
+                .enumerate()
+                .map(|(i, x)| commands::Move::id(x.id.into()).to_position(i.into()))
+                .collect();
+            mpd_client.command_list(move_commands).await.map_err(|e| {
+                tracing::error!("SortPlaylist: Move command list failed: {e}");
                 anyhow!("{e}")
             })?;
             Ok(())
@@ -400,8 +417,12 @@ impl MPDAction for Seek {
 
     fn queue(self, mpd_client: ClientController) -> BoxSyncFuture<'static, Result<Self::Response>> {
         Box::pin(async move {
+            tracing::debug!("Executing Seek command to {:?}", self.to);
             let command = commands::Seek(commands::SeekMode::Absolute(self.to));
-            mpd_client.command(command).await.map_err(|e| anyhow!("{e}"))
+            mpd_client.command(command).await.map_err(|e| {
+                tracing::error!("Seek command failed: {e}");
+                anyhow!("{e}")
+            })
         })
     }
 }
@@ -424,8 +445,12 @@ impl MPDAction for ShuffleToggle {
     fn queue(self, mpd_client: ClientController) -> BoxSyncFuture<'static, Result<Self::Response>> {
         let current = self.current;
         Box::pin(async move {
+            tracing::debug!("Executing ShuffleToggle command (current={})", current);
             let command = commands::SetRandom(!current);
-            mpd_client.command(command).await.map_err(|e| anyhow!("{e}"))
+            mpd_client.command(command).await.map_err(|e| {
+                tracing::error!("ShuffleToggle command failed: {e}");
+                anyhow!("{e}")
+            })
         })
     }
 }
@@ -448,6 +473,11 @@ impl MPDAction for RepeatToggle {
 
     fn queue(self, mpd_client: ClientController) -> BoxSyncFuture<'static, Result<Self::Response>> {
         Box::pin(async move {
+            tracing::debug!(
+                "Executing RepeatToggle command (repeat={}, single={})",
+                self.repeat,
+                self.single
+            );
             let commands = match (self.repeat, self.single) {
                 (false, false) | (false, true) => {
                     (commands::SetRepeat(true), commands::SetSingle(commands::SingleMode::Disabled))
@@ -460,7 +490,10 @@ impl MPDAction for RepeatToggle {
                     commands::SetSingle(commands::SingleMode::Disabled),
                 ),
             };
-            mpd_client.command_list(commands).await.map_err(|e| anyhow!("{e}"))?;
+            mpd_client.command_list(commands).await.map_err(|e| {
+                tracing::error!("RepeatToggle command list failed: {e}");
+                anyhow!("{e}")
+            })?;
             Ok(())
         })
     }
@@ -483,8 +516,12 @@ impl MPDAction for IdlePlayer {
 
     fn queue(self, mpd_client: ClientController) -> BoxSyncFuture<'static, Result<Self::Response>> {
         Box::pin(async move {
+            tracing::debug!("Executing IdlePlayer command");
             let commands = (commands::Status, commands::CurrentSong);
-            let rsp = mpd_client.command_list(commands).await.map_err(|e| anyhow!("{e}"))?;
+            let rsp = mpd_client.command_list(commands).await.map_err(|e| {
+                tracing::error!("IdlePlayer: Command list failed: {e}");
+                anyhow!("{e}")
+            })?;
             let play_state = QString::from(format!("{:#?}", rsp.0.state));
             let current_song = rsp.1.map(QSong::from).unwrap_or_default();
             let _ = self.qt_thread.queue(move |mut qobject| {
@@ -522,9 +559,12 @@ impl MPDAction for IdleQueue {
 
     fn queue(self, mpd_client: ClientController) -> BoxSyncFuture<'static, Result<Self::Response>> {
         Box::pin(async move {
-            // Propagate playlist to other components
+            tracing::debug!("Executing IdleQueue command");
             let command = commands::Queue::all();
-            let rsp = mpd_client.command(command).await.map_err(|e| anyhow!("{e}"))?;
+            let rsp = mpd_client.command(command).await.map_err(|e| {
+                tracing::error!("IdleQueue: Queue command failed: {e}");
+                anyhow!("{e}")
+            })?;
             let songs: Vec<QSong> = rsp.into_iter().map(QSong::from).collect();
             let bcode: &[u8] = &wincode::serialize(&songs).unwrap();
             let bcode = QByteArray::from(bcode);
@@ -553,8 +593,12 @@ impl MPDAction for IdleOptions {
 
     fn queue(self, mpd_client: ClientController) -> BoxSyncFuture<'static, Result<Self::Response>> {
         Box::pin(async move {
+            tracing::debug!("Executing IdleOptions command");
             let command = commands::Status;
-            let rsp = mpd_client.command(command).await.map_err(|e| anyhow!("{e}"))?;
+            let rsp = mpd_client.command(command).await.map_err(|e| {
+                tracing::error!("IdleOptions: Status command failed: {e}");
+                anyhow!("{e}")
+            })?;
             let repeat = rsp.repeat;
             let shuffle = rsp.random;
             let single = !matches!(rsp.single, commands::SingleMode::Disabled);
@@ -586,8 +630,12 @@ impl MPDAction for IdleTimeline {
 
     fn queue(self, mpd_client: ClientController) -> BoxSyncFuture<'static, Result<Self::Response>> {
         Box::pin(async move {
+            tracing::debug!("Executing IdleTimeline command");
             let command = commands::Status;
-            let rsp = mpd_client.command(command).await.map_err(|e| anyhow!("{e}"))?;
+            let rsp = mpd_client.command(command).await.map_err(|e| {
+                tracing::error!("IdleTimeline: Status command failed: {e}");
+                anyhow!("{e}")
+            })?;
             let duration = rsp.duration.unwrap_or(Duration::new(0, 0));
             let elapsed = rsp.elapsed.unwrap_or(Duration::new(0, 0));
             let bitrate = rsp.bitrate.unwrap_or_default();
@@ -637,7 +685,6 @@ impl MPDAction for UpdateArt {
             let ckey_tmp = covers.join(format!("{}_{}_{}.tmp", song.album, song.artist, song.disc));
             tracing::debug!("New album art request for \"{}\"", song.file);
 
-            // Request in progress
             if ckey_tmp.exists() {
                 let _ = self.qt_thread.queue(move |qobject| {
                     qobject.album_art_update(QString::default());
@@ -645,7 +692,6 @@ impl MPDAction for UpdateArt {
                 return Ok(());
             }
 
-            // Art already in cache
             if ckey.exists() {
                 let _ = self.qt_thread.queue(move |qobject| {
                     qobject.album_art_update(QString::from(ckey.to_string_lossy().into_owned()));
@@ -653,13 +699,11 @@ impl MPDAction for UpdateArt {
                 return Ok(());
             }
 
-            // Mark this cover as pending
             if let Err(e) = fs::write(&ckey_tmp, vec![]).await {
                 tracing::error!("Failed to write pending file {:?}: {}", ckey_tmp, e);
                 return Ok(());
             }
 
-            // Get cover from mpd
             let cover = tokio::select!(
                 Ok(Some((cover, Some(_)))) = mpd_client.album_art(&song.file) => {
                     tracing::debug!("Recieved album art for \"{}\"", song.file);
@@ -676,7 +720,6 @@ impl MPDAction for UpdateArt {
                 },
             );
 
-            // Process cover (downscale)
             let ckey_clone = ckey.clone();
             let cover_processing = task::spawn_blocking(move || -> Result<PathBuf, String> {
                 let image = image::load_from_memory(&cover)
@@ -725,8 +768,12 @@ impl MPDAction for SetBinaryLimit {
 
     fn queue(self, mpd_client: ClientController) -> BoxSyncFuture<'static, Result<Self::Response>> {
         Box::pin(async move {
+            tracing::debug!("Executing SetBinaryLimit command (limit={})", self.0);
             let command = commands::SetBinaryLimit(self.0);
-            mpd_client.command(command).await.map_err(|e| anyhow!("{e}"))
+            mpd_client.command(command).await.map_err(|e| {
+                tracing::error!("SetBinaryLimit command failed: {e}");
+                anyhow!("{e}")
+            })
         })
     }
 }

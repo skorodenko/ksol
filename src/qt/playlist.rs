@@ -79,7 +79,6 @@ use cxx_qt::CxxQtType;
 use num_traits::FromPrimitive;
 use std::pin::Pin;
 use strum::EnumCount;
-use tracing::debug;
 
 #[derive(Default)]
 pub struct PlaylistModel {

@@ -15,7 +15,7 @@ Item {
     required property int columnCount
     property int firstVisibleColumn: 0
     property int lastVisibleColumn: 0
-    property int minimumColumnWidth: 30
+    property int minimumColumnWidth: 60
     property int maximumColumnWidth: width
     property var color: "#32363b"
     property var highlightColor: Kirigami.Theme.highlightColor
@@ -113,7 +113,7 @@ Item {
 
             containmentMask: Item {
                 x: (handleRect.width - width) / 2
-                width: 4
+                width: 6
                 height: view.height
             }
         }
@@ -137,8 +137,8 @@ Item {
                 required property int index
 
                 onWidthChanged: {
-                    root.columnWidthChanged();
                     QState.setHeaderColumn(delegate.index, ColumnType.Width, delegate.SplitView.preferredWidth / root.width);
+                    root.columnWidthChanged();
                 }
 
                 MouseArea {

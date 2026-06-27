@@ -13,6 +13,8 @@ pub mod qobject {
     extern "RustQt" {
         #[qobject]
         #[qml_element]
+        #[qproperty(i32, sort_column, cxx_name = "sortColumn")]
+        #[qproperty(i32, sort_order, cxx_name = "sortOrder")]
         #[qproperty(QString, mpd_socket, cxx_name = "mpdSocket")]
         #[qproperty(bool, repeat, READ, WRITE, NOTIFY = update_options)]
         #[qproperty(bool, single, READ, WRITE, NOTIFY = update_options)]
@@ -142,7 +144,6 @@ use cxx_qt::{CxxQtType, Threading};
 use mpd_client::client::{ConnectionEvent, Subsystem};
 use mpd_client::{ClientController, ClientIdler, commands};
 use mpris_server::{LoopStatus, Metadata, PlaybackStatus, Property, Server, Time, TrackId};
-use num_traits::FromPrimitive;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -163,6 +164,8 @@ pub struct MPDConnector {
     pub active_song: (watch::Sender<QSong>, watch::Receiver<QSong>),
     pub repeat: bool,
     pub single: bool,
+    pub sort_order: i32,
+    pub sort_column: i32,
     pub shuffle: bool,
     pub runtime: Runtime,
     pub mpd_socket: QString,
@@ -335,15 +338,15 @@ impl qobject::QMPDConnector {
     pub fn stage_playlist(self: Pin<&mut QMPDConnector>, name: QString, group: QString) {
         let name = String::from(name);
         let group = SongField::from_str(group.to_string().as_str()).expect("bad group value");
+        let sort = ColumnSort::from((self.sort_order, self.sort_column));
         if let Some(mut service) = self.mpd_service.clone() {
-            self.runtime.spawn(service.call(service::mpd::StagePlaylist::new(name, group)));
+            self.runtime.spawn(service.call(service::mpd::StagePlaylist::new(name, group, sort)));
         } else {
             tracing::error!("Action service not available");
         }
     }
 
     pub fn sort_playlist(self: Pin<&mut QMPDConnector>, sort_column: i32, sort_order: i32) {
-        let sort_column = SongField::from_i32(sort_column).expect("bad sort_column value");
         let sort_order = ColumnSort::from((sort_order, sort_column));
         if let Some(mut service) = self.mpd_service.clone() {
             self.runtime.spawn(service.call(service::mpd::SortPlaylist::new(sort_order)));
@@ -680,6 +683,8 @@ impl Default for MPDConnector {
             single: false,
             shuffle: false,
             mpd_socket: QString::default(),
+            sort_order: 0,
+            sort_column: -1,
         }
     }
 }

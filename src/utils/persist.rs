@@ -1,13 +1,9 @@
 use super::globals::Globals;
-use super::misc::AtomicF64Vec;
 use crate::qt::settings::AppSettings;
-use crate::utils::init_hooks::{init_dirs, init_native_mpd_config};
+use crate::utils::init_hooks::init_native_mpd_config;
 use crate::{ColumnSort, HeaderColumn, SongField};
-use num_traits::FromPrimitive;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::OnceLock;
-use tokio::sync::RwLock;
 
 /// Default output plugin type used when no configuration exists.
 const DEFAULT_OUTPUT_PLUGIN_TYPE: i32 = 1;
@@ -106,7 +102,7 @@ impl From<AppSettings> for PersistentConfig {
     }
 }
 
-#[derive(wincode::SchemaRead, wincode::SchemaWrite)]
+#[derive(wincode::SchemaRead, wincode::SchemaWrite, Debug)]
 pub struct StateFile {
     pub header_columns: Vec<HeaderColumn>,
     pub column_sort: ColumnSort,
@@ -167,7 +163,7 @@ impl StateFile {
             HeaderColumn { name: "Directory".into(), width: 1f64 / 14f64, hidden: true },
             HeaderColumn { name: "Duration".into(), width: 1f64 / 14f64, hidden: false },
         ];
-        let column_sort = ColumnSort::Ascending(SongField::Track);
+        let column_sort = ColumnSort::Inactive;
         let active_group = SongField::Directory;
 
         Self { header_columns, column_sort, active_group }
