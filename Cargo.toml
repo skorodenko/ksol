@@ -24,7 +24,6 @@ mpris-server = "0.9.0"
 tower = "0.5.2"
 futures = "0.3.31"
 image = "0.25.9"
-turbojpeg = { version = "1.3.3", features = ["image"] }
 anyhow = "1.0.100"
 wincode = { version = "0.5.5", features = ["derive"] }
 bytes = "1.11.1"

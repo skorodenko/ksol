@@ -724,10 +724,11 @@ impl MPDAction for UpdateArt {
             let cover_processing = task::spawn_blocking(move || -> Result<PathBuf, String> {
                 let image = image::load_from_memory(&cover)
                     .map_err(|e| format!("Failed to load image from memory: {}", e))?;
-                let compressed =
-                    turbojpeg::compress_image(&image.to_rgb8(), 50, turbojpeg::Subsamp::Sub2x2)
-                        .map_err(|e| format!("Failed to compress image: {}", e))?;
-                std::fs::write(&ckey_tmp, compressed).map_err(|e| {
+                let scale_percentage = 0.5;
+                let new_width = (image.width() as f32 * scale_percentage).round() as u32;
+                let new_height = (image.height() as f32 * scale_percentage).round() as u32;
+                let compressed = image.thumbnail(new_width, new_height);
+                compressed.save_with_format(&ckey_tmp, image::ImageFormat::Jpeg).map_err(|e| {
                     format!("Failed to write compressed image to {:?}: {}", ckey_tmp, e)
                 })?;
                 std::fs::rename(&ckey_tmp, &ckey_clone).map_err(|e| {

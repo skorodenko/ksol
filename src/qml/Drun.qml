@@ -82,16 +82,16 @@ QQC2.Popup {
         model: playlists_list
         filters: [
             FunctionFilter {
-                component RoleData: QtObject {
-                    property string name
-                }
 
-                function filter(data: RoleData) : bool {
+                function filter(data: RoleData): bool {
                     var searchTxt = search.text.toLowerCase();
-                    return data.name.toLowerCase().includes(searchTxt)
+                    return data.name.toLowerCase().includes(searchTxt);
                 }
             }
         ]
+    }
+    component RoleData: QtObject {
+        property string name
     }
 
     ListView {
@@ -127,7 +127,7 @@ QQC2.Popup {
             required property int index
 
             Keys.onReturnPressed: function () {
-                root.stagePlaylist(listView.currentItem.name, QState.activeGroup);
+                root.stagePlaylist(delegateItem.name, QState.activeGroup);
                 root.visible = false;
             }
 

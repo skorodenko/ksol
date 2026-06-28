@@ -190,7 +190,7 @@ Kirigami.ApplicationWindow {
         target: QState
 
         function onUpdateSort() {
-            mpd_connector.sortPlaylist(QState.sortColumn, QState.sortOrder);
+            mpd_connector.sortPlaylist(QState.sortOrder, QState.sortColumn);
         }
     }
 
@@ -198,7 +198,7 @@ Kirigami.ApplicationWindow {
         target: drun
 
         function onStagePlaylist(name, group) {
-            mpd_connector.stagePlaylist(name, group);
+            mpd_connector.stagePlaylist(name, group, QState.sortOrder, QState.sortColumn);
         }
 
         function onActiveGroupChanged(value) {
