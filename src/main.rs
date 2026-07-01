@@ -35,5 +35,4 @@ fn main() {
     }
 
     tracing::debug!("Application closing");
-    //ksol::utils::settings::Settings::dump();
 }

@@ -674,7 +674,7 @@ impl Default for MPDConnector {
         let active_song = watch::channel(QSong::default());
         let runtime = Builder::new_multi_thread()
             .worker_threads(1)
-            .event_interval(3)
+            .event_interval(21)
             .enable_io()
             .enable_time()
             .build()

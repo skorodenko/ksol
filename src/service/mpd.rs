@@ -630,7 +630,7 @@ impl MPDAction for IdleTimeline {
 
     fn queue(self, mpd_client: ClientController) -> BoxSyncFuture<'static, Result<Self::Response>> {
         Box::pin(async move {
-            tracing::debug!("Executing IdleTimeline command");
+            tracing::trace!("Executing IdleTimeline command");
             let command = commands::Status;
             let rsp = mpd_client.command(command).await.map_err(|e| {
                 tracing::error!("IdleTimeline: Status command failed: {e}");
@@ -671,18 +671,22 @@ impl MPDAction for UpdateArt {
         let globals = Globals::get();
         let covers = globals.app_cover_cache.clone();
 
-        let ckey_fn = |song: &QSong, covers: &PathBuf| {
+        let ckey_fn = |song: &QSong, covers: &PathBuf, tmp: bool| {
             let safe_album =
                 song.album.replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], "_");
             let safe_artist =
                 song.artist.replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], "_");
-            covers.join(format!("{}_{}_{}", safe_album, safe_artist, song.disc))
+            if tmp {
+                covers.join(format!("{}_{}_{}.tmp", safe_album, safe_artist, song.disc))
+            } else {
+                covers.join(format!("{}_{}_{}", safe_album, safe_artist, song.disc))
+            }
         };
 
         Box::pin(async move {
             let song = self.song_watch.borrow().clone();
-            let ckey = ckey_fn(&song, &covers);
-            let ckey_tmp = covers.join(format!("{}_{}_{}.tmp", song.album, song.artist, song.disc));
+            let ckey = ckey_fn(&song, &covers, false);
+            let ckey_tmp = ckey_fn(&song, &covers, true);
             tracing::debug!("New album art request for \"{}\"", song.file);
 
             if ckey_tmp.exists() {
@@ -699,6 +703,15 @@ impl MPDAction for UpdateArt {
                 return Ok(());
             }
 
+            if [song.album, song.artist].iter().all(|x| x.is_empty()) {
+                tracing::debug!("No album/artist metadata for cover cache \"{}\"", song.file);
+                return Ok(());
+            }
+
+            if let Some(parent) = ckey_tmp.parent() {
+                fs::create_dir_all(parent).await?;
+            }
+
             if let Err(e) = fs::write(&ckey_tmp, vec![]).await {
                 tracing::error!("Failed to write pending file {:?}: {}", ckey_tmp, e);
                 return Ok(());
@@ -709,7 +722,7 @@ impl MPDAction for UpdateArt {
                     tracing::debug!("Recieved album art for \"{}\"", song.file);
                     cover.freeze()
                 },
-                _ = self.song_watch.changed(), if ckey_fn(&self.song_watch.borrow().clone(), &covers) != ckey => {
+                _ = self.song_watch.changed(), if ckey_fn(&self.song_watch.borrow().clone(), &covers, false) != ckey => {
                     tracing::debug!("Canceled album art request for \"{}\"", song.file);
                     fs::remove_file(&ckey_tmp).await.expect(&format!("Failed to delete pending file {:?}", ckey_tmp));
                     return Ok(());
@@ -724,11 +737,7 @@ impl MPDAction for UpdateArt {
             let cover_processing = task::spawn_blocking(move || -> Result<PathBuf, String> {
                 let image = image::load_from_memory(&cover)
                     .map_err(|e| format!("Failed to load image from memory: {}", e))?;
-                let scale_percentage = 0.5;
-                let new_width = (image.width() as f32 * scale_percentage).round() as u32;
-                let new_height = (image.height() as f32 * scale_percentage).round() as u32;
-                let compressed = image.thumbnail(new_width, new_height);
-                compressed.save_with_format(&ckey_tmp, image::ImageFormat::Jpeg).map_err(|e| {
+                image.save_with_format(&ckey_tmp, image::ImageFormat::Jpeg).map_err(|e| {
                     format!("Failed to write compressed image to {:?}: {}", ckey_tmp, e)
                 })?;
                 std::fs::rename(&ckey_tmp, &ckey_clone).map_err(|e| {
@@ -750,7 +759,7 @@ impl MPDAction for UpdateArt {
                         },
                     }
                 },
-                _ = self.song_watch.changed(), if ckey_fn(&self.song_watch.borrow().clone(), &covers) != ckey => {
+                _ = self.song_watch.changed(), if ckey_fn(&self.song_watch.borrow().clone(), &covers, false) != ckey => {
                     tracing::debug!("Canceled album art processing for \"{}\"", song.file);
                 },
             );

@@ -9,13 +9,17 @@ Item {
     id: root
 
     property string source
+    property string sourcePrev
     property string sourceTmp
 
     onSourceChanged: {
-        destroyAnimation.start();
-        createAnimation.start();
-        destroyAnimationS.start();
-        createAnimationS.start();
+        if (source != sourcePrev) {
+            destroyAnimation.start();
+            createAnimation.start();
+            destroyAnimationS.start();
+            createAnimationS.start();
+        }
+        sourcePrev = source;
     }
 
     MultiEffect {
@@ -32,7 +36,7 @@ Item {
             id: createAnimation
             from: 0.4
             to: 1
-            duration: Kirigami.Units.shortDuration
+            duration: Kirigami.Units.shortDuration * 2
 
             onRunningChanged: {
                 if (!running) {
@@ -55,7 +59,7 @@ Item {
         NumberAnimation on opacity {
             id: destroyAnimation
             to: 0.3
-            duration: 0.7 * Kirigami.Units.shortDuration
+            duration: Kirigami.Units.shortDuration * 2
             onRunningChanged: {
                 if (!running) {}
             }
@@ -77,7 +81,7 @@ Item {
             id: createAnimationS
             from: 0.4
             to: 1
-            duration: Kirigami.Units.shortDuration
+            duration: Kirigami.Units.shortDuration * 2
 
             onRunningChanged: {
                 if (!running) {
@@ -101,7 +105,7 @@ Item {
         NumberAnimation on opacity {
             id: destroyAnimationS
             to: 0.3
-            duration: 0.7 * Kirigami.Units.shortDuration
+            duration: 0.7 * Kirigami.Units.shortDuration * 2
             onRunningChanged: {
                 if (!running) {}
             }

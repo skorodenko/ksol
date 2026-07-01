@@ -563,7 +563,7 @@ Kirigami.ApplicationWindow {
             Keys.onReturnPressed: function () {
                 if (qplaylist_view.selectionTimeout) {
                     var index = qplaylist_view.selectionModel.currentIndex;
-                    var songId = qplaylist.data(index, QPlaylistModel.SongId);
+                    var songId = qplaylistProxyModel.data(index, QPlaylistModel.SongId);
                     mpd_connector.playSong(songId);
                 }
             }
