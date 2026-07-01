@@ -42,7 +42,7 @@ Kirigami.ApplicationWindow {
     }
 
     function moveToSong(songPos) {
-        qplaylist_view.selectionModel.setCurrentIndex(qplaylist.index(songPos, 0), ItemSelectionModel.Rows);
+        qplaylist_view.selectionModel.setCurrentIndex(qplaylistProxyModel.index(songPos, 0), ItemSelectionModel.Rows);
         qplaylist_view.positionViewAtRow(songPos, Qt.AlignVCenter, 0);
     }
 
@@ -63,7 +63,7 @@ Kirigami.ApplicationWindow {
                 root.moveToSong(mpd_connector.activeSongPosition);
             }
             if (mode === -1) {
-                root.moveToSong(qplaylist.rowCount() - 1);
+                root.moveToSong(qplaylistProxyModel.rowCount() - 1);
             }
         }
 
@@ -95,7 +95,7 @@ Kirigami.ApplicationWindow {
                 connectionStateLabelBackground.color = Kirigami.Theme.positiveBackgroundColor;
                 connectionStateRestart.visible = false;
                 var songPos = mpd_connector.activeSongPosition;
-                qplaylist_view.selectionModel.setCurrentIndex(qplaylist.index(songPos, 0), ItemSelectionModel.Rows);
+                qplaylist_view.selectionModel.setCurrentIndex(qplaylistProxyModel.index(songPos, 0), ItemSelectionModel.Rows);
                 break;
             case "connecting" || "disconnected":
                 connectionStateLabel.text = "Connecting";
@@ -184,6 +184,24 @@ Kirigami.ApplicationWindow {
 
     QPlaylistModel {
         id: qplaylist
+    }
+
+    SortFilterProxyModel {
+        id: qplaylistProxyModel
+        model: qplaylist
+        filters: [
+            FunctionFilter {
+                column: -1
+                function filter(data: RoleData): bool {
+                    var searchTxt = filterSearch.text.toLowerCase();
+                    return data.songDisplay.toLowerCase().includes(searchTxt);
+                }
+            }
+        ]
+    }
+
+    component RoleData: QtObject {
+        property string songDisplay
     }
 
     Connections {
@@ -516,7 +534,7 @@ Kirigami.ApplicationWindow {
             property bool selectionTimeout: false
             property int songPos: 0
 
-            model: qplaylist
+            model: qplaylistProxyModel
 
             boundsMovement: Flickable.StopAtBounds
             boundsBehavior: Flickable.StopAtBounds
@@ -561,7 +579,9 @@ Kirigami.ApplicationWindow {
                 }
             }
 
-            selectionModel: ItemSelectionModel {}
+            selectionModel: ItemSelectionModel {
+                model: qplaylistProxyModel
+            }
 
             QQC2.ScrollBar.vertical: scrollBar
 
@@ -577,7 +597,7 @@ Kirigami.ApplicationWindow {
                 MouseArea {
                     anchors.fill: parent
                     onClicked: {
-                        qplaylist_view.selectionModel.setCurrentIndex(qplaylist.index(delegate.row, 0), ItemSelectionModel.Rows);
+                        qplaylist_view.selectionModel.setCurrentIndex(qplaylistProxyModel.index(delegate.row, 0), ItemSelectionModel.Rows);
                     }
                     onDoubleClicked: {
                         mpd_connector.playSong(parent.songId);
@@ -637,12 +657,13 @@ Kirigami.ApplicationWindow {
                 id: filterSearch
                 focusPolicy: Qt.NoFocus
                 placeholderText: "Filter by song title/artist ..."
+                onTextChanged: qplaylistProxyModel.invalidate()
                 Layout.alignment: Qt.AlignLeft
                 Layout.preferredWidth: parent.width
                 Layout.preferredHeight: parent.height
 
                 onTextEdited: {
-                    qplaylist_view.selectionModel.setCurrentIndex(qplaylist.index(0, 0), ItemSelectionModel.Rows);
+                    qplaylist_view.selectionModel.setCurrentIndex(qplaylistProxyModel.index(0, 0), ItemSelectionModel.Rows);
                     scrollBar.position = 0;
                     qplaylist_view.selectionTimeout = true;
                     selectionTimeoutTimer.restart();

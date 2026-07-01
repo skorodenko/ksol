@@ -82,7 +82,6 @@ QQC2.Popup {
         model: playlists_list
         filters: [
             FunctionFilter {
-
                 function filter(data: RoleData): bool {
                     var searchTxt = search.text.toLowerCase();
                     return data.name.toLowerCase().includes(searchTxt);
@@ -90,6 +89,7 @@ QQC2.Popup {
             }
         ]
     }
+
     component RoleData: QtObject {
         property string name
     }
