@@ -7,6 +7,8 @@ use crate::{ColumnSort, QSong, SongField};
 use anyhow::{Result, anyhow};
 use cxx_qt::{CxxQtThread, CxxQtType};
 use cxx_qt_lib::{QByteArray, QString};
+use fast_image_resize as fir;
+use fir::IntoImageView;
 use image;
 use mpd_client::{ClientController, commands, filter::Filter, responses, tag::Tag};
 use tokio::fs;
@@ -722,13 +724,17 @@ impl MPDAction for UpdateArt {
 
             let ckey_clone = ckey.clone();
             let cover_processing = task::spawn_blocking(move || -> Result<PathBuf, String> {
-                let image = image::load_from_memory(&cover)
+                let src_image = image::load_from_memory(&cover)
                     .map_err(|e| format!("Failed to load image from memory: {}", e))?;
                 let scale_percentage = 0.5;
-                let new_width = (image.width() as f32 * scale_percentage).round() as u32;
-                let new_height = (image.height() as f32 * scale_percentage).round() as u32;
-                let compressed = image.thumbnail(new_width, new_height);
-                compressed.save_with_format(&ckey_tmp, image::ImageFormat::Jpeg).map_err(|e| {
+                let dst_width = (src_image.width() as f32 * scale_percentage).round() as u32;
+                let dst_height = (src_image.height() as f32 * scale_percentage).round() as u32;
+                let mut dst_image = image::RgbImage::new(dst_width, dst_height);
+                let mut resizer = fir::Resizer::new();
+                resizer
+                    .resize(&src_image, &mut dst_image, &fir::ResizeOptions::default())
+                    .map_err(|e| format!("Failed to resize image to {:?}: {}", ckey_tmp, e))?;
+                dst_image.save_with_format(&ckey_tmp, image::ImageFormat::Jpeg).map_err(|e| {
                     format!("Failed to write compressed image to {:?}: {}", ckey_tmp, e)
                 })?;
                 std::fs::rename(&ckey_tmp, &ckey_clone).map_err(|e| {
