@@ -19,8 +19,8 @@ in
 {
   packages = with pkgs; [
     mpd
-    libglvnd
     mesa
+    libglvnd
     qtdeps
   ];
 
@@ -48,12 +48,6 @@ in
     # Crucial for qt-build-utils / qmake to locate QuickControls2 and Qml .prl files:
     QMAKEPATH = "${qtdeps}/share/qt/mkspecs:${qtdeps}/lib/qt6/mkspecs";
     QT_PLUGIN_PATH = "${qtdeps}/${pkgs.qt6.qtbase.qtPluginPrefix}";
-
-    LIBRARY_PATH = builtins.concatStringsSep ":" [
-      "${pkgs.libglvnd}/lib"
-      "${pkgs.mesa}/lib"
-      "${pkgs.stdenv.cc.cc.lib}/lib"
-    ];
 
     RUST_LOG = "DEBUG";
   };

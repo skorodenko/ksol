@@ -56,6 +56,7 @@ pub fn init_dirs() {
         &app_config.join("mpd"),
         &app_data.join("mpd"),
         &app_cache.join("mpd"),
+        &app_cache.join("covers"),
     ];
 
     for dir in dirs_to_create {
