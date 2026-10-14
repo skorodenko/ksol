@@ -4,28 +4,28 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-cxx = "1.0.144"
+cxx = "1.0.205"
 cxx-qt = "0.10.0"
 cxx-qt-lib = { version = "0.10.0", features = ["qt_full"] }
-serde = { version = "1.0.219", features = ["derive"] }
-which = "8.0.0"
+serde = { version = "1.0.229", features = ["derive"] }
+which = "8.0.6"
 xdg = "3.0.0"
 num-traits = "0.2"
 num-derive = "0.4"
-tokio = { version = "1.48.0", features = ["time", "sync", "process", "rt-multi-thread", "fs"] }
+tokio = { version = "1.53", features = ["time", "sync", "process", "rt-multi-thread", "fs"] }
 mpd_client = { git = "https://github.com/skorodenko/mpd_client", branch = "refactoring" }
 tinytemplate = "1.2.1"
 toml = "0.9.8"
 tracing = { version = "0.1.41", features = ["attributes"] }
 tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
-tokio-util = "0.7.17"
-mpris-server = "0.9.0"
-tower = "0.5.2"
-futures = "0.3.31"
-image = "0.25.9"
+tokio-util = "0.7"
+mpris-server = "0.10"
+tower = "0.5.3"
+futures = "0.3.34"
+image = "0.25.10"
 anyhow = "1.0.100"
-wincode = { version = "0.5.5", features = ["derive"] }
-bytes = "1.11.1"
+wincode = { version = "0.6.3", features = ["derive"] }
+bytes = "1.12.1"
 strum = { version = "0.28.0", features = ["derive"] }
 strum_macros = "0.28.0"
 
