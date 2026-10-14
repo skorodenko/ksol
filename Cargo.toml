@@ -29,6 +29,7 @@ bytes = "1.12.1"
 strum = { version = "0.28.0", features = ["derive"] }
 strum_macros = "0.28.0"
 fast_image_resize = { version = "6.0", features = ["image"] }
+sanitize-filename = "0.6.0"
 
 [build-dependencies]
 cxx-qt-build = { version = "0.10.0" }

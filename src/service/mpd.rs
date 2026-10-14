@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use super::BoxSyncFuture;
 use crate::qt::mpd::qobject::QMPDConnector;
 use crate::utils::globals::Globals;
@@ -8,9 +6,14 @@ use anyhow::{Result, anyhow};
 use cxx_qt::{CxxQtThread, CxxQtType};
 use cxx_qt_lib::{QByteArray, QString};
 use fast_image_resize as fir;
-use fir::IntoImageView;
-use image;
+use image::{
+    self, DynamicImage, GenericImageView, ImageBuffer, Rgb32FImage, RgbImage, Rgba32FImage,
+    RgbaImage,
+};
 use mpd_client::{ClientController, commands, filter::Filter, responses, tag::Tag};
+use sanitize_filename;
+use std::cell::RefCell;
+use std::path::PathBuf;
 use tokio::fs;
 use tokio::sync::watch;
 use tokio::task;
@@ -657,6 +660,11 @@ pub struct UpdateArt {
     song_watch: watch::Receiver<QSong>,
 }
 
+thread_local! {
+    static WORKER_CACHE: RefCell<fir::Resizer> =
+        RefCell::new(fir::Resizer::new());
+}
+
 impl UpdateArt {
     pub fn new(qt_thread: CxxQtThread<QMPDConnector>, song_watch: watch::Receiver<QSong>) -> Self {
         Self { qt_thread, song_watch }
@@ -674,17 +682,25 @@ impl MPDAction for UpdateArt {
         let covers = globals.app_cover_cache.clone();
 
         let ckey_fn = |song: &QSong, covers: &PathBuf| {
-            let safe_album =
-                song.album.replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], "_");
-            let safe_artist =
-                song.artist.replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], "_");
-            covers.join(format!("{}_{}_{}", safe_album, safe_artist, song.disc))
+            let key = sanitize_filename::sanitize(format!(
+                "{}_{}_{}",
+                song.album, song.artist, song.disc
+            ));
+            covers.join(key)
+        };
+
+        let ckey_fn_tmp = |song: &QSong, covers: &PathBuf| {
+            let key = sanitize_filename::sanitize(format!(
+                "{}_{}_{}.tmp",
+                song.album, song.artist, song.disc
+            ));
+            covers.join(key)
         };
 
         Box::pin(async move {
             let song = self.song_watch.borrow().clone();
             let ckey = ckey_fn(&song, &covers);
-            let ckey_tmp = covers.join(format!("{}_{}_{}.tmp", song.album, song.artist, song.disc));
+            let ckey_tmp = ckey_fn_tmp(&song, &covers);
             tracing::debug!("New album art request for \"{}\"", song.file);
 
             if ckey_tmp.exists() {
@@ -729,17 +745,29 @@ impl MPDAction for UpdateArt {
                 let scale_percentage = 0.5;
                 let dst_width = (src_image.width() as f32 * scale_percentage).round() as u32;
                 let dst_height = (src_image.height() as f32 * scale_percentage).round() as u32;
-                let mut dst_image = image::RgbImage::new(dst_width, dst_height);
-                let mut resizer = fir::Resizer::new();
-                resizer
-                    .resize(&src_image, &mut dst_image, &fir::ResizeOptions::default())
-                    .map_err(|e| format!("Failed to resize image to {:?}: {}", ckey_tmp, e))?;
+
+                let dst_image = WORKER_CACHE.with_borrow_mut(|cache| {
+                    let resizer = &mut *cache;
+                    let options = fir::ResizeOptions {
+                        algorithm: fir::ResizeAlg::Convolution(fir::FilterType::Hamming),
+                        ..Default::default()
+                    };
+
+                    let mut dst_image = src_image.buffer_with_dimensions(dst_width, dst_height);
+                    fir::Resizer::new()
+                        .resize(&src_image, &mut dst_image, &options)
+                        .map_err(|e| format!("Failed to resize image to {:?}: {}", ckey_tmp, e))?;
+
+                    Ok(dst_image)
+                })?;
+
                 dst_image.save_with_format(&ckey_tmp, image::ImageFormat::Jpeg).map_err(|e| {
                     format!("Failed to write compressed image to {:?}: {}", ckey_tmp, e)
                 })?;
                 std::fs::rename(&ckey_tmp, &ckey_clone).map_err(|e| {
                     format!("Failed to rename {:?} to {:?}: {}", ckey_tmp, ckey_clone, e)
                 })?;
+
                 Ok(ckey_clone)
             });
 
@@ -747,6 +775,7 @@ impl MPDAction for UpdateArt {
                 res = cover_processing => {
                     match res.unwrap() {
                         Ok(cover_path) => {
+                            tracing::debug!("Retrieved album art: {}", cover_path.to_string_lossy());
                             let _ = self.qt_thread.queue(move |qobject| {
                                 qobject.album_art_update(QString::from(cover_path.to_string_lossy().into_owned()));
                             });
