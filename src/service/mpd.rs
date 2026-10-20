@@ -6,10 +6,7 @@ use anyhow::{Result, anyhow};
 use cxx_qt::{CxxQtThread, CxxQtType};
 use cxx_qt_lib::{QByteArray, QString};
 use fast_image_resize as fir;
-use image::{
-    self, DynamicImage, GenericImageView, ImageBuffer, Rgb32FImage, RgbImage, Rgba32FImage,
-    RgbaImage,
-};
+use image::{self, RgbaImage};
 use mpd_client::{ClientController, commands, filter::Filter, responses, tag::Tag};
 use sanitize_filename;
 use std::cell::RefCell;
@@ -704,6 +701,7 @@ impl MPDAction for UpdateArt {
             tracing::debug!("New album art request for \"{}\"", song.file);
 
             if ckey_tmp.exists() {
+                tracing::warn!("Operation in progress for {:?}", ckey_tmp);
                 let _ = self.qt_thread.queue(move |qobject| {
                     qobject.album_art_update(QString::default());
                 });
@@ -711,6 +709,7 @@ impl MPDAction for UpdateArt {
             }
 
             if ckey.exists() {
+                tracing::debug!("Cache hit {:?}", ckey);
                 let _ = self.qt_thread.queue(move |qobject| {
                     qobject.album_art_update(QString::from(ckey.to_string_lossy().into_owned()));
                 });
@@ -741,27 +740,29 @@ impl MPDAction for UpdateArt {
             let ckey_clone = ckey.clone();
             let cover_processing = task::spawn_blocking(move || -> Result<PathBuf, String> {
                 let src_image = image::load_from_memory(&cover)
-                    .map_err(|e| format!("Failed to load image from memory: {}", e))?;
-                let scale_percentage = 0.5;
-                let dst_width = (src_image.width() as f32 * scale_percentage).round() as u32;
-                let dst_height = (src_image.height() as f32 * scale_percentage).round() as u32;
+                    .map_err(|e| format!("Failed to load image from memory: {}", e))?
+                    .to_rgba8();
+                let (src_width, src_height) = src_image.dimensions();
+                let (src_width, src_height) = (src_width as f64, src_height as f64);
+                let max_width = 300.0;
+                let max_height = 300.0;
+                let scale = (max_width / src_width).min(max_height / src_height);
+                let dst_width = (src_width * scale).round() as u32;
+                let dst_height = (src_height * scale).round() as u32;
+                let mut dst_image = RgbaImage::new(dst_width, dst_height);
 
-                let dst_image = WORKER_CACHE.with_borrow_mut(|cache| {
-                    let resizer = &mut *cache;
-                    let options = fir::ResizeOptions {
-                        algorithm: fir::ResizeAlg::Convolution(fir::FilterType::Hamming),
-                        ..Default::default()
-                    };
+                WORKER_CACHE
+                    .with_borrow_mut(|cache| {
+                        let resizer = &mut *cache;
+                        let options = fir::ResizeOptions {
+                            algorithm: fir::ResizeAlg::Convolution(fir::FilterType::Box),
+                            ..Default::default()
+                        };
+                        resizer.resize(&src_image, &mut dst_image, &options)
+                    })
+                    .map_err(|e| format!("Failed to resize image for {:?}: {}", ckey_tmp, e))?;
 
-                    let mut dst_image = src_image.buffer_with_dimensions(dst_width, dst_height);
-                    fir::Resizer::new()
-                        .resize(&src_image, &mut dst_image, &options)
-                        .map_err(|e| format!("Failed to resize image to {:?}: {}", ckey_tmp, e))?;
-
-                    Ok(dst_image)
-                })?;
-
-                dst_image.save_with_format(&ckey_tmp, image::ImageFormat::Jpeg).map_err(|e| {
+                dst_image.save_with_format(&ckey_tmp, image::ImageFormat::Png).map_err(|e| {
                     format!("Failed to write compressed image to {:?}: {}", ckey_tmp, e)
                 })?;
                 std::fs::rename(&ckey_tmp, &ckey_clone).map_err(|e| {
