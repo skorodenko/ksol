@@ -634,7 +634,6 @@ impl MPDAction for IdleTimeline {
 
     fn queue(self, mpd_client: ClientController) -> BoxSyncFuture<'static, Result<Self::Response>> {
         Box::pin(async move {
-            tracing::debug!("Executing IdleTimeline command");
             let command = commands::Status;
             let rsp = mpd_client.command(command).await.map_err(|e| {
                 tracing::error!("IdleTimeline: Status command failed: {e}");
