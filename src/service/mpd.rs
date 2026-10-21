@@ -11,10 +11,12 @@ use mpd_client::{ClientController, commands, filter::Filter, responses, tag::Tag
 use sanitize_filename;
 use std::cell::RefCell;
 use std::path::PathBuf;
+use std::sync::LazyLock;
 use tokio::fs;
-use tokio::sync::watch;
+use tokio::sync::Mutex;
 use tokio::task;
 use tokio::time::Duration;
+use tokio_util::sync::CancellationToken;
 use tracing;
 
 pub trait MPDAction {
@@ -654,8 +656,11 @@ impl MPDAction for IdleTimeline {
 #[derive(Clone)]
 pub struct UpdateArt {
     qt_thread: CxxQtThread<QMPDConnector>,
-    song_watch: watch::Receiver<QSong>,
+    song: QSong,
 }
+
+static ACTIVE_TOKEN: LazyLock<Mutex<Option<CancellationToken>>> =
+    LazyLock::new(|| Mutex::new(None));
 
 thread_local! {
     static WORKER_CACHE: RefCell<fir::Resizer> =
@@ -663,18 +668,16 @@ thread_local! {
 }
 
 impl UpdateArt {
-    pub fn new(qt_thread: CxxQtThread<QMPDConnector>, song_watch: watch::Receiver<QSong>) -> Self {
-        Self { qt_thread, song_watch }
+    pub fn new(qt_thread: CxxQtThread<QMPDConnector>, song: QSong) -> Self {
+        Self { qt_thread, song }
     }
 }
 
 impl MPDAction for UpdateArt {
     type Response = ();
 
-    fn queue(
-        mut self,
-        mpd_client: ClientController,
-    ) -> BoxSyncFuture<'static, Result<Self::Response>> {
+    fn queue(self, mpd_client: ClientController) -> BoxSyncFuture<'static, Result<Self::Response>> {
+        let song = self.song.clone();
         let globals = Globals::get();
         let covers = globals.app_cover_cache.clone();
 
@@ -695,9 +698,9 @@ impl MPDAction for UpdateArt {
         };
 
         Box::pin(async move {
-            let song = self.song_watch.borrow().clone();
             let ckey = ckey_fn(&song, &covers);
             let ckey_tmp = ckey_fn_tmp(&song, &covers);
+            let mut guard = ACTIVE_TOKEN.lock().await;
             tracing::debug!("New album art request for \"{}\"", song.file);
 
             if ckey_tmp.exists() {
@@ -716,6 +719,15 @@ impl MPDAction for UpdateArt {
                 return Ok(());
             }
 
+            if let Some(old_token) = guard.take() {
+                tracing::debug!("Canceling pending request in favour of: {:?}", ckey);
+                old_token.cancel();
+            }
+
+            let token = CancellationToken::new();
+            *guard = Some(token.clone());
+            drop(guard);
+
             if let Err(e) = fs::write(&ckey_tmp, vec![]).await {
                 tracing::error!("Failed to write pending file {:?}: {}", ckey_tmp, e);
                 return Ok(());
@@ -726,7 +738,7 @@ impl MPDAction for UpdateArt {
                     tracing::debug!("Recieved album art for \"{}\"", song.file);
                     cover.freeze()
                 },
-                _ = self.song_watch.changed(), if ckey_fn(&self.song_watch.borrow().clone(), &covers) != ckey => {
+                _ = token.cancelled() => {
                     tracing::debug!("Canceled album art request for \"{}\"", song.file);
                     fs::remove_file(&ckey_tmp).await.expect(&format!("Failed to delete pending file {:?}", ckey_tmp));
                     return Ok(());
@@ -786,7 +798,7 @@ impl MPDAction for UpdateArt {
                         },
                     }
                 },
-                _ = self.song_watch.changed(), if ckey_fn(&self.song_watch.borrow().clone(), &covers) != ckey => {
+                _ = token.cancelled() => {
                     tracing::debug!("Canceled album art processing for \"{}\"", song.file);
                 },
             );

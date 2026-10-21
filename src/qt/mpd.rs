@@ -552,11 +552,11 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
         self.as_mut()
             .on_active_song_changed(|qobject| {
                 let qt_thread = qobject.qt_thread();
-                let song_watch = qobject.active_song.1.clone();
+                let song = qobject.active_song.1.borrow().clone();
                 if let Some(mut service) = qobject.mpd_service.clone() {
                     qobject
                         .runtime
-                        .spawn(service.call(service::mpd::UpdateArt::new(qt_thread, song_watch)));
+                        .spawn(service.call(service::mpd::UpdateArt::new(qt_thread, song)));
                 } else {
                     tracing::error!("Action service not available");
                 }
@@ -565,14 +565,14 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
         self.as_mut()
             .on_stage_playlist_result(|qobject, _data| {
                 let qt_thread = qobject.qt_thread();
-                let song_watch = qobject.active_song.1.clone();
+                let song = qobject.active_song.1.borrow().clone();
                 if let Some(mut service) = qobject.mpd_service.clone() {
                     qobject
                         .runtime
                         .spawn(service.call(service::mpd::IdlePlayer::new(qt_thread.clone())));
                     qobject
                         .runtime
-                        .spawn(service.call(service::mpd::UpdateArt::new(qt_thread, song_watch)));
+                        .spawn(service.call(service::mpd::UpdateArt::new(qt_thread, song)));
                 } else {
                     tracing::error!("Action service not available");
                 }
