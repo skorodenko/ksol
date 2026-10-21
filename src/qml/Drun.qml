@@ -82,16 +82,14 @@ QQC2.Popup {
         model: playlists_list
         filters: [
             FunctionFilter {
-                function filter(data: RoleData): bool {
+                property string name
+
+                function filter(name: string): bool {
                     var searchTxt = search.text.toLowerCase();
-                    return data.name.toLowerCase().includes(searchTxt);
+                    return name.toLowerCase().includes(searchTxt);
                 }
             }
         ]
-    }
-
-    component RoleData: QtObject {
-        property string name
     }
 
     ListView {
@@ -106,7 +104,6 @@ QQC2.Popup {
         boundsBehavior: Flickable.StopAtBounds
         boundsMovement: Flickable.StopAtBounds
 
-        //model: playlists_list
         model: proxyModel
 
         implicitWidth: Math.min(Kirigami.Units.gridUnit * 20, parent.width)
@@ -166,6 +163,13 @@ QQC2.Popup {
             width: ListView.view.width - scrollbar.width
             color: Kirigami.Theme.neutralBackgroundColor
             radius: Kirigami.Units.cornerRadius
+            visible: ListView.view.currentItem !== null
+            y: ListView.view.currentItem ? ListView.view.currentItem.y : 0
+            Behavior on y {
+                SmoothedAnimation {
+                    duration: visible ? Kirigami.Units.shortDuration : 0
+                }
+            }
         }
     }
 

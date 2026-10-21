@@ -41,7 +41,7 @@ in
   };
 
   env = {
-    QMLLS_BUILD_DIRS = "$NIXPKGS_QT6_QML_IMPORT_PATH";
+    #QMLLS_BUILD_DIRS = "$NIXPKGS_QT6_QML_IMPORT_PATH";
     CMAKE_PREFIX_PATH = "${qtdeps}";
     QT_HOST_PATH = "${qtdeps}";
 
