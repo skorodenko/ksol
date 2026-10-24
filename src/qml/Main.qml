@@ -192,16 +192,14 @@ Kirigami.ApplicationWindow {
         filters: [
             FunctionFilter {
                 column: -1
-                function filter(data: RoleData): bool {
+                property string songDisplay
+
+                function filter(songDisplay: string): bool {
                     var searchTxt = filterSearch.text.toLowerCase();
-                    return data.songDisplay.toLowerCase().includes(searchTxt);
+                    return songDisplay.toLowerCase().includes(searchTxt);
                 }
             }
         ]
-    }
-
-    component RoleData: QtObject {
-        property string songDisplay
     }
 
     Connections {
