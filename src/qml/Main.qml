@@ -182,6 +182,11 @@ Kirigami.ApplicationWindow {
         }
     }
 
+    FontMetrics {
+        id: fontMetrics
+        font: Kirigami.Theme.defaultFont
+    }
+
     QPlaylistModel {
         id: qplaylist
     }
@@ -485,7 +490,7 @@ Kirigami.ApplicationWindow {
         PlaylistHeader {
             id: qplaylist_header
 
-            implicitHeight: 22
+            implicitHeight: fontMetrics.height * 1.5
             anchors.top: infoMessage.bottom
             anchors.left: parent.left
             anchors.right: parent.right
@@ -585,7 +590,7 @@ Kirigami.ApplicationWindow {
 
             delegate: Item {
                 id: delegate
-                implicitHeight: 18
+                implicitHeight: fontMetrics.height * 1.25
 
                 required property int row
                 required property var songId
@@ -617,10 +622,9 @@ Kirigami.ApplicationWindow {
 
                 Text {
                     id: song_play_text
-                    anchors.fill: parent
-                    anchors.leftMargin: Kirigami.Units.smallSpacing
                     anchors.verticalCenter: parent.verticalCenter
-                    horizontalAlignment: Qt.AlignLeft
+                    anchors.left: parent.left
+                    anchors.leftMargin: Kirigami.Units.smallSpacing
                     color: Kirigami.Theme.textColor
                     text: delegate.songDisplay
                     elide: Text.ElideRight
@@ -636,7 +640,7 @@ Kirigami.ApplicationWindow {
 
             onVisibleChanged: {
                 if (visible) {
-                    filterSearchBox.height = 28;
+                    filterSearchBox.height = fontMetrics.height * 1.25;
                     filterSearchBox.enabled = true;
                 } else {
                     filterSearchBox.height = 0;
