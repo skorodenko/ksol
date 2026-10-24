@@ -191,7 +191,6 @@ Kirigami.ApplicationWindow {
         model: qplaylist
         filters: [
             FunctionFilter {
-                column: -1
                 property string songDisplay
 
                 function filter(songDisplay: string): bool {
@@ -560,7 +559,8 @@ Kirigami.ApplicationWindow {
 
             Keys.onReturnPressed: function () {
                 if (qplaylist_view.selectionTimeout) {
-                    let index = qplaylist_view.selectionModel.currentIndex;
+                    let proxyIndex = qplaylist_view.selectionModel.currentIndex;
+                    let index = qplaylistProxyModel.mapToSource(proxyIndex);
                     let songId = qplaylist.data(index, QPlaylistModel.SongId);
                     mpd_connector.playSong(songId);
                 }
