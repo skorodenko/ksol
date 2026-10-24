@@ -24,7 +24,7 @@ QQC2.Popup {
     property alias playlists_list: playlists_list
 
     function changeGroup(number) {
-        var value = groupSelect.model[number];
+        let value = groupSelect.model[number];
         QState.activeGroup = value;
         root.activeGroupChanged(value);
     }
@@ -85,7 +85,7 @@ QQC2.Popup {
                 property string name
 
                 function filter(name: string): bool {
-                    var searchTxt = search.text.toLowerCase();
+                    let searchTxt = search.text.toLowerCase();
                     return name.toLowerCase().includes(searchTxt);
                 }
             }

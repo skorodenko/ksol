@@ -55,7 +55,7 @@ Item {
     }
 
     function toggleColumn(column, state) {
-        var item = repeater.itemAt(column);
+        let item = repeater.itemAt(column);
         item.visible = state;
         QState.setHeaderColumn(column, ColumnType.Hidden, state);
         root.firstVisibleColumn = root.updateFirstVisibleColumn();
@@ -63,7 +63,7 @@ Item {
     }
 
     function updateFirstVisibleColumn() {
-        for (var i = 0; i < root.columnCount; i++) {
+        for (let i = 0; i < root.columnCount; i++) {
             if (QState.getHeaderColumn(i, ColumnType.Hidden) === false) {
                 return i;
             }
@@ -72,7 +72,7 @@ Item {
     }
 
     function updateLastVisibleColumn() {
-        for (var i = root.columnCount - 1; i > 0; i--) {
+        for (let i = root.columnCount - 1; i > 0; i--) {
             if (QState.getHeaderColumn(i, ColumnType.Hidden) === false) {
                 return i;
             }
@@ -81,8 +81,8 @@ Item {
     }
 
     function visibleColumnCount() {
-        var k = 0;
-        for (var i = 0; i < root.columnCount; i++) {
+        let k = 0;
+        for (let i = 0; i < root.columnCount; i++) {
             if (QState.getHeaderColumn(i, ColumnType.Hidden) === false) {
                 k++;
             }
@@ -91,9 +91,9 @@ Item {
     }
 
     function resetColumnWidth() {
-        var visibleColumnCount = root.visibleColumnCount();
-        for (var i = 0; i < root.columnCount; i++) {
-            var item = repeater.itemAt(i);
+        let visibleColumnCount = root.visibleColumnCount();
+        for (let i = 0; i < root.columnCount; i++) {
+            let item = repeater.itemAt(i);
             if (item.visible) {
                 item.SplitView.preferredWidth = root.width / visibleColumnCount;
             }

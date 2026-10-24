@@ -94,7 +94,7 @@ Kirigami.ApplicationWindow {
                 connectionStateLabel.text = "Connected";
                 connectionStateLabelBackground.color = Kirigami.Theme.positiveBackgroundColor;
                 connectionStateRestart.visible = false;
-                var songPos = mpd_connector.activeSongPosition;
+                let songPos = mpd_connector.activeSongPosition;
                 qplaylist_view.selectionModel.setCurrentIndex(qplaylistProxyModel.index(songPos, 0), ItemSelectionModel.Rows);
                 break;
             case "connecting" || "disconnected":
@@ -148,10 +148,10 @@ Kirigami.ApplicationWindow {
             if (!media_seeker.pressed) {
                 media_seeker.value = elapsed;
             }
-            var efm = Math.trunc(elapsed / 60).toString().padStart(2, '0');
-            var efs = Math.floor(elapsed % 60).toString().padStart(2, '0');
-            var dfm = Math.trunc(duration / 60).toString().padStart(2, '0');
-            var dfs = Math.floor(duration % 60).toString().padStart(2, '0');
+            let efm = Math.trunc(elapsed / 60).toString().padStart(2, '0');
+            let efs = Math.floor(elapsed % 60).toString().padStart(2, '0');
+            let dfm = Math.trunc(duration / 60).toString().padStart(2, '0');
+            let dfs = Math.floor(duration % 60).toString().padStart(2, '0');
             media_duration.text = `${efm}:${efs} / ${dfm}:${dfs}`;
         }
         onBitrateUpdate: function (bitrate) {
@@ -161,9 +161,9 @@ Kirigami.ApplicationWindow {
             root.moveToSong(mpd_connector.activeSongPosition);
         }
         onUpdateOptions: function () {
-            var shuffle = mpd_connector.shuffle;
-            var repeat = mpd_connector.repeat;
-            var single = mpd_connector.single;
+            let shuffle = mpd_connector.shuffle;
+            let repeat = mpd_connector.repeat;
+            let single = mpd_connector.single;
             if (shuffle) {
                 shuffleButton.icon.name = "media-playlist-shuffle";
             } else {
@@ -195,7 +195,7 @@ Kirigami.ApplicationWindow {
                 property string songDisplay
 
                 function filter(songDisplay: string): bool {
-                    var searchTxt = filterSearch.text.toLowerCase();
+                    let searchTxt = filterSearch.text.toLowerCase();
                     return songDisplay.toLowerCase().includes(searchTxt);
                 }
             }
@@ -560,8 +560,8 @@ Kirigami.ApplicationWindow {
 
             Keys.onReturnPressed: function () {
                 if (qplaylist_view.selectionTimeout) {
-                    var index = qplaylist_view.selectionModel.currentIndex;
-                    var songId = qplaylist.data(index, QPlaylistModel.SongId);
+                    let index = qplaylist_view.selectionModel.currentIndex;
+                    let songId = qplaylist.data(index, QPlaylistModel.SongId);
                     mpd_connector.playSong(songId);
                 }
             }
@@ -569,7 +569,7 @@ Kirigami.ApplicationWindow {
             Keys.forwardTo: [filterSearch]
 
             columnWidthProvider: function (column) {
-                var item = qplaylist_header.repeater.itemAt(column);
+                let item = qplaylist_header.repeater.itemAt(column);
                 if (column == qplaylist_header.lastVisibleColumn) {
                     return item.width - 4 - scrollBar.implicitWidth * scrollBar.visible;
                 } else {

@@ -529,13 +529,20 @@ impl MPDAction for IdlePlayer {
             let play_state = QString::from(format!("{:#?}", rsp.0.state));
             let current_song = rsp.1.map(QSong::from).unwrap_or_default();
             let _ = self.qt_thread.queue(move |mut qobject| {
-                let modified = qobject.active_song.0.send_if_modified(|song: &mut QSong| {
-                    if song.file != current_song.file {
-                        *song = current_song;
-                        return true;
+                let modified = match qobject.active_song {
+                    Some(ref active_song) => {
+                        if active_song.file != current_song.file {
+                            qobject.as_mut().rust_mut().active_song = Some(current_song);
+                            true
+                        } else {
+                            false
+                        }
                     }
-                    false
-                });
+                    None => {
+                        qobject.as_mut().rust_mut().active_song = Some(current_song);
+                        true
+                    }
+                };
                 if modified {
                     qobject.as_mut().active_song_changed();
                 };

@@ -165,7 +165,7 @@ pub struct MPDConnector {
     pub client: Option<ClientController>,
     pub idle_client: Option<ClientIdler>,
     pub cancel: Option<CancellationToken>,
-    pub active_song: (watch::Sender<QSong>, watch::Receiver<QSong>),
+    pub active_song: Option<QSong>,
     pub repeat: bool,
     pub single: bool,
     pub shuffle: bool,
@@ -473,23 +473,27 @@ impl qobject::QMPDConnector {
     }
 
     pub fn get_active_song_id(self: Pin<&mut Self>) -> u64 {
-        let song = self.active_song.1.borrow();
-        song.id
+        if let Some(ref song) = self.active_song { song.id } else { u64::default() }
     }
 
     pub fn get_active_song_position(self: Pin<&mut Self>) -> usize {
-        let song = self.active_song.1.borrow();
-        song.position
+        if let Some(ref song) = self.active_song { song.position } else { usize::default() }
     }
 
     pub fn get_active_song_title(self: Pin<&mut QMPDConnector>) -> QString {
-        let song = self.active_song.1.borrow();
-        QString::from(&song.title)
+        if let Some(ref song) = self.active_song {
+            QString::from(&song.title)
+        } else {
+            QString::default()
+        }
     }
 
     pub fn get_active_song_artist(self: Pin<&mut QMPDConnector>) -> QString {
-        let song = self.active_song.1.borrow();
-        QString::from(&song.artist)
+        if let Some(ref song) = self.active_song {
+            QString::from(&song.artist)
+        } else {
+            QString::default()
+        }
     }
 }
 
@@ -552,7 +556,7 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
         self.as_mut()
             .on_active_song_changed(|qobject| {
                 let qt_thread = qobject.qt_thread();
-                let song = qobject.active_song.1.borrow().clone();
+                let song = qobject.active_song.clone().unwrap_or_default();
                 if let Some(mut service) = qobject.mpd_service.clone() {
                     qobject
                         .runtime
@@ -565,7 +569,7 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
         self.as_mut()
             .on_stage_playlist_result(|qobject, _data| {
                 let qt_thread = qobject.qt_thread();
-                let song = qobject.active_song.1.borrow().clone();
+                let song = qobject.active_song.clone().unwrap_or_default();
                 if let Some(mut service) = qobject.mpd_service.clone() {
                     qobject
                         .runtime
@@ -648,8 +652,7 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
         self.as_mut()
             .on_album_art_update(|qobject, cover| {
                 if let Some(mut service) = qobject.mpris_service.clone() {
-                    if qobject.active_song.1.has_changed().expect("Channel closed") {
-                        let song = qobject.active_song.1.borrow();
+                    if let Some(ref song) = qobject.active_song {
                         let trackid = TrackId::try_from(format!("{}", song.id)).unwrap_or_default();
                         let metadata = Metadata::builder()
                             .title(&song.title)
@@ -671,7 +674,7 @@ impl cxx_qt::Initialize for qobject::QMPDConnector {
 
 impl Default for MPDConnector {
     fn default() -> Self {
-        let active_song = watch::channel(QSong::default());
+        let active_song = None;
         let runtime = Builder::new_multi_thread()
             .worker_threads(1)
             .event_interval(3)
