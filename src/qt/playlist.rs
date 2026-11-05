@@ -22,12 +22,6 @@ mod qobject {
         type QModelIndex = cxx_qt_lib::QModelIndex;
     }
 
-    #[namespace = "Qt"]
-    unsafe extern "C++" {
-        include!("cxx-qt-lib/qt.h");
-        type Orientation = crate::qt::qt::Orientation;
-    }
-
     #[qenum(QPlaylistModel)]
     enum QPlaylistRoles {
         SongId,

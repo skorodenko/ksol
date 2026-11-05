@@ -24,7 +24,6 @@ fn main() {
         "src/qt/playlist.rs",
         "src/qt/settings.rs",
         "src/qt/state.rs",
-        "src/qt/qt.rs",
     ])
     .build();
 }

@@ -1130,6 +1130,7 @@ dependencies = [
  "mpris-server",
  "num-derive",
  "num-traits",
+ "qtbridges",
  "sanitize-filename",
  "serde",
  "strum",
@@ -1607,6 +1608,12 @@ dependencies = [
  "thiserror 1.0.69",
  "which",
 ]
+
+[[package]]
+name = "qtbridges"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d35c10680c17057be8b28ca0db34b19bc0309647e1a3813535dfd8cb590ccc5a"
 
 [[package]]
 name = "quick-error"
