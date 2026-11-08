@@ -5,12 +5,13 @@ pub mod utils;
 use mpd_client::{responses::SongInQueue, tag::Tag};
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::FromPrimitive;
+use qtbridge::QModelItem;
 use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, path::Path};
 use strum_macros::{Display, EnumCount, EnumString};
 use wincode::{SchemaRead, SchemaWrite};
 
-#[derive(Serialize, Deserialize, SchemaWrite, SchemaRead, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, SchemaWrite, SchemaRead, Debug, Clone, QModelItem, Default)]
 pub struct QSong {
     pub id: u64,
     pub position: usize,
@@ -60,6 +61,25 @@ pub enum SongField {
     Lastmodified = 11,
     Directory = 12,
     Duration = 13,
+}
+
+#[derive(
+    Deserialize,
+    Serialize,
+    SchemaRead,
+    SchemaWrite,
+    PartialEq,
+    FromPrimitive,
+    ToPrimitive,
+    Display,
+    EnumString,
+    EnumCount,
+    Copy,
+    Clone,
+    Debug,
+)]
+pub enum OutputPlugin {
+    Pipewire,
 }
 
 #[derive(Deserialize, Serialize, SchemaRead, SchemaWrite, PartialEq, Copy, Clone, Debug)]

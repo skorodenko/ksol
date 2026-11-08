@@ -1,12 +1,12 @@
 use super::globals::Globals;
-use crate::qt::settings::AppSettings;
+use crate::qt::settings::QAppSettings;
 use crate::utils::init_hooks::init_native_mpd_config;
 use crate::{ColumnSort, HeaderColumn, SongField};
 use std::fs;
 use std::path::{Path, PathBuf};
 
 /// Default output plugin type used when no configuration exists.
-const DEFAULT_OUTPUT_PLUGIN_TYPE: i32 = 1;
+const DEFAULT_OUTPUT_PLUGIN_TYPE: &'static str = "Pipewire";
 
 /// Default background opacity percentage (0-100).
 const DEFAULT_BACKGROUND_COLORIZATION: usize = 75;
@@ -19,7 +19,7 @@ pub struct PersistentConfig {
     pub init_wizard: bool,
     pub mpd_socket: String,
     pub native_music_dir: String,
-    pub native_output_plugin: i32,
+    pub native_output_plugin: String,
     pub background_blur: usize,
     pub background_colorization: usize,
 }
@@ -78,24 +78,26 @@ impl PersistentConfig {
 
     /// Build default [`Settings`] from internal configuration and home directory.
     fn default_values(globals: &Globals, xdg_home: &Path) -> Self {
+        let native_output_plugin = String::from(DEFAULT_OUTPUT_PLUGIN_TYPE);
+
         Self {
             init_wizard: true,
             mpd_socket: globals.native_socket.clone(),
             native_music_dir: xdg_home.join("Music/").display().to_string(),
-            native_output_plugin: DEFAULT_OUTPUT_PLUGIN_TYPE,
+            native_output_plugin: native_output_plugin,
             background_blur: DEFAULT_BACKGROUND_BLUR,
             background_colorization: DEFAULT_BACKGROUND_COLORIZATION,
         }
     }
 }
 
-impl From<AppSettings> for PersistentConfig {
-    fn from(value: AppSettings) -> Self {
+impl From<QAppSettings> for PersistentConfig {
+    fn from(value: QAppSettings) -> Self {
         Self {
             init_wizard: value.init_wizard,
             mpd_socket: value.mpd_socket.into(),
             native_music_dir: value.native_music_dir.into(),
-            native_output_plugin: value.native_output_plugin.repr,
+            native_output_plugin: value.native_output_plugin.to_string(),
             background_blur: value.background_blur,
             background_colorization: value.background_colorization,
         }

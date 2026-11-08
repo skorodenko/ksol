@@ -27,7 +27,7 @@ impl MPDActionService {
     }
 }
 
-impl<C: MPDAction + Clone> Service<C> for MPDActionService {
+impl<C: MPDAction> Service<C> for MPDActionService {
     type Response = C::Response;
     type Error = anyhow::Error;
     type Future = BoxSyncFuture<'static, Result<Self::Response, Self::Error>>;

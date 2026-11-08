@@ -15,24 +15,26 @@ fn main() {
 
     init_dirs();
 
-    let mut app = QGuiApplication::new();
-    let mut engine = QQmlApplicationEngine::new();
+    QApp::new().register::<backend::Backend>().load_qml(include_bytes!("Main.qml")).run();
 
-    // To associate the executable to the installed desktop file
-    //QGuiApplication::set_desktop_file_name(&QString::from("org.kde.kirigami_rust"));
-    // To ensure the style is set correctly
-    let style = env::var("QT_QUICK_CONTROLS_STYLE");
-    if style.is_err() {
-        QQuickStyle::set_style(&QString::from("org.kde.desktop"));
-    }
-
-    if let Some(engine) = engine.as_mut() {
-        engine.load(&QUrl::from("qrc:/qt/qml/github/skorodenko/ksol/src/qml/Main.qml"));
-    }
-
-    if let Some(app) = app.as_mut() {
-        app.exec();
-    }
+    //    let mut app = QGuiApplication::new();
+    //    let mut engine = QQmlApplicationEngine::new();
+    //
+    //    // To associate the executable to the installed desktop file
+    //    //QGuiApplication::set_desktop_file_name(&QString::from("org.kde.kirigami_rust"));
+    //    // To ensure the style is set correctly
+    //    let style = env::var("QT_QUICK_CONTROLS_STYLE");
+    //    if style.is_err() {
+    //        QQuickStyle::set_style(&QString::from("org.kde.desktop"));
+    //    }
+    //
+    //    if let Some(engine) = engine.as_mut() {
+    //        engine.load(&QUrl::from("qrc:/qt/qml/github/skorodenko/ksol/src/qml/Main.qml"));
+    //    }
+    //
+    //    if let Some(app) = app.as_mut() {
+    //        app.exec();
+    //    }
 
     tracing::debug!("Application closing");
     //ksol::utils::settings::Settings::dump();

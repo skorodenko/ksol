@@ -1,16 +1,16 @@
 use super::BoxSyncFuture;
-use crate::qt::mpd::qobject::QMPDConnector;
+use crate::qt::mpd::QMPDConnector;
 use crate::utils::globals::Globals;
 use crate::{ColumnSort, QSong, SongField};
 use anyhow::{Result, anyhow};
-use cxx_qt::{CxxQtThread, CxxQtType};
-use cxx_qt_lib::{QByteArray, QString};
 use fast_image_resize as fir;
 use image::{self, RgbaImage};
 use mpd_client::{ClientController, commands, filter::Filter, responses, tag::Tag};
+use qtbridge::QThreadHandle;
 use sanitize_filename;
 use std::cell::RefCell;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::sync::LazyLock;
 use tokio::fs;
 use tokio::sync::Mutex;
@@ -26,7 +26,7 @@ pub trait MPDAction {
 }
 
 /// Status command
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug)]
 pub struct Status;
 
 impl MPDAction for Status {
@@ -201,14 +201,13 @@ impl MPDAction for PlayToggle {
 }
 
 // UpadteDB command
-#[derive(Clone)]
 pub struct UpdateDB {
-    qt_thread: CxxQtThread<QMPDConnector>,
+    handle: Arc<QThreadHandle<QMPDConnector>>,
 }
 
 impl UpdateDB {
-    pub fn new(qt_thread: CxxQtThread<QMPDConnector>) -> UpdateDB {
-        UpdateDB { qt_thread }
+    pub fn new(handle: Arc<QThreadHandle<QMPDConnector>>) -> UpdateDB {
+        UpdateDB { handle }
     }
 }
 
@@ -223,8 +222,8 @@ impl MPDAction for UpdateDB {
                 tracing::error!("UpdateDB command failed: {e}");
                 anyhow!("{e}")
             })?;
-            let _ = self.qt_thread.queue(|mut qobject| {
-                qobject.as_mut().db_updated(false);
+            let _ = self.handle.invoke_mut(|qobject| {
+                qobject.db_updated(false);
             });
             Ok(())
         })
@@ -232,15 +231,14 @@ impl MPDAction for UpdateDB {
 }
 
 /// Get playlists command
-#[derive(Clone)]
 pub struct GetPlaylists {
     group: SongField,
-    qt_thread: CxxQtThread<QMPDConnector>,
+    handle: Arc<QThreadHandle<QMPDConnector>>,
 }
 
 impl GetPlaylists {
-    pub fn new(group: SongField, qt_thread: CxxQtThread<QMPDConnector>) -> GetPlaylists {
-        GetPlaylists { group, qt_thread }
+    pub fn new(group: SongField, handle: Arc<QThreadHandle<QMPDConnector>>) -> GetPlaylists {
+        GetPlaylists { group, handle }
     }
 }
 
@@ -269,10 +267,9 @@ impl MPDAction for GetPlaylists {
                 }
             };
             result.sort();
-            let bcode: &[u8] = &wincode::serialize(&result).unwrap();
-            let bcode = QByteArray::from(bcode);
-            let _ = self.qt_thread.queue(|mut qobject| {
-                qobject.as_mut().get_playlists_result(bcode);
+            let payload = serde_json::to_value(&result).unwrap();
+            let _ = self.handle.invoke_mut(|qobject| {
+                qobject.get_playlists_result(payload);
             });
             Ok(())
         })
@@ -504,14 +501,13 @@ impl MPDAction for RepeatToggle {
 }
 
 /// Idle player command
-#[derive(Clone)]
 pub struct IdlePlayer {
-    qt_thread: CxxQtThread<QMPDConnector>,
+    handle: Arc<QThreadHandle<QMPDConnector>>,
 }
 
 impl IdlePlayer {
-    pub fn new(qt_thread: CxxQtThread<QMPDConnector>) -> Self {
-        Self { qt_thread }
+    pub fn new(handle: Arc<QThreadHandle<QMPDConnector>>) -> Self {
+        Self { handle }
     }
 }
 
@@ -526,27 +522,27 @@ impl MPDAction for IdlePlayer {
                 tracing::error!("IdlePlayer: Command list failed: {e}");
                 anyhow!("{e}")
             })?;
-            let play_state = QString::from(format!("{:#?}", rsp.0.state));
+            let play_state = String::from(format!("{:#?}", rsp.0.state));
             let current_song = rsp.1.map(QSong::from).unwrap_or_default();
-            let _ = self.qt_thread.queue(move |mut qobject| {
+            let _ = self.handle.invoke_mut(move |qobject| {
                 let modified = match qobject.active_song {
                     Some(ref active_song) => {
                         if active_song.file != current_song.file {
-                            qobject.as_mut().rust_mut().active_song = Some(current_song);
+                            qobject.active_song = Some(current_song);
                             true
                         } else {
                             false
                         }
                     }
                     None => {
-                        qobject.as_mut().rust_mut().active_song = Some(current_song);
+                        qobject.active_song = Some(current_song);
                         true
                     }
                 };
                 if modified {
-                    qobject.as_mut().active_song_changed();
+                    qobject.active_song_changed();
                 };
-                qobject.as_mut().play_state_changed(play_state);
+                qobject.play_state_changed(play_state);
             });
             Ok(())
         })
@@ -554,14 +550,13 @@ impl MPDAction for IdlePlayer {
 }
 
 /// Idle queue command
-#[derive(Clone)]
 pub struct IdleQueue {
-    qt_thread: CxxQtThread<QMPDConnector>,
+    handle: Arc<QThreadHandle<QMPDConnector>>,
 }
 
 impl IdleQueue {
-    pub fn new(qt_thread: CxxQtThread<QMPDConnector>) -> Self {
-        Self { qt_thread }
+    pub fn new(handle: Arc<QThreadHandle<QMPDConnector>>) -> Self {
+        Self { handle }
     }
 }
 
@@ -577,10 +572,9 @@ impl MPDAction for IdleQueue {
                 anyhow!("{e}")
             })?;
             let songs: Vec<QSong> = rsp.into_iter().map(QSong::from).collect();
-            let bcode: &[u8] = &wincode::serialize(&songs).unwrap();
-            let bcode = QByteArray::from(bcode);
-            let _ = self.qt_thread.queue(|mut qobject| {
-                qobject.as_mut().stage_playlist_result(bcode);
+            let payload = serde_json::to_value(&songs).unwrap();
+            let _ = self.handle.invoke_mut(|qobject| {
+                qobject.stage_playlist_result(payload);
             });
             Ok(())
         })
@@ -590,12 +584,12 @@ impl MPDAction for IdleQueue {
 /// Idle options command
 #[derive(Clone)]
 pub struct IdleOptions {
-    qt_thread: CxxQtThread<QMPDConnector>,
+    handle: Arc<QThreadHandle<QMPDConnector>>,
 }
 
 impl IdleOptions {
-    pub fn new(qt_thread: CxxQtThread<QMPDConnector>) -> Self {
-        Self { qt_thread }
+    pub fn new(handle: Arc<QThreadHandle<QMPDConnector>>) -> Self {
+        Self { handle }
     }
 }
 
@@ -613,10 +607,10 @@ impl MPDAction for IdleOptions {
             let repeat = rsp.repeat;
             let shuffle = rsp.random;
             let single = !matches!(rsp.single, commands::SingleMode::Disabled);
-            let _ = self.qt_thread.queue(move |mut qobject| {
-                qobject.as_mut().rust_mut().repeat = repeat;
-                qobject.as_mut().rust_mut().single = single;
-                qobject.as_mut().rust_mut().shuffle = shuffle;
+            let _ = self.handle.invoke_mut(move |qobject| {
+                qobject.repeat = repeat;
+                qobject.single = single;
+                qobject.shuffle = shuffle;
                 qobject.update_options();
             });
             Ok(())
@@ -627,12 +621,12 @@ impl MPDAction for IdleOptions {
 /// Idle timeline command
 #[derive(Clone)]
 pub struct IdleTimeline {
-    qt_thread: CxxQtThread<QMPDConnector>,
+    handle: Arc<QThreadHandle<QMPDConnector>>,
 }
 
 impl IdleTimeline {
-    pub fn new(qt_thread: CxxQtThread<QMPDConnector>) -> Self {
-        Self { qt_thread }
+    pub fn new(handle: Arc<QThreadHandle<QMPDConnector>>) -> Self {
+        Self { handle }
     }
 }
 
@@ -649,9 +643,9 @@ impl MPDAction for IdleTimeline {
             let duration = rsp.duration.unwrap_or(Duration::new(0, 0));
             let elapsed = rsp.elapsed.unwrap_or(Duration::new(0, 0));
             let bitrate = rsp.bitrate.unwrap_or_default();
-            let _ = self.qt_thread.queue(move |mut qobject| {
-                qobject.as_mut().timeline_update(duration.as_secs(), elapsed.as_secs());
-                qobject.as_mut().bitrate_update(bitrate);
+            let _ = self.handle.invoke_mut(move |qobject| {
+                qobject.timeline_update(duration.as_secs(), elapsed.as_secs());
+                qobject.bitrate_update(bitrate);
             });
             Ok(())
         })
@@ -661,7 +655,7 @@ impl MPDAction for IdleTimeline {
 /// Update art command
 #[derive(Clone)]
 pub struct UpdateArt {
-    qt_thread: CxxQtThread<QMPDConnector>,
+    handle: Arc<QThreadHandle<QMPDConnector>>,
     song: QSong,
 }
 
@@ -674,8 +668,8 @@ thread_local! {
 }
 
 impl UpdateArt {
-    pub fn new(qt_thread: CxxQtThread<QMPDConnector>, song: QSong) -> Self {
-        Self { qt_thread, song }
+    pub fn new(handle: Arc<QThreadHandle<QMPDConnector>>, song: QSong) -> Self {
+        Self { handle, song }
     }
 }
 
@@ -711,16 +705,16 @@ impl MPDAction for UpdateArt {
 
             if ckey_tmp.exists() {
                 tracing::warn!("Operation in progress for {:?}", ckey_tmp);
-                let _ = self.qt_thread.queue(move |qobject| {
-                    qobject.album_art_update(QString::default());
+                let _ = self.handle.invoke_mut(move |qobject| {
+                    qobject.album_art_update(String::default());
                 });
                 return Ok(());
             }
 
             if ckey.exists() {
                 tracing::debug!("Cache hit {:?}", ckey);
-                let _ = self.qt_thread.queue(move |qobject| {
-                    qobject.album_art_update(QString::from(ckey.to_string_lossy().into_owned()));
+                let _ = self.handle.invoke_mut(move |qobject| {
+                    qobject.album_art_update(ckey.to_string_lossy().into_owned());
                 });
                 return Ok(());
             }
@@ -795,8 +789,8 @@ impl MPDAction for UpdateArt {
                     match res.unwrap() {
                         Ok(cover_path) => {
                             tracing::debug!("Retrieved album art: {}", cover_path.to_string_lossy());
-                            let _ = self.qt_thread.queue(move |qobject| {
-                                qobject.album_art_update(QString::from(cover_path.to_string_lossy().into_owned()));
+                            let _ = self.handle.invoke_mut(move |qobject| {
+                                qobject.album_art_update(cover_path.to_string_lossy().into_owned());
                             });
                         },
                         Err(e) => {
