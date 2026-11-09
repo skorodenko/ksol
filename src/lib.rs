@@ -90,7 +90,7 @@ pub enum ColumnSort {
     Descending(SongField),
 }
 
-#[derive(SchemaRead, SchemaWrite, Debug, Clone)]
+#[derive(Serialize, Deserialize, Default, SchemaRead, SchemaWrite, Debug, Clone, QModelItem)]
 pub struct HeaderColumn {
     name: String,
     width: f64,
