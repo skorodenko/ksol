@@ -1,0 +1,13 @@
+module ui
+prefer :/qt/qml/ui/
+About 1.0 About.qml
+AppShortcuts 1.0 AppShortcuts.qml
+BackgroundImage 1.0 BackgroundImage.qml
+Drun 1.0 Drun.qml
+InitWizard 1.0 InitWizard.qml
+Main 1.0 Main.qml
+PlaylistHeader 1.0 PlaylistHeader.qml
+Settings 1.0 Settings.qml
+SettingsAppearancePage 1.0 SettingsAppearancePage.qml
+SettingsMPDPage 1.0 SettingsMPDPage.qml
+SidebarDelegate 1.0 SidebarDelegate.qml

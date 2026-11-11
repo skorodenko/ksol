@@ -5,7 +5,6 @@ import QtQuick.Layouts
 import QtQuick.Effects
 import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
-import github.skorodenko.ksol 1.0
 
 Kirigami.ApplicationWindow {
     id: root

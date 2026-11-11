@@ -1,11 +1,12 @@
 extern crate ksol;
 
+use qtbridge::QApp;
+use qtbridge::include_bytes_qml;
 use std::env;
 use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
 #[tracing::instrument(level = "debug", name = "ksol")]
 fn main() {
-    use cxx_qt_lib::{QGuiApplication, QQmlApplicationEngine, QQuickStyle, QString, QUrl};
     use ksol::utils::init_hooks::init_dirs;
 
     let filter = EnvFilter::from_default_env().add_directive("mpd_protocol=error".parse().unwrap());
@@ -15,7 +16,9 @@ fn main() {
 
     init_dirs();
 
-    QApp::new().register::<backend::Backend>().load_qml(include_bytes!("Main.qml")).run();
+    include_bytes_qml!("ui", "/qt/qml");
+
+    QApp::new().add_import_path("qrc:/qt/qml").load_qml_from_file("qrc:/qt/qml/ui/Main.qml").run();
 
     //    let mut app = QGuiApplication::new();
     //    let mut engine = QQmlApplicationEngine::new();

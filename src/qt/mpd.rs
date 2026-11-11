@@ -3,11 +3,11 @@ use crate::service::mpris_interface::Player;
 use crate::service::{MPDActionService, MPRISActionService};
 use crate::utils::globals::Globals;
 use crate::{ColumnSort, QSong, SongField};
-use core::pin::Pin;
 use mpd_client::client::{ConnectionEvent, Subsystem};
 use mpd_client::{ClientController, ClientIdler, commands};
 use mpris_server::{LoopStatus, Metadata, PlaybackStatus, Property, Server, Time, TrackId};
 use qtbridge::{QmlObject, qobject, qproperty};
+use serde_json::Value;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -20,7 +20,6 @@ use tokio_util::sync::CancellationToken;
 use tower::{Service, ServiceBuilder};
 use tracing;
 use which::which;
-use serde_json::Value;
 
 pub struct QMPDConnector {
     // Exposed properties
@@ -413,182 +412,152 @@ impl QMPDConnector {
             }
         });
     }
-}
 
-//impl cxx_qt::Initialize for qobject::QQMPDConnector {
-//    fn initialize(mut self: Pin<&mut Self>) {
-//        self.as_mut()
-//            .on_connection_update(|mut qobject, msg| match String::from(msg).as_str() {
-//                "disconnected-action" => {
-//                    tracing::debug!("Exhausted all reconnection attempts");
-//                }
-//                "disconnected" => {
-//                    let globals = Globals::get();
-//                    let socket: String = qobject.mpd_socket.clone().into();
-//                    let cancel_token = CancellationToken::new();
-//                    if let Some(token) = qobject.cancel.clone() {
-//                        tracing::debug!("Issuing cancel on disconnect");
-//                        token.cancel();
-//                    };
-//                    qobject.as_mut().rust_mut().cancel.replace(cancel_token);
-//                    if socket == globals.native_socket {
-//                        tracing::debug!("Using native mpd server");
-//                        match which("mpd") {
-//                            Ok(mpd_binary) => {
-//                                tracing::debug!("Found mpd binary {:?}", mpd_binary);
-//                                qobject
-//                                    .as_mut()
-//                                    .start_native_server(&mpd_binary, &globals.native_config);
-//                            }
-//                            Err(err) => panic!(
-//                                "Using native socket, but no mpd binary was found, {:?}",
-//                                err
-//                            ),
-//                        };
-//                    };
-//                    qobject.as_mut().connection_update(QString::from("connecting"));
-//                }
-//                "connected" => {
-//                    let mpd_service = ServiceBuilder::new()
-//                        .service(MPDActionService::new(qobject.client.clone().unwrap()));
-//                    let mpris = qobject.runtime.block_on(async {
-//                        Server::new("ksol", Player { mpd_service: mpd_service.clone() })
-//                            .await
-//                            .unwrap()
-//                    });
-//                    let mpris_service =
-//                        ServiceBuilder::new().service(MPRISActionService::new(mpris));
-//                    qobject.as_mut().rust_mut().mpd_service.replace(mpd_service);
-//                    qobject.as_mut().rust_mut().mpris_service.replace(mpris_service);
-//                    qobject.as_mut().idle();
-//                    qobject.as_mut().init_ui();
-//                    qobject.as_mut().sync_state();
-//                }
-//                "connecting" => {
-//                    tracing::debug!("Connecting to server");
-//                    qobject.connect_client();
-//                }
-//                _ => unreachable!(),
-//            })
-//            .release();
-//        self.as_mut()
-//            .on_active_song_changed(|qobject| {
-//                let qt_thread = qobject.qt_thread();
-//                let song = qobject.active_song.clone().unwrap_or_default();
-//                if let Some(mut service) = qobject.mpd_service.clone() {
-//                    qobject
-//                        .runtime
-//                        .spawn(service.call(service::mpd::UpdateArt::new(qt_thread, song)));
-//                } else {
-//                    tracing::error!("Action service not available");
-//                }
-//            })
-//            .release();
-//        self.as_mut()
-//            .on_stage_playlist_result(|qobject, _data| {
-//                let qt_thread = qobject.qt_thread();
-//                let song = qobject.active_song.clone().unwrap_or_default();
-//                if let Some(mut service) = qobject.mpd_service.clone() {
-//                    qobject
-//                        .runtime
-//                        .spawn(service.call(service::mpd::IdlePlayer::new(qt_thread.clone())));
-//                    qobject
-//                        .runtime
-//                        .spawn(service.call(service::mpd::UpdateArt::new(qt_thread, song)));
-//                } else {
-//                    tracing::error!("Action service not available");
-//                }
-//            })
-//            .release();
-//
-//        // Mpris interface
-//        self.as_mut()
-//            .on_play_state_changed(|qobject, state| {
-//                if let Some(mut service) = qobject.mpris_service.clone() {
-//                    let mpris_changes = match String::from(state).as_str() {
-//                        "Playing" => vec![
-//                            Property::PlaybackStatus(PlaybackStatus::Playing),
-//                            Property::CanGoNext(true),
-//                            Property::CanGoPrevious(true),
-//                            Property::CanSeek(true),
-//                        ],
-//                        "Paused" => vec![
-//                            Property::PlaybackStatus(PlaybackStatus::Paused),
-//                            Property::CanGoNext(true),
-//                            Property::CanGoPrevious(true),
-//                            Property::CanSeek(true),
-//                        ],
-//                        "Stopped" => vec![
-//                            Property::PlaybackStatus(PlaybackStatus::Stopped),
-//                            Property::CanGoNext(false),
-//                            Property::CanGoPrevious(false),
-//                            Property::CanSeek(false),
-//                        ],
-//                        _ => unreachable!(),
-//                    };
-//                    qobject
-//                        .runtime
-//                        .spawn(service.call(service::mpris::PropertyUpdate::new(mpris_changes)));
-//                };
-//            })
-//            .release();
-//        self.as_mut()
-//            .on_update_options(|qobject| {
-//                if let Some(mut service) = qobject.mpris_service.clone() {
-//                    let repeat = qobject.repeat;
-//                    let single = qobject.single;
-//                    let shuffle = qobject.shuffle;
-//                    let mut mpris_changes = Vec::new();
-//                    match (repeat, single) {
-//                        (false, false) | (false, true) => {
-//                            mpris_changes.push(Property::LoopStatus(LoopStatus::None))
-//                        }
-//                        (true, false) => {
-//                            mpris_changes.push(Property::LoopStatus(LoopStatus::Playlist))
-//                        }
-//                        (true, true) => mpris_changes.push(Property::LoopStatus(LoopStatus::Track)),
-//                    };
-//                    match shuffle {
-//                        true => mpris_changes.push(Property::Shuffle(true)),
-//                        false => mpris_changes.push(Property::Shuffle(false)),
-//                    };
-//                    qobject
-//                        .runtime
-//                        .spawn(service.call(service::mpris::PropertyUpdate::new(mpris_changes)));
-//                }
-//            })
-//            .release();
-//        self.as_mut()
-//            .on_timeline_update(|qobject, _, elapsed| {
-//                if let Some(mut service) = qobject.mpris_service.clone() {
-//                    qobject.runtime.spawn(
-//                        service.call(service::mpris::Seeked::new(Duration::from_secs(elapsed))),
-//                    );
-//                }
-//            })
-//            .release();
-//        self.as_mut()
-//            .on_album_art_update(|qobject, cover| {
-//                if let Some(mut service) = qobject.mpris_service.clone() {
-//                    if let Some(ref song) = qobject.active_song {
-//                        let trackid = TrackId::try_from(format!("{}", song.id)).unwrap_or_default();
-//                        let metadata = Metadata::builder()
-//                            .title(&song.title)
-//                            .artist([&song.artist])
-//                            .album(&song.album)
-//                            .trackid(trackid)
-//                            .length(Time::from_secs(song.duration as i64))
-//                            .art_url(format!("file:{}", cover))
-//                            .build();
-//                        qobject.runtime.spawn(service.call(service::mpris::PropertyUpdate::new(
-//                            vec![Property::Metadata(metadata)],
-//                        )));
-//                    };
-//                };
-//            })
-//            .release();
-//    }
-//}
+    fn handle_connection_update(&mut self, msg: String) {
+        match msg.as_str() {
+            "disconnected-action" => {
+                tracing::debug!("Exhausted all reconnection attempts");
+            }
+            "disconnected" => {
+                let globals = Globals::get();
+                let cancel_token = CancellationToken::new();
+                if let Some(token) = self.cancel.clone() {
+                    tracing::debug!("Issuing cancel on disconnect");
+                    token.cancel();
+                };
+                self.cancel.replace(cancel_token);
+                if self.mpd_socket == globals.native_socket {
+                    tracing::debug!("Using native mpd server");
+                    match which("mpd") {
+                        Ok(mpd_binary) => {
+                            tracing::debug!("Found mpd binary {:?}", mpd_binary);
+                            self.start_native_server(&mpd_binary, &globals.native_config);
+                        }
+                        Err(err) => {
+                            panic!("Using native socket, but no mpd binary was found, {:?}", err)
+                        }
+                    };
+                };
+                self.connection_update(String::from("connecting"));
+            }
+            "connected" => {
+                let mpd_service = ServiceBuilder::new()
+                    .service(MPDActionService::new(self.client.clone().unwrap()));
+                let mpris = self.runtime.block_on(async {
+                    Server::new("ksol", Player { mpd_service: mpd_service.clone() }).await.unwrap()
+                });
+                let mpris_service = ServiceBuilder::new().service(MPRISActionService::new(mpris));
+                self.mpd_service.replace(mpd_service);
+                self.mpris_service.replace(mpris_service);
+                self.idle();
+                self.init_ui();
+                self.sync_state();
+            }
+            "connecting" => {
+                tracing::debug!("Connecting to server");
+                self.connect_client();
+            }
+            _ => unreachable!(),
+        };
+    }
+
+    fn handle_active_song_changed(&self) {
+        let handle = Arc::new(self.get_thread_handle());
+        let song = self.active_song.clone().unwrap_or_default();
+        if let Some(mut service) = self.mpd_service.clone() {
+            self.runtime.spawn(service.call(service::mpd::UpdateArt::new(handle, song)));
+        } else {
+            tracing::error!("Action service not available");
+        }
+    }
+
+    fn handle_stage_playlist_result(&self, _data: Value) {
+        let handle = Arc::new(self.get_thread_handle());
+        let song = self.active_song.clone().unwrap_or_default();
+        if let Some(mut service) = self.mpd_service.clone() {
+            self.runtime.spawn(service.call(service::mpd::IdlePlayer::new(handle.clone())));
+            self.runtime.spawn(service.call(service::mpd::UpdateArt::new(handle, song)));
+        } else {
+            tracing::error!("Action service not available");
+        }
+    }
+
+    fn handle_play_state_changed(&mut self, state: String) {
+        if let Some(mut service) = self.mpris_service.clone() {
+            let mpris_changes = match state.as_str() {
+                "Playing" => vec![
+                    Property::PlaybackStatus(PlaybackStatus::Playing),
+                    Property::CanGoNext(true),
+                    Property::CanGoPrevious(true),
+                    Property::CanSeek(true),
+                ],
+                "Paused" => vec![
+                    Property::PlaybackStatus(PlaybackStatus::Paused),
+                    Property::CanGoNext(true),
+                    Property::CanGoPrevious(true),
+                    Property::CanSeek(true),
+                ],
+                "Stopped" => vec![
+                    Property::PlaybackStatus(PlaybackStatus::Stopped),
+                    Property::CanGoNext(false),
+                    Property::CanGoPrevious(false),
+                    Property::CanSeek(false),
+                ],
+                _ => unreachable!(),
+            };
+            self.runtime.spawn(service.call(service::mpris::PropertyUpdate::new(mpris_changes)));
+        };
+    }
+
+    fn handle_update_options(&self) {
+        if let Some(mut service) = self.mpris_service.clone() {
+            let repeat = self.repeat;
+            let single = self.single;
+            let shuffle = self.shuffle;
+            let mut mpris_changes = Vec::new();
+            match (repeat, single) {
+                (false, false) | (false, true) => {
+                    mpris_changes.push(Property::LoopStatus(LoopStatus::None))
+                }
+                (true, false) => mpris_changes.push(Property::LoopStatus(LoopStatus::Playlist)),
+                (true, true) => mpris_changes.push(Property::LoopStatus(LoopStatus::Track)),
+            };
+            match shuffle {
+                true => mpris_changes.push(Property::Shuffle(true)),
+                false => mpris_changes.push(Property::Shuffle(false)),
+            };
+            self.runtime.spawn(service.call(service::mpris::PropertyUpdate::new(mpris_changes)));
+        }
+    }
+
+    fn handle_timeline_update(&mut self, _duration: u64, elapsed: u64) {
+        if let Some(mut service) = self.mpris_service.clone() {
+            self.runtime
+                .spawn(service.call(service::mpris::Seeked::new(Duration::from_secs(elapsed))));
+        }
+    }
+
+    fn handle_album_art_update(&self, cover: String) {
+        if let Some(mut service) = self.mpris_service.clone() {
+            if let Some(ref song) = self.active_song {
+                let trackid = TrackId::try_from(format!("{}", song.id)).unwrap_or_default();
+                let metadata = Metadata::builder()
+                    .title(&song.title)
+                    .artist([&song.artist])
+                    .album(&song.album)
+                    .trackid(trackid)
+                    .length(Time::from_secs(song.duration as i64))
+                    .art_url(format!("file:{}", cover))
+                    .build();
+                self.runtime.spawn(
+                    service.call(service::mpris::PropertyUpdate::new(vec![Property::Metadata(
+                        metadata,
+                    )])),
+                );
+            };
+        };
+    }
+}
 
 impl Default for QMPDConnector {
     fn default() -> Self {
