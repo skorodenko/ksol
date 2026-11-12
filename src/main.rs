@@ -16,9 +16,12 @@ fn main() {
 
     init_dirs();
 
-    include_bytes_qml!("ui", "/qt/qml");
+    include_bytes_qml!("ui", "/qt/qml/ksol");
 
-    QApp::new().add_import_path("qrc:/qt/qml").load_qml_from_file("qrc:/qt/qml/ui/Main.qml").run();
+    QApp::new()
+        .add_import_path("qrc:/qt/qml")
+        .load_qml_from_file("qrc:/qt/qml/ksol/ui/Main.qml")
+        .run();
 
     //    let mut app = QGuiApplication::new();
     //    let mut engine = QQmlApplicationEngine::new();

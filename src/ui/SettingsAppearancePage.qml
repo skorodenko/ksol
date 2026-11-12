@@ -4,6 +4,7 @@ import QtQuick
 import Qt.labs.synchronizer
 import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
+import ksol 
 
 Kirigami.Page {
     id: root

@@ -19,7 +19,8 @@ impl QState {
     #[qsignal(qml_name = "updateSort")]
     pub fn update_sort(&mut self);
 
-    fn set_sort(mut self: Pin<&mut Self>, col: i32) {
+    #[qslot(qml_name = "setSort")]
+    fn set_sort(&mut self, col: i32) {
         let col = SongField::from_i32(col).unwrap();
         let sort = match self.column_sort {
             ColumnSort::Inactive => ColumnSort::Descending(col),
@@ -33,6 +34,7 @@ impl QState {
         self.update_sort();
     }
 
+    #[qslot(qml_name = "getSortColumn")]
     fn get_sort_column(&self) -> i32 {
         match self.column_sort {
             ColumnSort::Inactive => -1,
@@ -41,6 +43,7 @@ impl QState {
         }
     }
 
+    #[qslot(qml_name = "getSortOrder")]
     fn get_sort_order(&self) -> i32 {
         match self.column_sort {
             ColumnSort::Inactive => 0,
@@ -49,6 +52,7 @@ impl QState {
         }
     }
 
+    #[qslot(qml_name = "getHeaderColumn")]
     fn get_header_column(&self, col: usize) -> Value {
         let item = self.header_columns.get(col).expect("Out of bounds");
         serde_json::to_value(item).unwrap_or_else(|e| {
@@ -57,6 +61,7 @@ impl QState {
         })
     }
 
+    #[qslot(qml_name = "setHeaderColumn")]
     fn set_header_column(&mut self, col: usize, value: Value) {
         match serde_json::from_value(value) {
             Ok(new_data) => self.header_columns[col] = new_data,
@@ -64,11 +69,13 @@ impl QState {
         }
     }
 
+    #[qslot(qml_name = "mpdBinaryAvailable")]
     fn mpd_binary_available(&self) -> bool {
         let globals = Globals::get();
         globals.mpd_binary.exists()
     }
 
+    #[qslot]
     fn dump(&self) {
         let state_file = StateFile {
             header_columns: self.header_columns.clone(),

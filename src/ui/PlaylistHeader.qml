@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import org.kde.kirigami as Kirigami
+import ksol
 
 Item {
     id: root
@@ -31,10 +32,13 @@ Item {
             model: root.columnCount
             delegate: CheckBox {
                 required property int index
-                text: QState.getHeaderColumn(index, ColumnType.Name)
-                checked: !QState.getHeaderColumn(index, ColumnType.Hidden)
+                property var item: QState.getHeaderColumn(index)
+
+                text: item?.name
+                checked: !item?.hidden
                 nextCheckState: function () {
-                    root.toggleColumn(index, !checked);
+                    item.hidden = !item.hidden;
+                    root.toggleColumn(index, item);
                     return checked ? Qt.Unchecked : Qt.Checked;
                 }
             }
@@ -53,17 +57,20 @@ Item {
         color: parent.color
     }
 
-    function toggleColumn(column, state) {
-        let item = repeater.itemAt(column);
-        item.visible = state;
-        QState.setHeaderColumn(column, ColumnType.Hidden, state);
-        root.firstVisibleColumn = root.updateFirstVisibleColumn();
-        root.lastVisibleColumn = root.updateLastVisibleColumn();
+    function toggleColumn(column, item) {
+        if (item) {
+            //let item = repeater.itemAt(column);
+            //item.visible = state;
+            QState.setHeaderColumn(column, item);
+            root.firstVisibleColumn = root.updateFirstVisibleColumn();
+            root.lastVisibleColumn = root.updateLastVisibleColumn();
+        }
     }
 
     function updateFirstVisibleColumn() {
         for (let i = 0; i < root.columnCount; i++) {
-            if (QState.getHeaderColumn(i, ColumnType.Hidden) === false) {
+            let item = QState.getHeaderColumn(i);
+            if (item.hidden === false) {
                 return i;
             }
         }
@@ -72,7 +79,8 @@ Item {
 
     function updateLastVisibleColumn() {
         for (let i = root.columnCount - 1; i > 0; i--) {
-            if (QState.getHeaderColumn(i, ColumnType.Hidden) === false) {
+            let item = QState.getHeaderColumn(i);
+            if (item.hidden === false) {
                 return i;
             }
         }
@@ -82,7 +90,8 @@ Item {
     function visibleColumnCount() {
         let k = 0;
         for (let i = 0; i < root.columnCount; i++) {
-            if (QState.getHeaderColumn(i, ColumnType.Hidden) === false) {
+            let item = QState.getHeaderColumn(i);
+            if (item.hidden === false) {
                 k++;
             }
         }
@@ -127,16 +136,18 @@ Item {
                 color: root.color
 
                 enabled: visible
-                visible: !QState.getHeaderColumn(index, ColumnType.Hidden)
+                visible: !item?.hidden
                 SplitView.fillWidth: index == root.lastVisibleColumn
                 SplitView.minimumWidth: root.minimumColumnWidth
                 SplitView.maximumWidth: root.maximumColumnWidth
-                SplitView.preferredWidth: QState.getHeaderColumn(index, ColumnType.Width) * root.width
+                SplitView.preferredWidth: item?.width * root.width
 
                 required property int index
+                property var item: QState.getHeaderColumn(index)
 
-                onWidthChanged: {
-                    QState.setHeaderColumn(delegate.index, ColumnType.Width, delegate.SplitView.preferredWidth / root.width);
+                onWidthChanged: if (item) {
+                    item.width = delegate.SplitView.preferredWidth / root.width;
+                    QState.setHeaderColumn(delegate.index, item);
                     root.columnWidthChanged();
                 }
 
@@ -173,7 +184,7 @@ Item {
                     anchors.right: sortIndicator.left
                     anchors.verticalCenter: delegate.verticalCenter
                     anchors.leftMargin: Kirigami.Units.smallSpacing
-                    text: QState.getHeaderColumn(index, ColumnType.Name)
+                    text: parent?.item?.name
                 }
 
                 Item {

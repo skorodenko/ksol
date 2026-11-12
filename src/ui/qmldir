@@ -1,5 +1,5 @@
-module ui
-prefer :/qt/qml/ui/
+module ksol/ui
+prefer :/qt/qml/ksol/ui/
 About 1.0 About.qml
 AppShortcuts 1.0 AppShortcuts.qml
 BackgroundImage 1.0 BackgroundImage.qml
